@@ -61,7 +61,7 @@ async function fetchSingleMetric(
     const errText = await res.text();
     // Silencia o log de erro se for apenas dado inexistente
     if (res.status !== 400) {
-        console.error(`❌ Erro Maps [${metric}] (${res.status}):`, errText.substring(0, 200));
+      console.error(`❌ Erro Maps [${metric}] (${res.status}):`, errText.substring(0, 200));
     }
     return 0;
   }
@@ -102,11 +102,11 @@ export async function getReviews(accountId: string, locationId: string) {
     const accessToken = await getAccessToken();
     // A API v4 exige o caminho completo: accounts/{accountId}/locations/{locationId}/reviews
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
-    
+
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
     if (!res.ok) {
-        console.error('Erro ao buscar reviews:', await res.text());
-        return null;
+      console.error('Erro ao buscar reviews:', await res.text());
+      return null;
     }
     const data = await res.json();
     return data.reviews || [];
@@ -122,19 +122,19 @@ export async function replyToReview(reviewName: string, replyText: string) {
     const accessToken = await getAccessToken();
     // reviewName já vem no formato 'accounts/*/locations/*/reviews/*'
     const url = `https://mybusiness.googleapis.com/v4/${reviewName}/reply`;
-    
-    const res = await fetch(url, { 
-        method: 'PUT',
-        headers: { 
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ comment: replyText })
+
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ comment: replyText })
     });
-    
+
     if (!res.ok) {
-        console.error('Erro ao responder review:', await res.text());
-        return false;
+      console.error('Erro ao responder review:', await res.text());
+      return false;
     }
     return true;
   } catch (error) {
@@ -148,24 +148,24 @@ export async function createLocalPost(accountId: string, locationId: string, pos
   try {
     const accessToken = await getAccessToken();
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/localPosts`;
-    
-    const res = await fetch(url, { 
-        method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            languageCode: 'pt-BR',
-            summary: postText,
-            state: 'PUBLISHED',
-            topicType: 'STANDARD'
-        })
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        languageCode: 'pt-BR',
+        summary: postText,
+        state: 'PUBLISHED',
+        topicType: 'STANDARD'
+      })
     });
-    
+
     if (!res.ok) {
-        console.error('Erro ao criar post:', await res.text());
-        return false;
+      console.error('Erro ao criar post:', await res.text());
+      return false;
     }
     return true;
   } catch (error) {
