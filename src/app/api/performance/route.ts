@@ -1,0 +1,41 @@
+import { NextResponse } from 'next/server';
+import { getDetailedInsights } from '@/lib/gsc';
+import { listLocations, getLocationPerformance } from '@/lib/business';
+
+export async function POST(request: Request) {
+  try {
+    const { siteUrl, days } = await request.json();
+    
+    // 1. Dados do SEO (GSC)
+    const seoData = await getDetailedInsights(siteUrl, days);
+    
+    // 2. Dados Reais do Maps (Business Profile)
+    let mapsData = null;
+    try {
+      const locations = await listLocations();
+      
+      // Limpa a URL do site para comparação (remove https:// e barras)
+      const cleanUrl = siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+      
+      const myLocation = locations.find((l: any) => {
+        if (!l.websiteUri) return false;
+        const cleanLocUrl = l.websiteUri.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+        return cleanLocUrl.includes(cleanUrl) || cleanUrl.includes(cleanLocUrl);
+      });
+      
+      if (myLocation) {
+        const perf = await getLocationPerformance(myLocation.name, days);
+        mapsData = {
+          title: myLocation.title,
+          metrics: perf || { calls: 0, directions: 0, websiteClicks: 0 }
+        };
+      }
+    } catch (e) {
+      console.error('Erro ao cruzar Maps:', e);
+    }
+
+    return NextResponse.json({ ...seoData, maps: mapsData });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
