@@ -24,6 +24,8 @@ body {
     radial-gradient(circle at 50% -20%, #1a1a2e 0%, transparent 50%),
     radial-gradient(circle at 0% 100%, #101010 0%, transparent 40%);
   min-height: 100vh;
+  /* Evita zoom indesejado em inputs no iOS */
+  -webkit-text-size-adjust: 100%;
 }
 
 .container {
@@ -122,4 +124,134 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* ====================== */
+/* ANIMAÇÕES              */
+/* ====================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ====================== */
+/* RESPONSIVIDADE MOBILE  */
+/* ====================== */
+@media (max-width: 768px) {
+
+  /* Container com menos padding lateral */
+  .container {
+    padding: 20px 15px;
+    padding-bottom: 80px;
+  }
+
+  /* Título menor */
+  .title {
+    font-size: 2rem;
+    letter-spacing: -1px;
+  }
+
+  /* Grid de sites em coluna única */
+  .sites-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  /* Cards com menos padding */
+  .site-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  /* Header do dashboard vira coluna */
+  header[style*="space-between"] {
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+
+  /* Filtros de data ocupam largura total */
+  div[style*="flex-end"] {
+    align-items: stretch !important;
+    width: 100%;
+  }
+
+  /* Grid de métricas: 2x2 no mobile */
+  div[style*="repeat(4, 1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Métricas com fonte menor */
+  div[style*="repeat(4, 1fr)"] h2 {
+    font-size: 1.5rem !important;
+  }
+
+  /* Navegação por abas com scroll horizontal */
+  nav[style*="borderBottom"] {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    gap: 20px !important;
+    padding-bottom: 2px;
+    /* Esconde scrollbar mas mantém funcional */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  nav[style*="borderBottom"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Botões da nav não encolhem */
+  nav[style*="borderBottom"] button {
+    flex-shrink: 0;
+    font-size: 0.85rem !important;
+  }
+
+  /* Tabelas com scroll horizontal */
+  div[style*="padding: 0"] {
+    overflow-x: auto !important;
+  }
+
+  table {
+    min-width: 500px;
+  }
+
+  /* Input de data cobre a linha toda */
+  div[style*="datetime-local"] {
+    flex-direction: column !important;
+  }
+
+  /* Botão de resposta/postagem em coluna */
+  div[style*="gap: 10px"] input[type="text"] {
+    width: 100%;
+  }
+
+  /* Títulos de seção menores */
+  h3[style*="1.2rem"] {
+    font-size: 1rem !important;
+  }
+}
+
+/* Telas muito pequenas (< 400px) */
+@media (max-width: 400px) {
+  .title {
+    font-size: 1.6rem;
+  }
+
+  div[style*="repeat(4, 1fr)"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  div[style*="repeat(4, 1fr)"] h2 {
+    font-size: 1.3rem !important;
+  }
 }

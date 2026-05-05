@@ -27,6 +27,8 @@ export async function POST(request: Request) {
         const perf = await getLocationPerformance(myLocation.name, days);
         mapsData = {
           title: myLocation.title,
+          accountId: myLocation.accountId,
+          locationId: myLocation.name.replace('locations/', ''),
           metrics: perf || { calls: 0, directions: 0, websiteClicks: 0 }
         };
       }

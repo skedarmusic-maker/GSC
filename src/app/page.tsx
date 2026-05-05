@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function Dashboard() {
   const [sites, setSites] = useState<any[]>([]);
@@ -9,6 +10,14 @@ export default function Dashboard() {
   const [data, setData] = useState<any>(null);
   const [loadingPerf, setLoadingPerf] = useState(false);
   const [activeTab, setActiveTab] = useState('insights');
+  
+  // Estado para Gestão do Perfil Local
+  const [localReviews, setLocalReviews] = useState<any[]>([]);
+  const [loadingLocal, setLoadingLocal] = useState(false);
+  const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
+  const [postText, setPostText] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   
   // Controle de Datas Avançado
   const [days, setDays] = useState(28);
@@ -26,6 +35,30 @@ export default function Dashboard() {
     fetchSites();
   }, []);
 
+  const fetchLocalProfile = async (accountId: string, locationId: string) => {
+    setLoadingLocal(true);
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, locationId })
+      });
+      const data = await res.json();
+      if (!data.error) setLocalReviews(data);
+    } catch(e) { console.error(e); } finally { setLoadingLocal(false); }
+  };
+
+  const fetchScheduledPosts = async (locationId: string) => {
+    const { data: posts, error } = await supabase
+      .from('scheduled_posts')
+      .select('*')
+      .eq('location_id', locationId)
+      .eq('status', 'pending')
+      .order('scheduled_for', { ascending: true });
+    
+    if (!error) setScheduledPosts(posts || []);
+  };
+
   const fetchData = async (url: string, period: any) => {
     setLoadingPerf(true);
     try {
@@ -41,7 +74,65 @@ export default function Dashboard() {
       });
       const d = await res.json();
       setData(d);
+      
+      // Se houver dados do Maps cruzados, já busca as avaliações e agendamentos
+      if (d.maps && d.maps.accountId && d.maps.locationId) {
+        fetchLocalProfile(d.maps.accountId, d.maps.locationId);
+        fetchScheduledPosts(d.maps.locationId);
+      }
     } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
+  };
+
+  const handleReply = async (reviewName: string) => {
+    const text = replyText[reviewName];
+    if (!text) return;
+    try {
+      const res = await fetch('/api/reviews/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewName, replyText: text })
+      });
+      const resData = await res.json();
+      if (resData.error) throw new Error(resData.error);
+      alert('Resposta enviada com sucesso ao Google Maps!');
+      setReplyText({ ...replyText, [reviewName]: '' });
+      if (data?.maps) fetchLocalProfile(data.maps.accountId, data.maps.locationId);
+    } catch(e) { alert('Erro ao responder a avaliação.'); }
+  };
+
+  const handlePost = async () => {
+    if (!postText || !data?.maps) return;
+
+    try {
+      // Se tiver data agendada, salva no Supabase
+      if (scheduledDate) {
+        const { error } = await supabase.from('scheduled_posts').insert([{
+          scheduled_for: new Date(scheduledDate).toISOString(),
+          content: postText,
+          location_id: data.maps.locationId,
+          account_id: data.maps.accountId,
+          status: 'pending'
+        }]);
+
+        if (error) throw error;
+        alert('Postagem agendada com sucesso!');
+        setScheduledDate('');
+        fetchScheduledPosts(data.maps.locationId);
+      } else {
+        // Caso contrário, publica imediatamente
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId: data.maps.accountId, locationId: data.maps.locationId, postText })
+        });
+        const resData = await res.json();
+        if (resData.error) throw new Error(resData.error);
+        alert('Postagem enviada com sucesso ao Google Maps!');
+      }
+      setPostText('');
+    } catch(e: any) { 
+      alert('Erro na postagem: ' + (e.message || 'Erro desconhecido')); 
+    }
   };
 
   const handleSelectSite = (url: string) => {
@@ -147,9 +238,9 @@ export default function Dashboard() {
              </div>
 
              <nav style={{ display: 'flex', gap: '40px', marginBottom: '30px', borderBottom: '1px solid #222' }}>
-                {['insights', 'performance', 'páginas'].map(t => (
+                {['insights', 'performance', 'páginas', 'perfil local'].map(t => (
                     <button key={t} onClick={() => setActiveTab(t)} style={{ padding: '15px 0', background: 'none', border: 'none', color: activeTab === t ? '#fff' : '#666', borderBottom: activeTab === t ? '2px solid #0070f3' : 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}>
-                        {t === 'insights' ? '✨ INSIGHTS & IA' : t.toUpperCase()}
+                        {t === 'insights' ? '✨ INSIGHTS & IA' : t === 'perfil local' ? '🏪 PERFIL LOCAL' : t.toUpperCase()}
                     </button>
                 ))}
              </nav>
@@ -215,6 +306,107 @@ export default function Dashboard() {
                         ))}
                       </tbody>
                    </table>
+                </div>
+             )}
+
+             {/* ABA: PERFIL LOCAL (Google Business Profile) */}
+             {activeTab === 'perfil local' && data.maps && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }} className="animate-fade-in">
+                    
+                    {/* Criar Postagem */}
+                    <div className="site-card" style={{ padding: '25px', background: '#0a0a0a' }}>
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '15px', color: '#fff' }}>Criar Nova Postagem (Update)</h3>
+                        <p style={{ color: '#888', marginBottom: '15px', fontSize: '0.9rem' }}>Publique novidades, ofertas ou atualizações diretamente no Google Maps da empresa.</p>
+                        <textarea 
+                            value={postText}
+                            onChange={(e) => setPostText(e.target.value)}
+                            placeholder="Ex: Estamos com uma promoção especial de Dia das Mães na Podologia! Agende seu horário..."
+                            style={{ width: '100%', minHeight: '100px', background: '#111', border: '1px solid #333', color: '#fff', padding: '15px', borderRadius: '8px', marginBottom: '15px', fontFamily: 'inherit' }}
+                        />
+
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+                            <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>Agendar para (opcional):</p>
+                                <input 
+                                    type="datetime-local" 
+                                    value={scheduledDate}
+                                    onChange={(e) => setScheduledDate(e.target.value)}
+                                    style={{ width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                                />
+                            </div>
+                            <button 
+                                onClick={handlePost}
+                                disabled={!postText}
+                                style={{ alignSelf: 'flex-end', background: postText ? (scheduledDate ? '#ffbb00' : '#0070f3') : '#333', color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '8px', cursor: postText ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
+                            >
+                                {scheduledDate ? 'Agendar Postagem' : 'Publicar Agora'}
+                            </button>
+                        </div>
+
+                        {/* Lista de Agendados */}
+                        {scheduledPosts.length > 0 && (
+                            <div style={{ marginTop: '20px', borderTop: '1px solid #222', paddingTop: '20px' }}>
+                                <h4 style={{ fontSize: '0.9rem', color: '#888', marginBottom: '15px' }}>📌 Postagens Agendadas:</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {scheduledPosts.map((p, i) => (
+                                        <div key={i} style={{ background: 'rgba(255,187,0,0.05)', border: '1px solid rgba(255,187,0,0.1)', padding: '10px 15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.9rem', color: '#ccc', maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.content}</span>
+                                            <span style={{ fontSize: '0.8rem', color: '#ffbb00' }}>{new Date(p.scheduled_for).toLocaleString()}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Avaliações */}
+                    <div className="site-card" style={{ padding: '25px' }}>
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '20px' }}>Últimas Avaliações</h3>
+                        {loadingLocal ? <p style={{ color: '#888' }}>Buscando avaliações...</p> : localReviews.length === 0 ? <p style={{ color: '#888' }}>Nenhuma avaliação encontrada ou ID da conta ausente.</p> : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {localReviews.map((review: any, i: number) => {
+                                    const ratingNum = review.starRating === 'FIVE' ? 5 : review.starRating === 'FOUR' ? 4 : review.starRating === 'THREE' ? 3 : review.starRating === 'TWO' ? 2 : 1;
+                                    const stars = '⭐'.repeat(ratingNum);
+                                    const isReplied = !!review.reviewReply;
+
+                                    return (
+                                        <div key={i} style={{ borderBottom: '1px solid #222', paddingBottom: '20px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <strong>{review.reviewer?.displayName || 'Cliente Google'}</strong>
+                                                <span>{stars}</span>
+                                            </div>
+                                            <p style={{ color: '#ccc', marginBottom: '15px', fontStyle: 'italic' }}>"{review.comment || 'Avaliação sem texto'}"</p>
+                                            
+                                            {isReplied ? (
+                                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '8px', borderLeft: '3px solid #00ff00' }}>
+                                                    <strong style={{ fontSize: '0.85rem', color: '#00ff00', display: 'block', marginBottom: '5px' }}>Sua Resposta:</strong>
+                                                    <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{review.reviewReply.comment}</p>
+                                                </div>
+                                            ) : (
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <input 
+                                                        type="text" 
+                                                        value={replyText[review.name] || ''}
+                                                        onChange={(e) => setReplyText({...replyText, [review.name]: e.target.value})}
+                                                        placeholder="Digite sua resposta..."
+                                                        style={{ flex: 1, background: '#111', border: '1px solid #333', color: '#fff', padding: '10px 15px', borderRadius: '8px' }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => handleReply(review.name)}
+                                                        disabled={!replyText[review.name]}
+                                                        style={{ background: replyText[review.name] ? '#0070f3' : '#333', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: replyText[review.name] ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
+                                                    >
+                                                        Responder
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
                 </div>
              )}
           </div>
