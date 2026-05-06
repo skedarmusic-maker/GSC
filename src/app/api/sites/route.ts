@@ -27,12 +27,14 @@ export async function GET() {
 
     // 2. Mesclar com os sites do GSC
     for (const site of gscSites) {
+      if (!site.siteUrl) continue;
       const cleanGscUrl = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
       
       let foundMatch = false;
       for (const item of unifiedList) {
-        if (item.gbpData && item.gbpData.websiteUri) {
-          const cleanLocUrl = item.gbpData.websiteUri.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
+        const websiteUri = item.gbpData?.websiteUri;
+        if (websiteUri) {
+          const cleanLocUrl = websiteUri.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
           if (cleanLocUrl === cleanGscUrl || cleanLocUrl.includes(cleanGscUrl) || cleanGscUrl.includes(cleanLocUrl)) {
             item.gscUrl = site.siteUrl;
             item.type = 'HYBRID';
