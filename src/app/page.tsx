@@ -483,7 +483,7 @@ export default function Dashboard() {
         </div>
 
         {/* Seletor de Cliente no Sidebar */}
-        <div className="p-4 border-b border-[#111]">
+        <div className="p-4 border-b border-[#111]" key={sites.length}>
           {loading ? (
             <div className="text-xs text-gray-500 animate-pulse px-2">Carregando clientes...</div>
           ) : appMode === 'seo' ? (
