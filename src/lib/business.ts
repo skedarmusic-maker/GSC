@@ -4,6 +4,7 @@ async function getAccessToken() {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    cache: 'no-store',
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_ADS_CLIENT_ID!.trim(),
       client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!.trim(),
@@ -24,7 +25,8 @@ export async function listLocations() {
 
     // 1. Listar todas as contas de gerenciamento
     const accountsRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      cache: 'no-store'
     });
     const accountsData = await accountsRes.json();
 
@@ -34,14 +36,20 @@ export async function listLocations() {
 
     // 2. Para cada conta, buscar os locais (empresas)
     for (const account of accountsData.accounts) {
-      const locationsRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title,websiteUri`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+      const locationsRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title,websiteUri,metadata`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        cache: 'no-store'
       });
       const locData = await locationsRes.json();
 
       if (locData.locations) {
         const accountId = account.name.split('/')[1];
-        const formatted = locData.locations.map((l: any) => ({
+        // Filtra apenas locais verificados ou que o usuário tem permissão ativa
+        const verified = locData.locations.filter((l: any) => 
+          l.metadata?.hasVoiceOfMerchant || l.metadata?.canUpdate
+        );
+
+        const formatted = verified.map((l: any) => ({
           ...l,
           accountId: accountId
         }));
@@ -66,16 +74,17 @@ export async function getLocationPerformance(locationName: string, days: number)
     startDate.setDate(endDate.getDate() - days);
 
     const metrics = [
-      'BUSINESS_CONVERSIONS_CALLS',
+      'CALL_CLICKS',
       'BUSINESS_CONVERSIONS_DIRECTIONS',
-      'BUSINESS_CONVERSIONS_WEBSITE_CLICKS'
+      'WEBSITE_CLICKS'
     ];
 
     const fetchSingleMetric = async (metric: string) => {
       const url = `https://businessprofileperformance.googleapis.com/v1/${locationName}:getDailyMetricsTimeSeries?dailyMetric=${metric}&dailyRange.startDate.year=${startDate.getFullYear()}&dailyRange.startDate.month=${startDate.getMonth() + 1}&dailyRange.startDate.day=${startDate.getDate()}&dailyRange.endDate.year=${endDate.getFullYear()}&dailyRange.endDate.month=${endDate.getMonth() + 1}&dailyRange.endDate.day=${endDate.getDate()}`;
 
       const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        cache: 'no-store'
       });
       const data = await res.json();
 
@@ -201,14 +210,18 @@ export async function createLocalPost(accountId: string, locationId: string, pos
   }
 }
 
-export async function getLocationDetails(locationName: string) {
+export async function getLocationDetails(locationId: string) {
   try {
     const accessToken = await getAccessToken();
-    // readMask=* to get all available details for the audit
-    const url = `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}?readMask=*`;
+    // A API v1 aceita apenas locations/{id} sem o prefixo de account
+    // readMask=* não é suportado — listamos campos explícitos
+    const cleanId = locationId.replace(/^accounts\/[^\/]+\//, '');
+    const readMask = 'name,title,websiteUri,phoneNumbers,regularHours,profile,categories';
+    const url = `https://mybusinessbusinessinformation.googleapis.com/v1/${cleanId}?readMask=${readMask}`;
 
     const res = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+      cache: 'no-store'
     });
 
     if (!res.ok) {

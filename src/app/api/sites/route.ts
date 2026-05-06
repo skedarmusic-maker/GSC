@@ -9,7 +9,10 @@ export async function GET() {
     // Buscar GSC e GBP paralelamente. Tolera falhas individuais.
     const [gscSites, gbpLocations] = await Promise.all([
       listSites().catch(() => []), 
-      listLocations().catch(() => [])
+      listLocations().catch((e) => {
+        console.error("ERRO NO LIST LOCATIONS:", e);
+        return [];
+      })
     ]);
 
     const unifiedList: any[] = [];

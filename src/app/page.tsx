@@ -64,6 +64,15 @@ export default function Dashboard() {
     fetchSites();
   }, []);
 
+  useEffect(() => {
+    if (selectedClient) {
+      fetchData(selectedClient.gscUrl, days, selectedClient.gbpData);
+    }
+    if (selectedGbp) {
+      handleSelectGbpProfile(selectedGbp);
+    }
+  }, [days]);
+
   const fetchLocalProfile = async (accountId: string, locationId: string) => {
     setLoadingLocal(true);
     setLocalError(null);
@@ -398,46 +407,74 @@ export default function Dashboard() {
   const gscSites = sites.filter((s: any) => s.type === 'GSC_ONLY' || s.type === 'HYBRID');
   const gbpProfiles = sites.filter((s: any) => s.gbpData);
 
-  const handleSelectGbpProfile = (profile: any) => {
+  const handleSelectGbpProfile = async (profile: any) => {
     setSelectedGbp(profile);
-    setLocalReviews([]);
-    setAuditData(null);
-    setTrackedKeywords([]);
-    setActiveTab('gbp-dashboard');
-    const accountId = profile.gbpData.accountId;
-    const locationId = profile.gbpData.name?.replace('locations/', '');
-    const mapsData = {
-      title: profile.gbpData.title,
-      accountId,
-      locationId,
-      metrics: { calls: 0, directions: 0, websiteClicks: 0 }
-    };
-    setGbpData(mapsData);
-    if (accountId && locationId) {
-      fetchLocalProfile(accountId, locationId);
-      fetchScheduledPosts(locationId);
-      fetchAudit(accountId, locationId);
-      fetchRankData(locationId);
+    setLoadingPerf(true);
+    try {
+      // Buscar métricas reais de performance (Chamadas, Rotas, Cliques)
+      const res = await fetch('/api/maps/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          locationName: profile.id, // profile.id já é "locations/XXXX"
+          days: days 
+        })
+      });
+      const perfData = await res.json();
+      
+      const mapsData = {
+        title: profile.name,
+        accountId: profile.gbpData.accountId,
+        locationId: profile.id.replace('locations/', ''),
+        metrics: perfData || { calls: 0, directions: 0, websiteClicks: 0 }
+      };
+      
+      setGbpData(mapsData);
+      
+      // Carregar outros dados do perfil
+      fetchLocalProfile(profile.gbpData.accountId, mapsData.locationId);
+      fetchScheduledPosts(mapsData.locationId);
+      fetchAudit(profile.gbpData.accountId, mapsData.locationId);
+      fetchRankData(mapsData.locationId);
+      
+    } catch (err) {
+      console.error('Erro ao carregar dados do perfil:', err);
+    } finally {
+      setLoadingPerf(false);
     }
   };
 
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
   return (
-    <div className="flex h-screen bg-[#050505] text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-[#050505] text-white flex flex-col lg:flex-row" style={{ fontFamily: 'Inter, sans-serif' }}>
       
+      {/* HEADER MOBILE */}
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-[#222] bg-[#0a0a0a] sticky top-0 z-50">
+          <h1 className="text-lg font-bold tracking-tighter" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
+          <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
+              {showMobileMenu ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+              )}
+          </button>
+      </div>
+
       {/* SIDEBAR */}
-      <aside className="w-[270px] bg-[#0a0a0a] border-r border-[#222] flex flex-col shrink-0">
+      <aside className={`${showMobileMenu ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-[270px] bg-[#0a0a0a] border-r border-[#222] shrink-0 sticky top-0 z-40 h-auto lg:h-screen`}>
         {/* Logo + Seletor de Modo */}
         <div className="p-5 border-b border-[#222]">
           <h1 className="text-xl font-bold tracking-tighter mb-4" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
           <div className="flex bg-[#111] p-1 rounded-lg border border-[#222] gap-1">
             <button
-              onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); }}
+              onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
               className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'seo' ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white'}`}
             >
               🌐 SEO
             </button>
             <button
-              onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); }}
+              onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }}
               className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'gbp' ? 'bg-[#4285F4] text-white shadow' : 'text-gray-400 hover:text-white'}`}
             >
               📍 Maps
@@ -701,11 +738,15 @@ export default function Dashboard() {
                                  <p className="text-xs text-[#4285F4] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
                                  <h2 className="text-3xl font-bold text-white tracking-tight">{gbpData?.title}</h2>
                              </div>
-                             <a href={`https://google.com/maps?cid=${gbpData?.locationId}`} target="_blank" className="bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] hover:shadow-[0_0_30px_rgba(66,133,244,0.5)]">
+                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gbpData?.title)}`} target="_blank" className="bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] hover:shadow-[0_0_30px_rgba(66,133,244,0.5)]">
                                  Visualizar no Maps ↗
                              </a>
                          </div>
 
+                         <div className="flex items-center gap-2 mb-2 text-gray-400 text-[10px] bg-white/5 w-fit px-3 py-1.5 rounded-full border border-white/10 uppercase font-bold tracking-widest">
+                             <span className="w-1.5 h-1.5 rounded-full bg-[#4285F4] animate-pulse"></span>
+                             Métricas dos últimos <span className="text-white">{days} dias</span>
+                         </div>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                              <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
                                  <div className="text-4xl mb-4">📞</div>
@@ -761,8 +802,124 @@ export default function Dashboard() {
                 {/* ---------------- GBP RANK TRACKER ---------------- */}
                 {activeTab === 'gbp-rank' && (
                     <div className="space-y-6 animate-fade-in">
-                         <h2 className="text-2xl font-bold mb-2">📈 Rank Tracker (Local Pack)</h2>
-                         <p className="text-gray-400 mb-8">Descubra em qual posição você aparece quando o cliente pesquisa pela palavra-chave na sua cidade.</p>
+                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                             <div>
+                                 <h2 className="text-2xl font-bold">📈 Rank Tracker (Local Pack)</h2>
+                                 <p className="text-gray-400 mt-1">Descubra em qual posição você aparece quando o cliente pesquisa pela palavra-chave na sua cidade.</p>
+                             </div>
+                             {trackedKeywords.length > 0 && (
+                                 <button
+                                     onClick={async () => {
+                                         const { jsPDF } = await import('jspdf');
+                                         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                                         const blue = [66, 133, 244] as [number, number, number];
+                                         const dark = [10, 10, 10] as [number, number, number];
+                                         const white = [255, 255, 255] as [number, number, number];
+                                         const gray = [120, 120, 120] as [number, number, number];
+
+                                         // --- Fundo ---
+                                         doc.setFillColor(...dark);
+                                         doc.rect(0, 0, 210, 297, 'F');
+
+                                         // --- Cabeçalho ---
+                                         doc.setFillColor(...blue);
+                                         doc.rect(0, 0, 210, 36, 'F');
+                                         doc.setTextColor(...white);
+                                         doc.setFontSize(18);
+                                         doc.setFont('helvetica', 'bold');
+                                         doc.text('Relatório de Rank Tracker', 14, 16);
+                                         doc.setFontSize(10);
+                                         doc.setFont('helvetica', 'normal');
+                                         doc.text(`Cliente: ${gbpData?.title || selectedGbp?.name || 'N/A'}`, 14, 26);
+                                         doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})}`, 14, 32);
+
+                                         // --- Resumo Metodológico ---
+                                         doc.setFillColor(20, 20, 30);
+                                         doc.roundedRect(10, 42, 190, 38, 3, 3, 'F');
+                                         doc.setTextColor(...blue);
+                                         doc.setFontSize(9);
+                                         doc.setFont('helvetica', 'bold');
+                                         doc.text('SOBRE OS DADOS', 16, 50);
+                                         doc.setTextColor(...gray);
+                                         doc.setFont('helvetica', 'normal');
+                                         doc.setFontSize(8);
+                                         const disclaimer = 'As posições são obtidas via SerpApi simulando uma busca no Google Maps a partir das coordenadas do perfil do cliente. O ranking pode variar por localização do usuário, horário e personalização do Google. Use estes dados como referência de tendência — o valor real está na evolução histórica semana a semana, registrada automaticamente.';
+                                         const lines = doc.splitTextToSize(disclaimer, 178);
+                                         doc.text(lines, 16, 57);
+
+                                         // --- Keywords ---
+                                         let y = 90;
+                                         doc.setTextColor(...white);
+                                         doc.setFontSize(11);
+                                         doc.setFont('helvetica', 'bold');
+                                         doc.text('PALAVRAS-CHAVE MONITORADAS', 14, y - 4);
+
+                                         trackedKeywords.forEach((kw: any) => {
+                                             if (y > 260) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,210,297,'F'); y = 20; }
+
+                                             const pos = kw.rank_history?.[0]?.position || 99;
+                                             const posLabel = pos === 99 ? '20+' : `#${pos}`;
+                                             const bgColor: [number, number, number] = pos <= 3 ? [0, 80, 0] : pos <= 10 ? [80, 60, 0] : [80, 0, 0];
+                                             const posColor: [number, number, number] = pos <= 3 ? [0, 200, 81] : pos <= 10 ? [255, 187, 51] : [255, 68, 68];
+                                             const competitors = competitorData[kw.keyword] || [];
+
+                                             // Card background
+                                             doc.setFillColor(18, 18, 28);
+                                             doc.roundedRect(10, y, 190, competitors.length > 0 ? 46 + (competitors.length * 10) : 28, 3, 3, 'F');
+
+                                             // Position badge
+                                             doc.setFillColor(...bgColor);
+                                             doc.roundedRect(170, y + 4, 24, 14, 2, 2, 'F');
+                                             doc.setTextColor(...posColor);
+                                             doc.setFontSize(13);
+                                             doc.setFont('helvetica', 'bold');
+                                             doc.text(posLabel, 182, y + 13, { align: 'center' });
+
+                                             // Keyword
+                                             doc.setTextColor(...white);
+                                             doc.setFontSize(10);
+                                             doc.setFont('helvetica', 'bold');
+                                             doc.text(kw.keyword, 16, y + 12);
+                                             doc.setTextColor(...gray);
+                                             doc.setFontSize(7);
+                                             doc.setFont('helvetica', 'normal');
+                                             const histLen = kw.rank_history?.length || 1;
+                                             doc.text(`${histLen} registro(s) histórico(s) • posição atual: ${posLabel}`, 16, y + 20);
+
+                                             // Competitors
+                                             if (competitors.length > 0) {
+                                                 doc.setTextColor(...blue);
+                                                 doc.setFontSize(7);
+                                                 doc.setFont('helvetica', 'bold');
+                                                 doc.text('TOP 3 CONCORRENTES', 16, y + 30);
+                                                 competitors.forEach((c: any, idx: number) => {
+                                                     doc.setTextColor(c.isUs ? [...blue] : [...white] as [number,number,number]);
+                                                     doc.setFont('helvetica', c.isUs ? 'bold' : 'normal');
+                                                     doc.setFontSize(8);
+                                                     const label = `${idx + 1}. ${c.isUs ? '★ Você' : c.title}`;
+                                                     doc.text(label.substring(0, 45), 16, y + 38 + (idx * 9));
+                                                     doc.setTextColor(...gray);
+                                                     doc.text(`${c.rating}★ (${c.reviews} avaliações)`, 155, y + 38 + (idx * 9), { align: 'right' });
+                                                 });
+                                                 y += 46 + (competitors.length * 9) + 6;
+                                             } else {
+                                                 y += 34;
+                                             }
+                                         });
+
+                                         // Footer
+                                         doc.setTextColor(...gray);
+                                         doc.setFontSize(7);
+                                         doc.text('Gerado por GSCStrategy • Os dados são snapshot no momento da consulta e podem variar.', 105, 292, { align: 'center' });
+
+                                         doc.save(`Rank_Tracker_${(gbpData?.title || 'relatorio').replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+                                     }}
+                                     className="flex items-center gap-2 bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_4px_14px_0_rgba(66,133,244,0.3)] whitespace-nowrap flex-shrink-0"
+                                 >
+                                     ⬇️ Baixar Relatório PDF
+                                 </button>
+                             )}
+                         </div>
                          <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
                              <div className="flex flex-col sm:flex-row gap-4">
                                  <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="Ex: advogado trabalhista em são paulo" className="flex-1 bg-[#111] border border-[#333] text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#4285F4] text-sm font-medium" onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
@@ -778,12 +935,14 @@ export default function Dashboard() {
                                  {trackedKeywords.map((kw: any, i: number) => {
                                      const lastPos = kw.rank_history?.[0]?.position || 99;
                                      const colorClass = lastPos <= 3 ? 'text-green-500' : lastPos <= 10 ? 'text-yellow-500' : 'text-red-500';
+                                     const histLen = kw.rank_history?.length || 0;
                                      return (
                                          <div key={i} className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 flex flex-col shadow-sm">
-                                             <div className="flex justify-between items-start mb-8 border-b border-[#111] pb-6">
+                                             <div className="flex justify-between items-start mb-2 border-b border-[#111] pb-6">
                                                  <div>
                                                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Termo</p>
                                                      <h4 className="text-xl font-bold">{kw.keyword}</h4>
+                                                     <p className="text-[10px] text-gray-600 mt-2">{histLen} atualização{histLen !== 1 ? 'ões' : ''} registrada{histLen !== 1 ? 's' : ''}</p>
                                                  </div>
                                                  <div className={`text-4xl font-black tracking-tighter ${colorClass}`}>{lastPos === 99 ? '20+' : `#${lastPos}`}</div>
                                              </div>
