@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 export default function Dashboard() {
   const [sites, setSites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSite, setSelectedSite] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
   const [data, setData] = useState<any>(null);
   const [loadingPerf, setLoadingPerf] = useState(false);
   const [activeTab, setActiveTab] = useState('insights');
@@ -156,7 +156,7 @@ export default function Dashboard() {
     }
   };
 
-  const fetchData = async (url: string, period: any) => {
+  const fetchData = async (url: string, period: any, gbpFallback?: any) => {
     setLoadingPerf(true);
     try {
       const res = await fetch('/api/performance', {
@@ -170,9 +170,19 @@ export default function Dashboard() {
         }),
       });
       const d = await res.json();
+      
+      // Se não houver d.maps e tivemos um fallback (HYBRID), tentamos forçar o vínculo manual
+      if (!d.maps && gbpFallback) {
+         d.maps = {
+           title: gbpFallback.title,
+           accountId: gbpFallback.accountId,
+           locationId: gbpFallback.name.replace('locations/', ''),
+           metrics: { calls: 0, directions: 0, websiteClicks: 0 }
+         };
+      }
+      
       setData(d);
       
-      // Se houver dados do Maps cruzados, já busca as avaliações e agendamentos
       if (d.maps && d.maps.accountId && d.maps.locationId) {
         fetchLocalProfile(d.maps.accountId, d.maps.locationId);
         fetchScheduledPosts(d.maps.locationId);
@@ -180,6 +190,44 @@ export default function Dashboard() {
         fetchRankData(d.maps.locationId);
       }
     } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
+  };
+
+  const handleSelectClient = (client: any) => {
+    setSelectedClient(client);
+    setData(null);
+    setLocalReviews([]);
+    setScheduledPosts([]);
+    setAuditData(null);
+    setTrackedKeywords([]);
+    setLocalError(null);
+    
+    if (client.type === 'GSC_ONLY' || client.type === 'HYBRID') {
+       setActiveTab('seo-insights');
+       fetchData(client.gscUrl, days, client.gbpData);
+    } else if (client.type === 'GBP_ONLY') {
+       // Cliente Exclusivo de Maps (Não chama API de Performance GSC)
+       setActiveTab('gbp-dashboard');
+       const accountId = client.gbpData.accountId;
+       const locationId = client.gbpData.name.replace('locations/', '');
+       
+       setData({
+         current: { clicks: 0, impressions: 0, ctr: 0, position: 0 },
+         previous: { clicks: 0, impressions: 0, ctr: 0, position: 0 },
+         keywords: [],
+         pages: [],
+         maps: {
+           title: client.gbpData.title,
+           accountId: accountId,
+           locationId: locationId,
+           metrics: { calls: 0, directions: 0, websiteClicks: 0 }
+         }
+       });
+       
+       fetchLocalProfile(accountId, locationId);
+       fetchScheduledPosts(locationId);
+       fetchAudit(accountId, locationId);
+       fetchRankData(locationId);
+    }
   };
 
   const handleGenerateAI = async (review: any) => {
@@ -343,466 +391,604 @@ export default function Dashboard() {
 
   const getDisplayUrl = (url: string) => url.replace('sc-domain:', '').replace('https://', '').replace(/\/$/, '');
 
-  if (selectedSite) {
-    const insights = getStrategicInsights();
-
-    return (
-      <div className="container" style={{ paddingTop: '20px' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
-             <div>
-                <button onClick={() => { setSelectedSite(null); setData(null); }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginBottom: '10px' }}>← Ver todos os sites</button>
-                <h1 className="title" style={{ fontSize: '1.8rem', textAlign: 'left', margin: 0 }}>{getDisplayUrl(selectedSite)}</h1>
-             </div>
-             
-             {/* Filtros de Data Avançados */}
-             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-                <div style={{ display: 'flex', gap: '5px', background: 'rgba(255,255,255,0.05)', padding: '5px', borderRadius: '12px', border: '1px solid #222' }}>
-                    {[7, 28, 90].map(v => (
-                        <button key={v} onClick={() => { setIsCustom(false); setDays(v); fetchData(selectedSite, v); }} style={{ padding: '8px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', background: !isCustom && days === v ? '#0070f3' : 'transparent', color: '#fff', fontWeight: 'bold' }}>
-                            {v} dias
-                        </button>
-                    ))}
-                    <button onClick={() => setIsCustom(true)} style={{ padding: '8px 16px', borderRadius: '9px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', background: isCustom ? '#0070f3' : 'transparent', color: '#fff', fontWeight: 'bold' }}>Personalizado</button>
-                </div>
-                {isCustom && (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} className="animate-fade-in">
-                        <input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} style={{ background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '6px 10px', borderRadius: '7px', fontSize: '0.85rem' }} />
-                        <span style={{ color: '#444' }}>-</span>
-                        <input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} style={{ background: '#0a0a0a', border: '1px solid #333', color: '#fff', padding: '6px 10px', borderRadius: '7px', fontSize: '0.85rem' }} />
-                        <button onClick={() => { if(customRange.start && customRange.end) fetchData(selectedSite, customRange); }} style={{ background: '#fff', color: '#000', border: 'none', padding: '6px 15px', borderRadius: '7px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}>Aplicar</button>
-                    </div>
-                )}
-             </div>
-        </header>
-
-        {loadingPerf ? <div style={{ textAlign: 'center', padding: '100px' }} className="animate-pulse">Gerando análise estratégica...</div> : data && (
-          <div className="animate-fade-in">
-             
-             {/* RESUMO DE MÉTRICAS */}
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '30px' }}>
-                <div className="site-card" style={{ padding: '20px' }}>
-                    <p className="site-meta">Cliques Orgânicos</p>
-                    <h2 style={{ fontSize: '2rem' }}>{data.current.clicks}</h2>
-                    <p style={{ fontSize: '0.8rem', color: data.current.clicks >= data.previous.clicks ? '#00ff00' : '#ff4444' }}>{data.current.clicks >= data.previous.clicks ? '↑' : '↓'} {Math.abs(data.current.clicks - data.previous.clicks)} vs prev.</p>
-                </div>
-                <div className="site-card" style={{ padding: '20px' }}>
-                    <p className="site-meta">CTR Médio</p>
-                    <h2 style={{ fontSize: '2rem' }}>{(data.current.ctr * 100).toFixed(1)}%</h2>
-                </div>
-                <div className="site-card" style={{ padding: '20px' }}>
-                    <p className="site-meta">Posição Média</p>
-                    <h2 style={{ fontSize: '2rem' }}>{data.current.position.toFixed(1)}</h2>
-                </div>
-                <div className="site-card" style={{ padding: '20px', background: '#0070f305' }}>
-                    <p className="site-meta">Local Rank (Maps)</p>
-                    <h2 style={{ fontSize: '2rem' }}>{data.maps ? data.maps.metrics.calls : '--'}</h2>
-                    <p style={{ fontSize: '0.8rem', color: '#888' }}>Chamadas no Maps</p>
-                </div>
-             </div>
-
-             <nav style={{ display: 'flex', gap: '40px', marginBottom: '30px', borderBottom: '1px solid #222' }}>
-                {['insights', 'performance', 'páginas', 'perfil local'].map(t => (
-                    <button key={t} onClick={() => setActiveTab(t)} style={{ padding: '15px 0', background: 'none', border: 'none', color: activeTab === t ? '#fff' : '#666', borderBottom: activeTab === t ? '2px solid #0070f3' : 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}>
-                        {t === 'insights' ? '✨ INSIGHTS & IA' : t === 'perfil local' ? '🏪 PERFIL LOCAL' : t.toUpperCase()}
-                    </button>
-                ))}
-             </nav>
-
-             {/* ABA: INSIGHTS & IA */}
-             {activeTab === 'insights' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                   {insights.length > 0 ? insights.map((ins, i) => (
-                      <div key={i} className="site-card" style={{ borderLeft: `5px solid ${ins.type === 'gold' ? '#0070f3' : ins.type === 'maps' ? '#4285F4' : '#ffbb00'}`, padding: '25px', display: 'flex', gap: '20px', alignItems: 'center' }}>
-                         <div style={{ flex: 1 }}>
-                            <h3 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>{ins.title}</h3>
-                            <p style={{ color: '#ccc', lineHeight: '1.5' }}>{ins.desc}</p>
-                         </div>
-                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold', color: '#fff' }}>Ação Recomendada</div>
-                      </div>
-                   )) : <div className="site-card">Coletando dados para gerar recomendações estratégicas...</div>}
-                </div>
-             )}
-
-             {/* ABA: PERFORMANCE */}
-             {activeTab === 'performance' && (
-                <div className="site-card" style={{ padding: 0 }}>
-                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#0a0a0a' }}><tr style={{ textAlign: 'left', color: '#555', borderBottom: '1px solid #222' }}><th style={{ padding: '15px' }}>Consulta</th><th>Cliques</th><th>Impressões</th><th>Posição</th></tr></thead>
-                      <tbody>
-                        {data.keywords.slice(0, 50).map((k:any, i:number) => {
-                           const prevK = data.previousKeywords?.find((pk:any) => pk.keys[0] === k.keys[0]);
-                           const diff = prevK ? k.position - prevK.position : 0;
-                           return (
-                             <tr key={i} style={{ borderBottom: '1px solid #111' }}>
-                                <td style={{ padding: '12px 15px' }}>{k.keys[0]}</td>
-                                <td style={{ fontWeight: 'bold' }}>{k.clicks}</td>
-                                <td>{k.impressions}</td>
-                                <td style={{ color: k.position <= 3 ? '#0070f3' : '#fff' }}>
-                                   {k.position.toFixed(1)}
-                                   <span style={{ fontSize: '0.75rem', marginLeft: '8px', color: diff < 0 ? '#00ff00' : diff > 0 ? '#ff4444' : '#555' }}>
-                                      {diff !== 0 && (diff < 0 ? `↑ ${Math.abs(diff).toFixed(1)}` : `↓ ${diff.toFixed(1)}`)}
-                                   </span>
-                                </td>
-                             </tr>
-                           );
-                        })}
-                      </tbody>
-                   </table>
-                </div>
-             )}
-
-             {/* ABA: PÁGINAS */}
-             {activeTab === 'páginas' && (
-                <div className="site-card" style={{ padding: 0 }}>
-                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#0a0a0a' }}><tr style={{ textAlign: 'left', color: '#555', borderBottom: '1px solid #222' }}><th style={{ padding: '15px' }}>URL da Página</th><th>Cliques</th><th>CTR</th><th>Posição</th></tr></thead>
-                      <tbody>
-                        {data.pages.slice(0, 30).map((p:any, i:number) => (
-                           <tr key={i} style={{ borderBottom: '1px solid #111' }}>
-                              <td style={{ padding: '12px 15px', maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                 <a href={p.keys[0]} target="_blank" style={{ color: '#0070f3' }}>{p.keys[0].replace(selectedSite, '') || '/'}</a>
-                              </td>
-                              <td style={{ fontWeight: 'bold' }}>{p.clicks}</td>
-                              <td>{(p.ctr * 100).toFixed(1)}%</td>
-                              <td>{p.position.toFixed(1)}</td>
-                           </tr>
-                        ))}
-                      </tbody>
-                   </table>
-                </div>
-             )}
-
-             {/* ABA: PERFIL LOCAL (Google Business Profile) */}
-             {activeTab === 'perfil local' && (
-                 data.maps ? (
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }} className="animate-fade-in">
-                    
-                    {/* AUDITORIA DE PERFIL */}
-                    {loadingAudit ? (
-                        <div className="site-card" style={{ padding: '30px', textAlign: 'center' }}>
-                            <p style={{ color: '#888' }} className="animate-pulse">Gerando Auditoria de Perfil (Checklist SEO)...</p>
-                        </div>
-                    ) : auditData && !auditData.error && (
-                        <div className="site-card" style={{ padding: '25px', display: 'flex', gap: '30px', alignItems: 'center', background: `linear-gradient(to right, ${auditData.color}15, transparent)` }}>
-                            <div style={{ textAlign: 'center', minWidth: '150px' }}>
-                                <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#888', marginBottom: '5px' }}>Health Score</h3>
-                                <div style={{ fontSize: '3.5rem', fontWeight: 'bold', color: auditData.color, lineHeight: '1' }}>{auditData.score}</div>
-                                <p style={{ color: auditData.color, fontWeight: 'bold', fontSize: '0.9rem', marginTop: '5px' }}>{auditData.grade}</p>
-                            </div>
-                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '30px' }}>
-                                {auditData.checklist.map((item: any, i: number) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                        <div style={{ fontSize: '1.2rem', marginTop: '-2px' }}>
-                                            {item.passed ? '✅' : '❌'}
-                                        </div>
-                                        <div>
-                                            <p style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#fff' }}>{item.name}</p>
-                                            <p style={{ fontSize: '0.8rem', color: item.passed ? '#aaa' : '#ff4444', marginTop: '3px' }}>{item.value}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {/* Criar Postagem Estilo Google */}
-                    <div className="site-card" style={{ padding: '25px', background: '#0a0a0a' }}>
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                            <div style={{ padding: '5px 15px', borderRadius: '20px', background: '#0070f320', color: '#0070f3', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid #0070f340' }}>✓ Atualização</div>
-                            <div style={{ padding: '5px 15px', borderRadius: '20px', background: 'transparent', color: '#666', fontSize: '0.85rem', border: '1px solid #222' }}>Oferta</div>
-                            <div style={{ padding: '5px 15px', borderRadius: '20px', background: 'transparent', color: '#666', fontSize: '0.85rem', border: '1px solid #222' }}>Evento</div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div>
-                                <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>Descrição da Postagem</p>
-                                <textarea 
-                                    value={postText}
-                                    onChange={(e) => setPostText(e.target.value)}
-                                    placeholder="Escreva o que há de novo na empresa..."
-                                    style={{ width: '100%', minHeight: '150px', background: '#111', border: '1px solid #333', color: '#fff', padding: '15px', borderRadius: '8px', fontFamily: 'inherit' }}
-                                />
-                                <p style={{ textAlign: 'right', fontSize: '0.75rem', color: '#444', marginTop: '5px' }}>{postText.length}/1.500</p>
-                            </div>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <div>
-                                    <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>Imagem da Postagem</p>
-                                    <div style={{ border: '2px dashed #333', borderRadius: '8px', padding: '20px', textAlign: 'center', background: imageUrl ? `url(${imageUrl}) center/cover` : '#111', height: '150px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                        {!imageUrl && !uploadingImage && (
-                                            <>
-                                                <span style={{ fontSize: '2rem', marginBottom: '10px' }}>📸</span>
-                                                <p style={{ color: '#555', fontSize: '0.85rem' }}>Clique para enviar uma foto</p>
-                                            </>
-                                        )}
-                                        {uploadingImage && <p style={{ color: '#0070f3', fontSize: '0.9rem', fontWeight: 'bold' }} className="animate-pulse">Enviando imagem...</p>}
-                                        
-                                        <input 
-                                            type="file" 
-                                            accept="image/*"
-                                            onChange={handleImageUpload}
-                                            disabled={uploadingImage}
-                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: uploadingImage ? 'not-allowed' : 'pointer' }}
-                                        />
-                                        {imageUrl && (
-                                             <button 
-                                                onClick={(e) => { e.preventDefault(); setImageUrl(''); }}
-                                                style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', zIndex: 10 }}
-                                            >✕</button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>Botão de Ação (Opcional)</p>
-                                    <select 
-                                        value={buttonType}
-                                        onChange={(e) => setButtonType(e.target.value)}
-                                        style={{ width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px', marginBottom: buttonType !== 'NONE' ? '10px' : '0' }}
-                                    >
-                                        <option value="NONE">Nenhum</option>
-                                        <option value="BOOK">Reservar</option>
-                                        <option value="ORDER">Fazer o pedido</option>
-                                        <option value="SHOP">Comprar</option>
-                                        <option value="LEARN_MORE">Saiba mais</option>
-                                        <option value="SIGN_UP">Inscrever-se</option>
-                                        <option value="CALL">Ligar agora</option>
-                                    </select>
-                                    {buttonType !== 'NONE' && buttonType !== 'CALL' && (
-                                        <input 
-                                            type="text" 
-                                            value={buttonUrl}
-                                            onChange={(e) => setButtonUrl(e.target.value)}
-                                            placeholder="URL do link (ex: https://site.com)"
-                                            style={{ width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px solid #222', paddingTop: '20px' }}>
-                            <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>Programar esta postagem:</p>
-                                <input 
-                                    type="datetime-local" 
-                                    value={scheduledDate}
-                                    onChange={(e) => setScheduledDate(e.target.value)}
-                                    style={{ width: '100%', maxWidth: '250px', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
-                                />
-                            </div>
-                            <button 
-                                onClick={handlePost}
-                                disabled={!postText}
-                                style={{ alignSelf: 'flex-end', background: postText ? (scheduledDate ? '#ffbb00' : '#0070f3') : '#333', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '8px', cursor: postText ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
-                            >
-                                {scheduledDate ? 'Agendar Postagem' : 'Publicar Agora'}
-                            </button>
-                        </div>
-
-                        {/* Lista de Agendados */}
-                        {scheduledPosts.length > 0 && (
-                            <div style={{ marginTop: '20px', borderTop: '1px solid #222', paddingTop: '20px' }}>
-                                <h4 style={{ fontSize: '0.9rem', color: '#888', marginBottom: '15px' }}>📌 Postagens Agendadas:</h4>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {scheduledPosts.map((p, i) => (
-                                        <div key={i} style={{ background: 'rgba(255,187,0,0.05)', border: '1px solid rgba(255,187,0,0.1)', padding: '10px 15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.9rem', color: '#ccc', maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.content}</span>
-                                            <span style={{ fontSize: '0.8rem', color: '#ffbb00' }}>{new Date(p.scheduled_for).toLocaleString()}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Avaliações */}
-                    <div className="site-card" style={{ padding: '25px' }}>
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '20px' }}>Últimas Avaliações</h3>
-                        
-                        {loadingLocal ? (
-                            <p style={{ color: '#888' }} className="animate-pulse">Buscando avaliações no Google Maps...</p>
-                        ) : localError ? (
-                            <div style={{ padding: '15px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.2)', borderRadius: '8px' }}>
-                                <p style={{ color: '#ff4444', fontSize: '0.9rem' }}>⚠️ Erro do Google: {localError}</p>
-                                <p style={{ color: '#888', fontSize: '0.8rem', marginTop: '5px' }}>Se você acabou de ativar a API, aguarde 5 minutos e atualize a página.</p>
-                            </div>
-                        ) : !Array.isArray(localReviews) || localReviews.length === 0 ? (
-                            <p style={{ color: '#888' }}>Nenhuma avaliação encontrada para este local.</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                {localReviews.map((review: any, i: number) => {
-                                    const ratingNum = review.starRating === 'FIVE' ? 5 : review.starRating === 'FOUR' ? 4 : review.starRating === 'THREE' ? 3 : review.starRating === 'TWO' ? 2 : 1;
-                                    const stars = '⭐'.repeat(ratingNum);
-                                    const isReplied = !!review.reviewReply;
-
-                                    return (
-                                        <div key={i} style={{ borderBottom: '1px solid #222', paddingBottom: '20px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                <strong>{review.reviewer?.displayName || 'Cliente Google'}</strong>
-                                                <span>{stars}</span>
-                                            </div>
-                                            <p style={{ color: '#ccc', marginBottom: '15px', fontStyle: 'italic' }}>"{review.comment || 'Avaliação sem texto'}"</p>
-                                            
-                                            {isReplied ? (
-                                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '8px', borderLeft: '3px solid #00ff00' }}>
-                                                    <strong style={{ fontSize: '0.85rem', color: '#00ff00', display: 'block', marginBottom: '5px' }}>Sua Resposta:</strong>
-                                                    <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{review.reviewReply.comment}</p>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                                        <textarea 
-                                                            value={replyText[review.name] || ''}
-                                                            onChange={(e) => setReplyText({...replyText, [review.name]: e.target.value})}
-                                                            placeholder="Digite sua resposta ou use a IA..."
-                                                            style={{ flex: 1, background: '#111', border: '1px solid #333', color: '#fff', padding: '10px 15px', borderRadius: '8px', minHeight: '80px', fontFamily: 'inherit' }}
-                                                        />
-                                                        <button 
-                                                            onClick={() => handleGenerateAI(review)}
-                                                            disabled={generatingAI[review.name]}
-                                                            title="Gerar resposta com IA"
-                                                            style={{ background: 'linear-gradient(135deg, #6e8efb, #a777e3)', border: 'none', color: '#fff', borderRadius: '8px', padding: '0 15px', cursor: 'pointer', transition: 'all 0.3s' }}
-                                                        >
-                                                            {generatingAI[review.name] ? '⏳' : '✨'}
-                                                        </button>
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => handleReply(review.name)}
-                                                        disabled={!replyText[review.name]}
-                                                        style={{ width: '100%', background: replyText[review.name] ? '#0070f3' : '#333', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: replyText[review.name] ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
-                                                    >
-                                                        Enviar Resposta ao Google Maps
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* MONITORAMENTO DE RANKING (Local Rank Tracking) */}
-                    <div className="site-card" style={{ padding: '25px', background: '#0a0a0a' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '1.2rem' }}>📈 Local Rank Tracking (SerpApi)</h3>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <input 
-                                    type="text" 
-                                    value={newKeyword}
-                                    onChange={(e) => setNewKeyword(e.target.value)}
-                                    placeholder="Palavra-chave (ex: estética automotiva)"
-                                    style={{ background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px', minWidth: '250px' }}
-                                />
-                                <button 
-                                    onClick={handleAddKeyword}
-                                    disabled={loadingRank || !newKeyword}
-                                    style={{ background: '#0070f3', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                                >
-                                    {loadingRank ? '⏳' : 'Monitorar'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {trackedKeywords.length === 0 ? (
-                            <p style={{ color: '#888', textAlign: 'center', padding: '20px' }}>Nenhuma palavra-chave monitorada. Adicione uma acima para começar!</p>
-                        ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
-                                {trackedKeywords.map((kw: any, i: number) => {
-                                    const lastPos = kw.rank_history?.[0]?.position || 99;
-                                    const color = lastPos <= 3 ? '#00ff00' : lastPos <= 10 ? '#ffbb00' : '#ff4444';
-                                    return (
-                                        <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #222', borderRadius: '12px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>Palavra-chave</p>
-                                                    <p style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{kw.keyword}</p>
-                                                </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: color }}>
-                                                        {lastPos === 99 ? '20+' : `#${lastPos}`}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {!competitorData[kw.keyword] ? (
-                                                <button 
-                                                    onClick={() => fetchCompetitors(kw.keyword)}
-                                                    disabled={loadingComp[kw.keyword]}
-                                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid #333', color: '#ccc', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
-                                                >
-                                                    {loadingComp[kw.keyword] ? '🔍 Analisando líderes...' : '🔍 Analisar Concorrência'}
-                                                </button>
-                                            ) : (
-                                                <div style={{ background: '#000', borderRadius: '8px', padding: '10px', fontSize: '0.85rem' }}>
-                                                    <p style={{ color: '#888', marginBottom: '10px', fontSize: '0.75rem', textTransform: 'uppercase' }}>Benchmark de Concorrentes</p>
-                                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                                        <thead>
-                                                            <tr style={{ color: '#555', textAlign: 'left', fontSize: '0.7rem' }}>
-                                                                <th style={{ paddingBottom: '5px' }}>Empresa</th>
-                                                                <th style={{ paddingBottom: '5px' }}>Reviews</th>
-                                                                <th style={{ paddingBottom: '5px' }}>Nota</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {competitorData[kw.keyword].map((c: any, idx: number) => (
-                                                                <tr key={idx} style={{ borderTop: '1px solid #111', color: c.isUs ? '#0070f3' : '#eee' }}>
-                                                                    <td style={{ padding: '8px 0', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                        {c.isUs ? '⭐ Você' : c.title}
-                                                                    </td>
-                                                                    <td>{c.reviews}</td>
-                                                                    <td>{c.rating}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                </div>
-                 ) : (
-                    <div className="site-card" style={{ padding: '40px 20px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🏪</div>
-                        <h3 style={{ fontSize: '1.4rem', marginBottom: '10px' }}>Perfil do Google Maps não encontrado</h3>
-                        <p style={{ color: '#888', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
-                            O sistema não encontrou nenhum Perfil de Empresa do Google (Google My Business) que tenha o site <strong>{getDisplayUrl(selectedSite)}</strong> cadastrado como site principal.
-                        </p>
-                        <p style={{ color: '#555', fontSize: '0.9rem', marginTop: '15px' }}>
-                            Para que esta aba funcione, vá ao seu painel do Google Maps e garanta que o campo "Site" esteja preenchido exatamente com esta URL.
-                        </p>
-                    </div>
-                 )
-             )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="container" style={{ paddingBottom: '100px' }}>
-      <header className="header"><h1 className="title" style={{ fontSize: '2.5rem' }}>GSC Strategy Engine</h1></header>
-      {loading ? <div>Carregando ecossistema...</div> : (
-        <div className="sites-grid">
-          {Array.isArray(sites) && sites.length > 0 ? sites.map((s) => (
-            <div key={s.siteUrl} className="site-card" onClick={() => handleSelectSite(s.siteUrl)} style={{ cursor: 'pointer' }}>
-                <h3 className="site-name">{getDisplayUrl(s.siteUrl)}</h3>
-                <div className="btn-insight" style={{ marginTop: '20px' }}>Gerar Insights Estratégicos →</div>
-            </div>
-          )) : (
-            <div className="site-card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
-                <p style={{ color: '#888' }}>Nenhum site encontrado ou erro na conexão com a API do Google.</p>
-                <p style={{ fontSize: '0.8rem', color: '#555', marginTop: '10px' }}>Verifique se as credenciais do Google Search Console estão configuradas corretamente na Vercel.</p>
-            </div>
+    <div className="flex h-screen bg-[#050505] text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+      
+      {/* SIDEBAR LATERL */}
+      <aside className="w-[280px] bg-[#0a0a0a] border-r border-[#222] flex flex-col hidden md:flex shrink-0">
+        <div className="p-6 border-b border-[#222]">
+           <h1 className="text-2xl font-bold tracking-tighter" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {selectedClient ? (
+             <>
+               {/* SESSÃO SEO (GSC) */}
+               {selectedClient.type !== 'GBP_ONLY' && (
+                 <div>
+                   <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider pl-3">SEO & Orgânico</p>
+                   <ul className="space-y-1">
+                     <li>
+                        <button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-insights' ? 'bg-[#0070f3]/10 text-[#0070f3]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>✨ Visão Geral (IA)</button>
+                     </li>
+                     <li>
+                        <button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-keywords' ? 'bg-[#0070f3]/10 text-[#0070f3]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📊 Palavras-chave</button>
+                     </li>
+                     <li>
+                        <button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-pages' ? 'bg-[#0070f3]/10 text-[#0070f3]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📄 Top Páginas</button>
+                     </li>
+                   </ul>
+                 </div>
+               )}
+
+               {/* SESSÃO LOCAL (GBP) */}
+               {(selectedClient.type === 'GBP_ONLY' || selectedClient.type === 'HYBRID') && (
+                 <div>
+                   <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider pl-3 flex items-center gap-2">Perfil Google Maps <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span></p>
+                   <ul className="space-y-1">
+                     <li>
+                        <button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🏪 Resumo Local</button>
+                     </li>
+                     <li>
+                        <button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🛡️ Auditoria de Saúde</button>
+                     </li>
+                     <li>
+                        <button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📈 Rank Tracker</button>
+                     </li>
+                     <li>
+                        <button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'gbp-reviews' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>
+                           <span>⭐ Avaliações</span>
+                           {localReviews.filter(r => !r.reviewReply).length > 0 && (
+                               <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{localReviews.filter(r => !r.reviewReply).length}</span>
+                           )}
+                        </button>
+                     </li>
+                     <li>
+                        <button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📣 Atualizações</button>
+                     </li>
+                   </ul>
+                 </div>
+               )}
+             </>
+          ) : (
+             <div className="text-gray-500 text-sm p-4 text-center border border-dashed border-[#333] rounded-lg mt-4 bg-[#111]/50">
+                Selecione um cliente no menu superior para exibir as ferramentas.
+             </div>
           )}
         </div>
-      )}
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        
+        {/* TOP HEADER */}
+        <header className="h-[80px] border-b border-[#222] bg-[#0a0a0a]/95 backdrop-blur flex items-center justify-between px-8 shrink-0 z-10">
+           <div className="flex-1 max-w-xl relative">
+              {/* Dropdown de Clientes */}
+              {loading ? (
+                 <div className="text-sm text-[#0070f3] animate-pulse font-medium">Sincronizando ecossistema de APIs...</div>
+              ) : (
+                 <select 
+                   value={selectedClient?.id || ''}
+                   onChange={(e) => {
+                      const client = sites.find(c => c.id === e.target.value);
+                      if (client) handleSelectClient(client);
+                      else { setSelectedClient(null); setData(null); }
+                   }}
+                   className="w-full bg-[#111] border border-[#333] text-white text-sm rounded-lg px-4 py-3 focus:outline-none focus:border-[#0070f3] appearance-none cursor-pointer shadow-sm hover:border-[#444] transition-colors font-medium"
+                   style={{ WebkitAppearance: 'none' }}
+                 >
+                    <option value="">🔍 Buscar ou Selecionar Cliente...</option>
+                    {sites.map(c => (
+                       <option key={c.id} value={c.id}>
+                          {c.type === 'GBP_ONLY' ? '📍 [Maps] ' : c.type === 'HYBRID' ? '🌐📍 [Full] ' : '🌐 [SEO] '}
+                          {c.name}
+                       </option>
+                    ))}
+                 </select>
+              )}
+           </div>
+
+           {/* Filtros de Data (se for GSC/Hybrid) */}
+           {selectedClient && selectedClient.type !== 'GBP_ONLY' && (
+              <div className="flex items-center gap-4 ml-6">
+                 <div className="flex bg-[#111] p-1 rounded-lg border border-[#222]">
+                    {[7, 28, 90].map(v => (
+                        <button 
+                           key={v} 
+                           onClick={() => { setIsCustom(false); setDays(v); fetchData(selectedClient.gscUrl, v, selectedClient.gbpData); }} 
+                           className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${!isCustom && days === v ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white hover:bg-[#222]'}`}
+                        >
+                            {v}d
+                        </button>
+                    ))}
+                    <button 
+                       onClick={() => setIsCustom(true)} 
+                       className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${isCustom ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white hover:bg-[#222]'}`}
+                    >
+                       Data Fixa
+                    </button>
+                 </div>
+                 {isCustom && (
+                    <div className="flex gap-2 items-center animate-fade-in bg-[#111] p-1 rounded-lg border border-[#222]">
+                        <input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none" />
+                        <span className="text-gray-600">-</span>
+                        <input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none" />
+                        <button onClick={() => { if(customRange.start && customRange.end) fetchData(selectedClient.gscUrl, customRange, selectedClient.gbpData); }} className="bg-white text-black text-xs font-bold px-3 py-1.5 rounded-md hover:bg-gray-200">OK</button>
+                    </div>
+                 )}
+              </div>
+           )}
+        </header>
+
+        {/* SCROLLABLE CONTENT */}
+        <main className="flex-1 overflow-y-auto p-8 bg-[#050505] pb-32">
+           {!selectedClient ? (
+              // TELA INICIAL BEM-VINDO
+              <div className="max-w-4xl mx-auto mt-20 text-center animate-fade-in">
+                 <div className="text-6xl mb-6">🚀</div>
+                 <h2 className="text-3xl font-bold mb-4 tracking-tight">Bem-vindo ao Dashboard Master</h2>
+                 <p className="text-gray-400 text-lg mb-12 max-w-2xl mx-auto">
+                    Selecione um cliente no topo para visualizar suas métricas de SEO no Google Search Console ou gerenciar e auditar seu Perfil no Google Maps.
+                 </p>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                    <div className="bg-[#0a0a0a] border border-[#222] p-6 rounded-2xl hover:border-[#0070f3] transition-colors cursor-default">
+                       <h3 className="text-lg font-bold text-[#0070f3] mb-3 flex items-center gap-2">🌐 GSC Insights</h3>
+                       <p className="text-sm text-gray-400 leading-relaxed">Auditoria automatizada das principais métricas orgânicas, páginas e termos que mais convertem via Search Console.</p>
+                    </div>
+                    <div className="bg-[#0a0a0a] border border-[#222] p-6 rounded-2xl hover:border-[#4285F4] transition-colors cursor-default">
+                       <h3 className="text-lg font-bold text-[#4285F4] mb-3 flex items-center gap-2">🏪 Gestão Local</h3>
+                       <p className="text-sm text-gray-400 leading-relaxed">Controle total de avaliações, rank tracker no mapa e checkup de saúde completo do Google My Business.</p>
+                    </div>
+                    <div className="bg-[#0a0a0a] border border-[#222] p-6 rounded-2xl hover:border-green-500 transition-colors cursor-default">
+                       <h3 className="text-lg font-bold text-green-500 mb-3 flex items-center gap-2">✨ Inteligência IA</h3>
+                       <p className="text-sm text-gray-400 leading-relaxed">Respostas automáticas estratégicas de avaliações e análise profunda de oportunidades geradas pelo modelo Gemini.</p>
+                    </div>
+                 </div>
+              </div>
+           ) : (
+              // CONTEÚDO DO CLIENTE
+              <div className="max-w-6xl mx-auto animate-fade-in">
+                 
+                 {loadingPerf ? (
+                    <div className="flex flex-col items-center justify-center py-40 opacity-50">
+                       <div className="w-12 h-12 border-4 border-[#0070f3] border-t-transparent rounded-full animate-spin mb-6"></div>
+                       <p className="text-xl font-bold tracking-tight animate-pulse">Agregando ecossistema de dados...</p>
+                    </div>
+                 ) : data && (
+                    <>
+                       {/* ---------------- SEO INSIGHTS ---------------- */}
+                       {activeTab === 'seo-insights' && selectedClient.type !== 'GBP_ONLY' && (
+                          <div className="space-y-8 animate-fade-in">
+                             {/* KPIS GSC */}
+                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">Cliques Orgânicos</p>
+                                    <h2 className="text-4xl font-bold tracking-tight">{data.current.clicks}</h2>
+                                    <p className={`text-xs mt-3 font-medium ${data.current.clicks >= data.previous.clicks ? 'text-green-500' : 'text-red-500'}`}>
+                                       {data.current.clicks >= data.previous.clicks ? '↑' : '↓'} {Math.abs(data.current.clicks - data.previous.clicks)} vs prev.
+                                    </p>
+                                </div>
+                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">Impressões</p>
+                                    <h2 className="text-4xl font-bold tracking-tight">{data.current.impressions}</h2>
+                                </div>
+                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">CTR Médio</p>
+                                    <h2 className="text-4xl font-bold tracking-tight">{(data.current.ctr * 100).toFixed(1)}%</h2>
+                                </div>
+                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">Posição Média</p>
+                                    <h2 className="text-4xl font-bold tracking-tight">{data.current.position.toFixed(1)}</h2>
+                                </div>
+                             </div>
+
+                             {/* IA Insights */}
+                             <h3 className="text-xl font-bold mt-12 mb-6 flex items-center gap-2">✨ Recomendações da IA</h3>
+                             <div className="space-y-4">
+                                {getStrategicInsights().length > 0 ? getStrategicInsights().map((ins: any, i: number) => (
+                                    <div key={i} className={`bg-[#0a0a0a] border-l-4 rounded-r-xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${ins.type === 'gold' ? 'border-l-[#0070f3]' : ins.type === 'maps' ? 'border-l-[#4285F4]' : 'border-l-[#ffbb00]'}`}>
+                                        <div>
+                                            <h4 className="text-lg font-bold mb-2">{ins.title}</h4>
+                                            <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">{ins.desc}</p>
+                                        </div>
+                                        <button className="bg-white/5 hover:bg-white/10 text-white font-bold py-2.5 px-5 rounded-lg text-sm transition-colors whitespace-nowrap">
+                                            Investigar
+                                        </button>
+                                    </div>
+                                )) : <div className="text-gray-500 p-8 text-center border border-dashed border-[#222] rounded-xl">Coletando padrões comportamentais do site...</div>}
+                             </div>
+                          </div>
+                       )}
+
+                       {/* ---------------- SEO KEYWORDS ---------------- */}
+                       {activeTab === 'seo-keywords' && selectedClient.type !== 'GBP_ONLY' && (
+                          <div className="bg-[#0a0a0a] border border-[#222] rounded-xl overflow-hidden animate-fade-in shadow-xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                 <thead className="bg-[#111] border-b border-[#222]">
+                                     <tr className="text-gray-400 text-xs uppercase tracking-wider">
+                                        <th className="px-6 py-4 font-bold">Termo de Pesquisa</th>
+                                        <th className="px-6 py-4 font-bold">Cliques</th>
+                                        <th className="px-6 py-4 font-bold">Impressões</th>
+                                        <th className="px-6 py-4 font-bold">Posição</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-[#181818]">
+                                    {data.keywords.slice(0, 50).map((k:any, i:number) => {
+                                        const prevK = data.previousKeywords?.find((pk:any) => pk.keys[0] === k.keys[0]);
+                                        const diff = prevK ? k.position - prevK.position : 0;
+                                        return (
+                                          <tr key={i} className="hover:bg-[#111]/80 transition-colors">
+                                             <td className="px-6 py-4 font-medium">{k.keys[0]}</td>
+                                             <td className="px-6 py-4 text-white font-bold">{k.clicks}</td>
+                                             <td className="px-6 py-4 text-gray-400">{k.impressions}</td>
+                                             <td className="px-6 py-4">
+                                                <span className={k.position <= 3 ? 'text-[#0070f3] font-bold' : 'text-gray-300'}>{k.position.toFixed(1)}</span>
+                                                <span className={`text-[10px] ml-2 font-bold ${diff < 0 ? 'text-green-500' : diff > 0 ? 'text-red-500' : 'text-gray-600'}`}>
+                                                   {diff !== 0 && (diff < 0 ? `↑ ${Math.abs(diff).toFixed(1)}` : `↓ ${diff.toFixed(1)}`)}
+                                                </span>
+                                             </td>
+                                          </tr>
+                                        );
+                                    })}
+                                 </tbody>
+                              </table>
+                          </div>
+                       )}
+
+                       {/* ---------------- SEO PAGES ---------------- */}
+                       {activeTab === 'seo-pages' && selectedClient.type !== 'GBP_ONLY' && (
+                          <div className="bg-[#0a0a0a] border border-[#222] rounded-xl overflow-hidden animate-fade-in shadow-xl">
+                              <table className="w-full text-left border-collapse text-sm">
+                                 <thead className="bg-[#111] border-b border-[#222]">
+                                     <tr className="text-gray-400 text-xs uppercase tracking-wider">
+                                        <th className="px-6 py-4 font-bold">URL da Página</th>
+                                        <th className="px-6 py-4 font-bold">Cliques</th>
+                                        <th className="px-6 py-4 font-bold">CTR</th>
+                                        <th className="px-6 py-4 font-bold">Posição</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-[#181818]">
+                                    {data.pages.slice(0, 30).map((p:any, i:number) => (
+                                        <tr key={i} className="hover:bg-[#111]/80 transition-colors">
+                                           <td className="px-6 py-4 max-w-sm lg:max-w-xl truncate">
+                                              <a href={p.keys[0]} target="_blank" className="text-[#0070f3] hover:underline font-medium">
+                                                 {p.keys[0].replace(selectedClient?.gscUrl || '', '') || '/'}
+                                              </a>
+                                           </td>
+                                           <td className="px-6 py-4 text-white font-bold">{p.clicks}</td>
+                                           <td className="px-6 py-4 text-gray-400">{(p.ctr * 100).toFixed(1)}%</td>
+                                           <td className="px-6 py-4 text-gray-400">{p.position.toFixed(1)}</td>
+                                        </tr>
+                                    ))}
+                                 </tbody>
+                              </table>
+                          </div>
+                       )}
+
+                       {/* ======================================================== */}
+                       {/* ======================= SESSÃO GBP ======================= */}
+                       {/* ======================================================== */}
+                       
+                       {!data.maps && activeTab.startsWith('gbp-') ? (
+                           <div className="flex flex-col items-center justify-center p-24 text-center bg-[#0a0a0a] border border-[#222] rounded-2xl animate-fade-in shadow-2xl">
+                               <div className="text-6xl mb-6">📍</div>
+                               <h3 className="text-3xl font-bold mb-3 text-[#4285F4]">Perfil Google Não Encontrado</h3>
+                               <p className="text-gray-400 max-w-md mx-auto leading-relaxed">Não encontramos um Perfil de Empresa do Google vinculado a esta conta ou a URL cadastrada no mapa difere do Search Console.</p>
+                           </div>
+                       ) : data.maps && (
+                           <>
+                               {/* ---------------- GBP DASHBOARD ---------------- */}
+                               {activeTab === 'gbp-dashboard' && (
+                                   <div className="space-y-8 animate-fade-in">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#4285F4]/10 to-transparent border border-[#4285F4]/30 rounded-2xl p-8">
+                                            <div>
+                                                <p className="text-xs text-[#4285F4] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
+                                                <h2 className="text-3xl font-bold text-white tracking-tight">{data.maps.title}</h2>
+                                            </div>
+                                            <a href={`https://google.com/maps?cid=${data.maps.locationId}`} target="_blank" className="bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] hover:shadow-[0_0_30px_rgba(66,133,244,0.5)]">
+                                                Visualizar no Maps ↗
+                                            </a>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                                <div className="text-4xl mb-4">📞</div>
+                                                <h3 className="text-5xl font-black tracking-tighter mb-2">{data.maps.metrics.calls}</h3>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Chamadas Recebidas</p>
+                                            </div>
+                                            <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                                <div className="text-4xl mb-4">🗺️</div>
+                                                <h3 className="text-5xl font-black tracking-tighter mb-2">{data.maps.metrics.directions}</h3>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Rotas Solicitadas</p>
+                                            </div>
+                                            <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                                <div className="text-4xl mb-4">🖱️</div>
+                                                <h3 className="text-5xl font-black tracking-tighter mb-2">{data.maps.metrics.websiteClicks}</h3>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Visitas ao Site</p>
+                                            </div>
+                                        </div>
+                                   </div>
+                               )}
+
+                               {/* ---------------- GBP AUDIT ---------------- */}
+                               {activeTab === 'gbp-audit' && (
+                                   <div className="animate-fade-in">
+                                       <h2 className="text-2xl font-bold mb-6">🛡️ Auditoria de Saúde do Perfil</h2>
+                                       {loadingAudit ? (
+                                           <div className="p-32 text-center bg-[#0a0a0a] border border-[#222] rounded-2xl">
+                                                <div className="w-10 h-10 border-4 border-[#4285F4] border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+                                                <div className="text-[#4285F4] text-lg font-bold">Processando checklist de 20 pontos de ranking...</div>
+                                           </div>
+                                       ) : auditData && !auditData.error && (
+                                           <div className={`border-l-[6px] rounded-2xl p-10 bg-[#0a0a0a] border-y border-r border-y-[#222] border-r-[#222] shadow-2xl flex flex-col md:flex-row gap-16`} style={{ borderLeftColor: auditData.color }}>
+                                               <div className="flex flex-col items-center justify-center text-center min-w-[200px]">
+                                                   <p className="text-xs uppercase font-bold tracking-widest text-gray-500 mb-4">Health Score</p>
+                                                   <div className="text-[100px] font-black leading-none mb-4 tracking-tighter" style={{ color: auditData.color }}>{auditData.score}</div>
+                                                   <div className="text-sm font-bold uppercase tracking-widest px-4 py-1.5 rounded-full bg-black/50" style={{ color: auditData.color, border: `1px solid ${auditData.color}40` }}>{auditData.grade}</div>
+                                               </div>
+                                               
+                                               <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
+                                                   {auditData.checklist.map((item: any, i: number) => (
+                                                       <div key={i} className="flex gap-4">
+                                                           <div className="mt-1.5 text-xl">{item.passed ? '✅' : '❌'}</div>
+                                                           <div>
+                                                               <p className="font-bold text-white text-[15px] mb-1.5">{item.name}</p>
+                                                               <p className={`text-[13px] ${item.passed ? 'text-gray-500' : 'text-red-400 font-medium'}`}>{item.value}</p>
+                                                           </div>
+                                                       </div>
+                                                   ))}
+                                               </div>
+                                           </div>
+                                       )}
+                                   </div>
+                               )}
+
+                               {/* ---------------- GBP RANK TRACKER ---------------- */}
+                               {activeTab === 'gbp-rank' && (
+                                   <div className="space-y-6 animate-fade-in">
+                                        <h2 className="text-2xl font-bold mb-2">📈 Rank Tracker (Local Pack)</h2>
+                                        <p className="text-gray-400 mb-8">Descubra em qual posição você aparece no Google Maps quando o cliente pesquisa pela palavra-chave na sua cidade.</p>
+                                        
+                                        <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <input 
+                                                    type="text" 
+                                                    value={newKeyword} 
+                                                    onChange={(e) => setNewKeyword(e.target.value)}
+                                                    placeholder="Digite o termo de pesquisa. Ex: advogado trabalhista em são paulo" 
+                                                    className="flex-1 bg-[#111] border border-[#333] text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#4285F4] text-sm font-medium transition-colors hover:border-[#444]"
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
+                                                />
+                                                <button 
+                                                    onClick={handleAddKeyword}
+                                                    disabled={loadingRank || !newKeyword}
+                                                    className="bg-[#4285F4] hover:bg-[#3367D6] disabled:bg-[#222] disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold px-8 py-3.5 rounded-xl transition-colors shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none"
+                                                >
+                                                    {loadingRank ? '⏳ Analisando a cidade...' : 'Adicionar Monitoramento'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {trackedKeywords.length === 0 ? (
+                                            <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50 mt-8">
+                                                Nenhuma palavra-chave sendo monitorada.
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
+                                                {trackedKeywords.map((kw: any, i: number) => {
+                                                    const lastPos = kw.rank_history?.[0]?.position || 99;
+                                                    const colorClass = lastPos <= 3 ? 'text-green-500' : lastPos <= 10 ? 'text-yellow-500' : 'text-red-500';
+                                                    
+                                                    return (
+                                                        <div key={i} className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 flex flex-col shadow-sm">
+                                                            <div className="flex justify-between items-start mb-8 border-b border-[#111] pb-6">
+                                                                <div>
+                                                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Termo Monitorado</p>
+                                                                    <h4 className="text-xl font-bold">{kw.keyword}</h4>
+                                                                </div>
+                                                                <div className={`text-4xl font-black tracking-tighter ${colorClass}`}>
+                                                                    {lastPos === 99 ? '20+' : `#${lastPos}`}
+                                                                </div>
+                                                            </div>
+
+                                                            {!competitorData[kw.keyword] ? (
+                                                                <button 
+                                                                    onClick={() => fetchCompetitors(kw.keyword)}
+                                                                    disabled={loadingComp[kw.keyword]}
+                                                                    className="mt-auto w-full bg-[#111] hover:bg-[#222] border border-[#333] text-gray-300 font-bold py-3.5 rounded-xl text-sm transition-colors"
+                                                                >
+                                                                    {loadingComp[kw.keyword] ? '🔍 Mapeando Concorrentes (SerpApi)...' : '🔍 Benchmark com Top 3 (Local Pack)'}
+                                                                </button>
+                                                            ) : (
+                                                                <div className="mt-auto bg-[#111] rounded-xl p-5 border border-[#222]">
+                                                                    <p className="text-[10px] text-[#4285F4] uppercase font-bold tracking-widest mb-4">Grid de Concorrentes (Top 3)</p>
+                                                                    <div className="space-y-4">
+                                                                        {competitorData[kw.keyword].map((c: any, idx: number) => (
+                                                                            <div key={idx} className={`flex justify-between items-center text-sm ${c.isUs ? 'text-[#4285F4] font-bold' : 'text-gray-300'}`}>
+                                                                                <span className="truncate w-48 xl:w-64">{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
+                                                                                <div className="flex gap-4 text-xs bg-black/40 px-3 py-1.5 rounded-full">
+                                                                                    <span className="font-bold">{c.rating}⭐</span>
+                                                                                    <span className="text-gray-500">({c.reviews})</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                   </div>
+                               )}
+
+                               {/* ---------------- GBP REVIEWS ---------------- */}
+                               {activeTab === 'gbp-reviews' && (
+                                   <div className="space-y-6 animate-fade-in">
+                                       <h2 className="text-2xl font-bold mb-2">⭐ Gestão de Avaliações (com IA)</h2>
+                                       <p className="text-gray-400 mb-8">Responda seus clientes rapidamente utilizando inteligência artificial para manter seu Health Score alto.</p>
+
+                                       {loadingLocal ? (
+                                           <div className="text-center p-16 text-[#4285F4] animate-pulse bg-[#0a0a0a] border border-[#222] rounded-2xl">Sincronizando banco de avaliações do Maps...</div>
+                                       ) : localReviews.length === 0 ? (
+                                           <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50">
+                                               Nenhuma avaliação disponível para este perfil.
+                                           </div>
+                                       ) : (
+                                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                               {localReviews.map((review: any, i: number) => (
+                                                   <div key={i} className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm flex flex-col">
+                                                       <div className="flex justify-between items-start mb-6">
+                                                           <div className="flex items-center gap-4">
+                                                               <img src={review.reviewer.profilePhotoUrl} alt="Reviewer" className="w-12 h-12 rounded-full bg-[#222] border border-[#333]" />
+                                                               <div>
+                                                                   <p className="font-bold text-white text-lg">{review.reviewer.displayName}</p>
+                                                                   <div className="text-yellow-500 text-sm tracking-widest mt-1">{'★'.repeat(review.starRating)}{'☆'.repeat(5 - review.starRating)}</div>
+                                                               </div>
+                                                           </div>
+                                                           <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-[#111] rounded-full border border-[#222]">{new Date(review.createTime).toLocaleDateString()}</div>
+                                                       </div>
+                                                       
+                                                       <p className="text-gray-300 text-sm mb-8 leading-relaxed italic flex-1">"{review.comment || '(O cliente deixou apenas a nota, sem comentário escrito.)'}"</p>
+
+                                                       {review.reviewReply ? (
+                                                           <div className="bg-[#111] border border-[#222] rounded-xl p-5 border-l-4 border-l-green-500 mt-auto">
+                                                               <p className="text-[10px] text-green-500 font-bold mb-2 uppercase tracking-widest">Resposta Pública (Enviada)</p>
+                                                               <p className="text-gray-400 text-sm leading-relaxed">{review.reviewReply.comment}</p>
+                                                           </div>
+                                                       ) : (
+                                                           <div className="bg-black/50 border border-[#222] rounded-xl p-5 mt-auto">
+                                                               <p className="text-[10px] text-red-400 font-bold mb-3 uppercase tracking-widest flex items-center gap-2">⚠️ Requer Atenção</p>
+                                                               
+                                                               <textarea 
+                                                                   value={replyText[review.name] || ''}
+                                                                   onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })}
+                                                                   placeholder="Escreva sua resposta de forma profissional..."
+                                                                   className="w-full bg-[#111] border border-[#333] text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#4285F4] min-h-[100px] resize-none"
+                                                               />
+                                                               
+                                                               <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                                                                   <button 
+                                                                       onClick={() => handleGenerateAI(review)}
+                                                                       disabled={generatingAI[review.name]}
+                                                                       className="bg-transparent hover:bg-white/5 border border-[#333] text-gray-300 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+                                                                   >
+                                                                       {generatingAI[review.name] ? '⏳ Consultando Gemini...' : '✨ Sugestão IA'}
+                                                                   </button>
+                                                                   <button 
+                                                                       onClick={() => handleReply(review.name)}
+                                                                       disabled={!replyText[review.name]}
+                                                                       className="bg-[#4285F4] hover:bg-[#3367D6] text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none"
+                                                                   >
+                                                                       Publicar Resposta
+                                                                   </button>
+                                                               </div>
+                                                           </div>
+                                                       )}
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       )}
+                                   </div>
+                               )}
+
+                               {/* ---------------- GBP POSTS ---------------- */}
+                               {activeTab === 'gbp-posts' && (
+                                   <div className="space-y-6 animate-fade-in max-w-4xl">
+                                       <h2 className="text-2xl font-bold mb-2">📣 Atualizações da Empresa (Posts)</h2>
+                                       <p className="text-gray-400 mb-8">Crie atualizações para manter o perfil ativo. Postagens frequentes aumentam a relevância do seu negócio nas pesquisas.</p>
+                                       
+                                       <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 lg:p-10 shadow-2xl">
+                                            <div className="flex gap-4 mb-8 pb-6 border-b border-[#222]">
+                                                <button className="bg-[#4285F4]/10 text-[#4285F4] border border-[#4285F4]/30 px-5 py-2 rounded-full text-xs font-bold tracking-wide">✓ Atualização Padrão</button>
+                                                <button className="bg-transparent text-gray-500 border border-[#333] px-5 py-2 rounded-full text-xs font-bold tracking-wide cursor-not-allowed">Oferta (Breve)</button>
+                                                <button className="bg-transparent text-gray-500 border border-[#333] px-5 py-2 rounded-full text-xs font-bold tracking-wide cursor-not-allowed">Evento (Breve)</button>
+                                            </div>
+
+                                            <div className="space-y-8">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">O que você quer contar aos clientes?</label>
+                                                    <textarea 
+                                                        value={postText}
+                                                        onChange={(e) => setPostText(e.target.value)}
+                                                        placeholder="Ex: Estamos abertos no feriado! Venha nos visitar ou faça seu pedido..."
+                                                        className="w-full h-40 bg-[#111] border border-[#333] rounded-xl p-5 text-white text-sm focus:outline-none focus:border-[#4285F4] resize-none hover:border-[#444] transition-colors"
+                                                    />
+                                                    <div className="text-right text-[11px] text-gray-500 mt-2 font-medium">{postText.length} / 1500 caracteres permitidos pelo Google</div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Foto ou Arte (Opcional)</label>
+                                                        <div className={`border-2 border-dashed ${imageUrl ? 'border-[#4285F4]' : 'border-[#333] hover:border-[#555]'} rounded-xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden h-40 transition-colors bg-[#111]`}>
+                                                            {imageUrl ? (
+                                                                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${imageUrl})` }}>
+                                                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity backdrop-blur-sm">
+                                                                        <button onClick={() => setImageUrl('')} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-xl">🗑️ Remover Imagem</button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="text-4xl mb-3">📸</div>
+                                                                    <p className="text-xs text-gray-400 font-medium">Clique para selecionar do computador</p>
+                                                                    {uploadingImage && <p className="text-[#4285F4] text-xs font-bold mt-3 animate-pulse bg-[#4285F4]/10 px-3 py-1 rounded-full">⏳ Fazendo upload...</p>}
+                                                                </>
+                                                            )}
+                                                            <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-6">
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Call to Action (Botão)</label>
+                                                            <div className="relative">
+                                                                <select value={buttonType} onChange={e => setButtonType(e.target.value)} className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4] appearance-none hover:border-[#444] transition-colors font-medium cursor-pointer">
+                                                                    <option value="NONE">Nenhum botão</option>
+                                                                    <option value="LEARN_MORE">🔗 Saiba Mais</option>
+                                                                    <option value="BOOK">📅 Reservar</option>
+                                                                    <option value="ORDER">🛍️ Fazer Pedido</option>
+                                                                    <option value="CALL">📞 Ligar Agora</option>
+                                                                </select>
+                                                                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-500">▼</div>
+                                                            </div>
+                                                        </div>
+                                                        {(buttonType !== 'NONE' && buttonType !== 'CALL') && (
+                                                            <div className="animate-fade-in">
+                                                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">URL de Destino</label>
+                                                                <input type="url" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} placeholder="https://seudominio.com.br/promo" className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4] hover:border-[#444] transition-colors" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-10 pt-8 border-t border-[#222] flex flex-col md:flex-row justify-between items-center gap-6 bg-[#111]/30 -mx-8 -mb-8 p-8 rounded-b-2xl">
+                                                <div className="w-full md:w-auto">
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Agendar para Depois? (Opcional)</label>
+                                                    <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="w-full md:w-64 bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#4285F4] font-medium" />
+                                                </div>
+                                                <button 
+                                                    onClick={handlePost} 
+                                                    disabled={!postText}
+                                                    className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-black hover:bg-yellow-400 shadow-yellow-500/20' : 'bg-[#4285F4] text-white hover:bg-[#3367D6] shadow-blue-500/20 hover:shadow-blue-500/40') : 'bg-[#222] text-gray-500 cursor-not-allowed shadow-none'}`}
+                                                >
+                                                    {scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
+                                                </button>
+                                            </div>
+                                       </div>
+                                   </div>
+                               )}
+                           </>
+                       )}
+                    </>
+                 )}
+              </div>
+           )}
+        </main>
+      </div>
     </div>
   );
 }
