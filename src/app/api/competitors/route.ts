@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }));
 
     // Se a nossa empresa não estiver no Top 3, adicionamos ela ao final para comparação
-    if (!competitors.find(c => c.isUs) && ourPlace) {
+    if (!competitors.find((c: any) => c.isUs) && ourPlace) {
       competitors.push({
         title: ourPlace.title,
         rating: ourPlace.rating || 0,
