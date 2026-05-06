@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { listSites } from '@/lib/gsc';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const sites = await listSites();
