@@ -420,33 +420,31 @@ export default function Dashboard() {
                )}
 
                {/* SESSÃO LOCAL (GBP) */}
-               {(selectedClient.type === 'GBP_ONLY' || selectedClient.type === 'HYBRID') && (
-                 <div>
-                   <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider pl-3 flex items-center gap-2">Perfil Google Maps <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span></p>
-                   <ul className="space-y-1">
-                     <li>
-                        <button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🏪 Resumo Local</button>
-                     </li>
-                     <li>
-                        <button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🛡️ Auditoria de Saúde</button>
-                     </li>
-                     <li>
-                        <button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📈 Rank Tracker</button>
-                     </li>
-                     <li>
-                        <button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'gbp-reviews' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>
-                           <span>⭐ Avaliações</span>
-                           {localReviews.filter(r => !r.reviewReply).length > 0 && (
-                               <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{localReviews.filter(r => !r.reviewReply).length}</span>
-                           )}
-                        </button>
-                     </li>
-                     <li>
-                        <button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📣 Atualizações</button>
-                     </li>
-                   </ul>
-                 </div>
-               )}
+               <div>
+                 <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider pl-3 flex items-center gap-2">Perfil Google Maps <span className={`w-1.5 h-1.5 rounded-full ${data?.maps ? 'bg-green-500' : 'bg-gray-600'}`}></span></p>
+                 <ul className="space-y-1">
+                   <li>
+                      <button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🏪 Resumo Local</button>
+                   </li>
+                   <li>
+                      <button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🛡️ Auditoria de Saúde</button>
+                   </li>
+                   <li>
+                      <button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📈 Rank Tracker</button>
+                   </li>
+                   <li>
+                      <button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'gbp-reviews' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>
+                         <span>⭐ Avaliações</span>
+                         {(localReviews || []).filter((r:any) => !r.reviewReply).length > 0 && (
+                             <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{(localReviews || []).filter((r:any) => !r.reviewReply).length}</span>
+                         )}
+                      </button>
+                   </li>
+                   <li>
+                      <button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📣 Atualizações</button>
+                   </li>
+                 </ul>
+               </div>
              </>
           ) : (
              <div className="text-gray-500 text-sm p-4 text-center border border-dashed border-[#333] rounded-lg mt-4 bg-[#111]/50">
