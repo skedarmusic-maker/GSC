@@ -30,11 +30,6 @@ export async function listLocations() {
     });
     const accountsData = await accountsRes.json();
     
-    console.log('DEBUG VERCEL - Contas encontradas:', accountsData.accounts?.length || 0);
-    if (accountsData.error) {
-      console.error('DEBUG VERCEL - Erro na API de Contas:', accountsData.error);
-    }
-
     if (!accountsData.accounts) return [];
 
     let allLocations: any[] = [];
@@ -46,24 +41,23 @@ export async function listLocations() {
         cache: 'no-store'
       });
       const locData = await locationsRes.json();
-      console.log(`DEBUG VERCEL - Locais na conta ${account.name}:`, locData.locations?.length || 0);
 
       if (locData.locations) {
         const accountId = account.name.split('/')[1];
-        console.log(`DEBUG VERCEL - Processando ${locData.locations.length} locais brutos...`);
         
-        // Mapeia todos os locais sem filtrar por metadata para teste de visibilidade
-        const formatted = locData.locations.map((l: any) => ({
+        // Filtra apenas locais verificados ou que o usuário tem permissão ativa
+        const verified = locData.locations.filter((l: any) =>
+          l.metadata?.hasVoiceOfMerchant || l.metadata?.canUpdate
+        );
+
+        const formatted = verified.map((l: any) => ({
           ...l,
           accountId: accountId
         }));
         allLocations = [...allLocations, ...formatted];
-      } else {
-        console.log(`DEBUG VERCEL - Nenhum local retornado para a conta ${account.name}`);
       }
     }
 
-    console.log('DEBUG VERCEL - Total final de locais:', allLocations.length);
     return allLocations;
   } catch (error) {
     console.error('Erro na descoberta automática de locais:', error);
