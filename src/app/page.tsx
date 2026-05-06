@@ -432,13 +432,13 @@ export default function Dashboard() {
           <div className="flex bg-[#111] p-1 rounded-lg border border-[#222] gap-1">
             <button
               onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'seo' ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'seo' ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white'}`}
             >
               🌐 SEO
             </button>
             <button
               onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'gbp' ? 'bg-[#4285F4] text-white shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'gbp' ? 'bg-[#4285F4] text-white shadow' : 'text-gray-400 hover:text-white'}`}
             >
               📍 Maps
             </button>
@@ -498,7 +498,7 @@ export default function Dashboard() {
           ) : (
             selectedGbp ? (
               <ul className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-600 mb-3 uppercase tracking-wider px-2">Perfil Google Maps</p>
+                <p className="text-[10px] font-bold text-gray-600 mb-3 uppercase tracking-wider px-2 flex items-center gap-2">Perfil Google Maps <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span></p>
                 <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🏪 Resumo Local</button></li>
                 <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🛡️ Auditoria de Saúde</button></li>
                 <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📈 Rank Tracker</button></li>
@@ -513,7 +513,7 @@ export default function Dashboard() {
                 <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📣 Atualizações</button></li>
               </ul>
             ) : (
-              <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um perfil Maps acima</p>
+              <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um perfil do Maps acima</p>
             )
           )}
         </div>
@@ -526,16 +526,18 @@ export default function Dashboard() {
         <header className="h-[64px] border-b border-[#222] bg-[#0a0a0a]/95 backdrop-blur flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex items-center gap-3">
             {appMode === 'seo' && selectedClient && (
-              <span className="text-sm font-semibold text-white">{selectedClient.name}</span>
+              <span className="text-sm font-semibold text-white truncate max-w-xs">{selectedClient.name}</span>
             )}
             {appMode === 'gbp' && selectedGbp && (
-              <span className="text-sm font-semibold text-white">{selectedGbp.name}</span>
+              <span className="text-sm font-semibold text-white truncate max-w-xs">{selectedGbp.name}</span>
             )}
           </div>
+
+          {/* Filtros de Data — apenas no modo SEO */}
           {appMode === 'seo' && selectedClient && (
             <div className="flex items-center gap-3">
               <div className="flex bg-[#111] p-1 rounded-lg border border-[#222]">
-                {[7, 28, 90].map((v:number) => (
+                {[7, 28, 90].map(v => (
                   <button key={v} onClick={() => { setIsCustom(false); setDays(v); fetchData(selectedClient.gscUrl, v, selectedClient.gbpData); }} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${!isCustom && days === v ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white hover:bg-[#222]'}`}>{v}d</button>
                 ))}
                 <button onClick={() => setIsCustom(true)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${isCustom ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white hover:bg-[#222]'}`}>Data Fixa</button>
@@ -552,7 +554,9 @@ export default function Dashboard() {
           )}
         </header>
 
+        {/* SCROLLABLE CONTENT */}
         <main className="flex-1 overflow-y-auto p-8 bg-[#050505] pb-32">
+
           {/* ===== MODO SEO ===== */}
           {appMode === 'seo' && (
             !selectedClient ? (
@@ -563,35 +567,6 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="max-w-6xl mx-auto animate-fade-in">
-
-           {!selectedClient ? (
-              // TELA INICIAL BEM-VINDO
-              <div className="max-w-4xl mx-auto mt-20 text-center animate-fade-in">
-                 <div className="text-6xl mb-6">🚀</div>
-                 <h2 className="text-3xl font-bold mb-4 tracking-tight">Bem-vindo ao Dashboard Master</h2>
-                 <p className="text-gray-400 text-lg mb-12 max-w-2xl mx-auto">
-                    Selecione um cliente no topo para visualizar suas métricas de SEO no Google Search Console ou gerenciar e auditar seu Perfil no Google Maps.
-                 </p>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                    <div className="bg-[#0a0a0a] border border-[#222] p-6 rounded-2xl hover:border-[#0070f3] transition-colors cursor-default">
-                       <h3 className="text-lg font-bold text-[#0070f3] mb-3 flex items-center gap-2">🌐 GSC Insights</h3>
-                       <p className="text-sm text-gray-400 leading-relaxed">Auditoria automatizada das principais métricas orgânicas, páginas e termos que mais convertem via Search Console.</p>
-                    </div>
-                    <div className="bg-[#0a0a0a] border border-[#222] p-6 rounded-2xl hover:border-[#4285F4] transition-colors cursor-default">
-                       <h3 className="text-lg font-bold text-[#4285F4] mb-3 flex items-center gap-2">🏪 Gestão Local</h3>
-                       <p className="text-sm text-gray-400 leading-relaxed">Controle total de avaliações, rank tracker no mapa e checkup de saúde completo do Google My Business.</p>
-                    </div>
-                    <div className="bg-[#0a0a0a] border border-[#222] p-6 rounded-2xl hover:border-green-500 transition-colors cursor-default">
-                       <h3 className="text-lg font-bold text-green-500 mb-3 flex items-center gap-2">✨ Inteligência IA</h3>
-                       <p className="text-sm text-gray-400 leading-relaxed">Respostas automáticas estratégicas de avaliações e análise profunda de oportunidades geradas pelo modelo Gemini.</p>
-                    </div>
-                 </div>
-              </div>
-           ) : (
-              // CONTEÚDO DO CLIENTE
-              <div className="max-w-6xl mx-auto animate-fade-in">
-                 
                  {loadingPerf ? (
                     <div className="flex flex-col items-center justify-center py-40 opacity-50">
                        <div className="w-12 h-12 border-4 border-[#0070f3] border-t-transparent rounded-full animate-spin mb-6"></div>
@@ -600,7 +575,7 @@ export default function Dashboard() {
                  ) : data && (
                     <>
                        {/* ---------------- SEO INSIGHTS ---------------- */}
-                       {activeTab === 'seo-insights' && selectedClient.type !== 'GBP_ONLY' && (
+                       {activeTab === 'seo-insights' && (
                           <div className="space-y-8 animate-fade-in">
                              {/* KPIS GSC */}
                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -644,50 +619,45 @@ export default function Dashboard() {
                        )}
 
                        {/* ---------------- SEO KEYWORDS ---------------- */}
-                       {activeTab === 'seo-keywords' && selectedClient.type !== 'GBP_ONLY' && (
-                          <div className="bg-[#0a0a0a] border border-[#222] rounded-xl overflow-hidden animate-fade-in shadow-xl">
-                              <table className="w-full text-left border-collapse text-sm">
-                                 <thead className="bg-[#111] border-b border-[#222]">
-                                     <tr className="text-gray-400 text-xs uppercase tracking-wider">
-                                        <th className="px-6 py-4 font-bold">Termo de Pesquisa</th>
+                       {activeTab === 'seo-keywords' && (
+                          <div className="animate-fade-in">
+                              <h2 className="text-2xl font-bold mb-6">📊 Palavras-chave que mais geram cliques</h2>
+                              <table className="w-full text-left text-sm border-collapse">
+                                 <thead className="bg-[#111] text-gray-400 border-b border-[#222]">
+                                     <tr>
+                                        <th className="px-6 py-4 font-bold rounded-tl-xl">Palavra-chave</th>
                                         <th className="px-6 py-4 font-bold">Cliques</th>
                                         <th className="px-6 py-4 font-bold">Impressões</th>
-                                        <th className="px-6 py-4 font-bold">Posição</th>
+                                        <th className="px-6 py-4 font-bold">CTR</th>
+                                        <th className="px-6 py-4 font-bold rounded-tr-xl">Posição</th>
                                      </tr>
                                  </thead>
                                  <tbody className="divide-y divide-[#181818]">
-                                    {data.keywords.slice(0, 50).map((k:any, i:number) => {
-                                        const prevK = data.previousKeywords?.find((pk:any) => pk.keys[0] === k.keys[0]);
-                                        const diff = prevK ? k.position - prevK.position : 0;
-                                        return (
-                                          <tr key={i} className="hover:bg-[#111]/80 transition-colors">
-                                             <td className="px-6 py-4 font-medium">{k.keys[0]}</td>
-                                             <td className="px-6 py-4 text-white font-bold">{k.clicks}</td>
-                                             <td className="px-6 py-4 text-gray-400">{k.impressions}</td>
-                                             <td className="px-6 py-4">
-                                                <span className={k.position <= 3 ? 'text-[#0070f3] font-bold' : 'text-gray-300'}>{k.position.toFixed(1)}</span>
-                                                <span className={`text-[10px] ml-2 font-bold ${diff < 0 ? 'text-green-500' : diff > 0 ? 'text-red-500' : 'text-gray-600'}`}>
-                                                   {diff !== 0 && (diff < 0 ? `↑ ${Math.abs(diff).toFixed(1)}` : `↓ ${diff.toFixed(1)}`)}
-                                                </span>
-                                             </td>
-                                          </tr>
-                                        );
-                                    })}
+                                    {data.keywords.slice(0, 30).map((k:any, i:number) => (
+                                        <tr key={i} className="hover:bg-[#111]/80 transition-colors">
+                                           <td className="px-6 py-4 text-white font-medium">{k.keys[0]}</td>
+                                           <td className="px-6 py-4 text-[#0070f3] font-bold">{k.clicks}</td>
+                                           <td className="px-6 py-4 text-gray-400">{k.impressions}</td>
+                                           <td className="px-6 py-4 text-gray-400">{(k.ctr * 100).toFixed(1)}%</td>
+                                           <td className="px-6 py-4 text-gray-400">{k.position.toFixed(1)}</td>
+                                        </tr>
+                                    ))}
                                  </tbody>
                               </table>
                           </div>
                        )}
 
                        {/* ---------------- SEO PAGES ---------------- */}
-                       {activeTab === 'seo-pages' && selectedClient.type !== 'GBP_ONLY' && (
-                          <div className="bg-[#0a0a0a] border border-[#222] rounded-xl overflow-hidden animate-fade-in shadow-xl">
-                              <table className="w-full text-left border-collapse text-sm">
-                                 <thead className="bg-[#111] border-b border-[#222]">
-                                     <tr className="text-gray-400 text-xs uppercase tracking-wider">
-                                        <th className="px-6 py-4 font-bold">URL da Página</th>
+                       {activeTab === 'seo-pages' && (
+                          <div className="animate-fade-in">
+                              <h2 className="text-2xl font-bold mb-6">📄 Top Páginas (Landing Pages)</h2>
+                              <table className="w-full text-left text-sm border-collapse">
+                                 <thead className="bg-[#111] text-gray-400 border-b border-[#222]">
+                                     <tr>
+                                        <th className="px-6 py-4 font-bold rounded-tl-xl">Página</th>
                                         <th className="px-6 py-4 font-bold">Cliques</th>
                                         <th className="px-6 py-4 font-bold">CTR</th>
-                                        <th className="px-6 py-4 font-bold">Posição</th>
+                                        <th className="px-6 py-4 font-bold rounded-tr-xl">Posição</th>
                                      </tr>
                                  </thead>
                                  <tbody className="divide-y divide-[#181818]">
@@ -707,11 +677,10 @@ export default function Dashboard() {
                               </table>
                           </div>
                        )}
-
-          </>
-                  )}
-               </div>
-            )}
+                    </>
+                 )}
+              </div>
+            )
           )}
 
           {/* ===== MODO GBP ===== */}
@@ -724,8 +693,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="max-w-6xl mx-auto animate-fade-in">
-
-                {/* GBP DASHBOARD */}
+                {/* ---------------- GBP DASHBOARD ---------------- */}
                 {activeTab === 'gbp-dashboard' && (
                     <div className="space-y-8 animate-fade-in">
                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#4285F4]/10 to-transparent border border-[#4285F4]/30 rounded-2xl p-8">
@@ -733,26 +701,39 @@ export default function Dashboard() {
                                  <p className="text-xs text-[#4285F4] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
                                  <h2 className="text-3xl font-bold text-white tracking-tight">{gbpData?.title}</h2>
                              </div>
-                             <a href={`https://google.com/maps?cid=${gbpData?.locationId}`} target="_blank" className="bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)]">
+                             <a href={`https://google.com/maps?cid=${gbpData?.locationId}`} target="_blank" className="bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] hover:shadow-[0_0_30px_rgba(66,133,244,0.5)]">
                                  Visualizar no Maps ↗
                              </a>
                          </div>
+
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm"><div className="text-4xl mb-4">📞</div><h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.calls ?? 0}</h3><p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Chamadas</p></div>
-                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm"><div className="text-4xl mb-4">🗺️</div><h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.directions ?? 0}</h3><p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Rotas</p></div>
-                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm"><div className="text-4xl mb-4">🖱️</div><h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.websiteClicks ?? 0}</h3><p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Visitas ao Site</p></div>
+                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                 <div className="text-4xl mb-4">📞</div>
+                                 <h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.calls ?? 0}</h3>
+                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Chamadas Recebidas</p>
+                             </div>
+                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                 <div className="text-4xl mb-4">🗺️</div>
+                                 <h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.directions ?? 0}</h3>
+                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Rotas Solicitadas</p>
+                             </div>
+                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                                 <div className="text-4xl mb-4">🖱️</div>
+                                 <h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.websiteClicks ?? 0}</h3>
+                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Visitas ao Site</p>
+                             </div>
                          </div>
                     </div>
                 )}
 
-                {/* GBP AUDIT */}
+                {/* ---------------- GBP AUDIT ---------------- */}
                 {activeTab === 'gbp-audit' && (
                     <div className="animate-fade-in">
                         <h2 className="text-2xl font-bold mb-6">🛡️ Auditoria de Saúde do Perfil</h2>
                         {loadingAudit ? (
                             <div className="p-32 text-center bg-[#0a0a0a] border border-[#222] rounded-2xl">
                                  <div className="w-10 h-10 border-4 border-[#4285F4] border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
-                                 <div className="text-[#4285F4] text-lg font-bold">Processando checklist...</div>
+                                 <div className="text-[#4285F4] text-lg font-bold">Processando checklist de 20 pontos de ranking...</div>
                             </div>
                         ) : auditData && !auditData.error && (
                             <div className="border-l-[6px] rounded-2xl p-10 bg-[#0a0a0a] border-y border-r border-y-[#222] border-r-[#222] shadow-2xl flex flex-col md:flex-row gap-16" style={{ borderLeftColor: auditData.color }}>
@@ -777,19 +758,21 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* GBP RANK */}
+                {/* ---------------- GBP RANK TRACKER ---------------- */}
                 {activeTab === 'gbp-rank' && (
                     <div className="space-y-6 animate-fade-in">
-                         <h2 className="text-2xl font-bold mb-2">📈 Rank Tracker</h2>
-                         <p className="text-gray-400 mb-8">Monitore sua posição no Google Maps para palavras-chave específicas.</p>
+                         <h2 className="text-2xl font-bold mb-2">📈 Rank Tracker (Local Pack)</h2>
+                         <p className="text-gray-400 mb-8">Descubra em qual posição você aparece quando o cliente pesquisa pela palavra-chave na sua cidade.</p>
                          <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
                              <div className="flex flex-col sm:flex-row gap-4">
                                  <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="Ex: advogado trabalhista em são paulo" className="flex-1 bg-[#111] border border-[#333] text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#4285F4] text-sm font-medium" onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
-                                 <button onClick={handleAddKeyword} disabled={loadingRank || !newKeyword} className="bg-[#4285F4] hover:bg-[#3367D6] disabled:bg-[#222] disabled:text-gray-500 text-white font-bold px-8 py-3.5 rounded-xl transition-colors">{loadingRank ? '⏳ Analisando...' : 'Monitorar'}</button>
+                                 <button onClick={handleAddKeyword} disabled={loadingRank || !newKeyword} className="bg-[#4285F4] hover:bg-[#3367D6] disabled:bg-[#222] disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold px-8 py-3.5 rounded-xl transition-colors shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none">
+                                     {loadingRank ? '⏳ Analisando...' : 'Monitorar Palavra-chave'}
+                                 </button>
                              </div>
                          </div>
                          {trackedKeywords.length === 0 ? (
-                             <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50 mt-8">Nenhuma palavra-chave monitorada ainda.</div>
+                             <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50 mt-8">Nenhuma palavra-chave monitorada.</div>
                          ) : (
                              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
                                  {trackedKeywords.map((kw: any, i: number) => {
@@ -797,21 +780,28 @@ export default function Dashboard() {
                                      const colorClass = lastPos <= 3 ? 'text-green-500' : lastPos <= 10 ? 'text-yellow-500' : 'text-red-500';
                                      return (
                                          <div key={i} className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 flex flex-col shadow-sm">
-                                             <div className="flex justify-between items-start mb-6 border-b border-[#111] pb-6">
-                                                 <h4 className="text-xl font-bold">{kw.keyword}</h4>
+                                             <div className="flex justify-between items-start mb-8 border-b border-[#111] pb-6">
+                                                 <div>
+                                                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Termo</p>
+                                                     <h4 className="text-xl font-bold">{kw.keyword}</h4>
+                                                 </div>
                                                  <div className={`text-4xl font-black tracking-tighter ${colorClass}`}>{lastPos === 99 ? '20+' : `#${lastPos}`}</div>
                                              </div>
                                              {!competitorData[kw.keyword] ? (
-                                                 <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]} className="mt-auto w-full bg-[#111] hover:bg-[#222] border border-[#333] text-gray-300 font-bold py-3.5 rounded-xl text-sm">{loadingComp[kw.keyword] ? '🔍 Mapeando...' : '🔍 Benchmark com Top 3'}</button>
+                                                 <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]} className="mt-auto w-full bg-[#111] hover:bg-[#222] border border-[#333] text-gray-300 font-bold py-3.5 rounded-xl text-sm transition-colors">
+                                                     {loadingComp[kw.keyword] ? '🔍 Mapeando...' : '🔍 Benchmark com Top 3'}
+                                                 </button>
                                              ) : (
                                                  <div className="mt-auto bg-[#111] rounded-xl p-5 border border-[#222]">
-                                                     <p className="text-[10px] text-[#4285F4] uppercase font-bold tracking-widest mb-4">Top 3</p>
-                                                     {competitorData[kw.keyword].map((c: any, idx: number) => (
-                                                         <div key={idx} className={`flex justify-between text-sm py-2 ${c.isUs ? 'text-[#4285F4] font-bold' : 'text-gray-300'}`}>
-                                                             <span className="truncate w-48">{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
-                                                             <span className="text-xs">{c.rating}⭐ ({c.reviews})</span>
-                                                         </div>
-                                                     ))}
+                                                     <p className="text-[10px] text-[#4285F4] uppercase font-bold tracking-widest mb-4">Top 3 Concorrentes</p>
+                                                     <div className="space-y-4">
+                                                         {competitorData[kw.keyword].map((c: any, idx: number) => (
+                                                             <div key={idx} className={`flex justify-between items-center text-sm ${c.isUs ? 'text-[#4285F4] font-bold' : 'text-gray-300'}`}>
+                                                                 <span className="truncate w-48 xl:w-64">{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
+                                                                 <div className="flex gap-4 text-xs bg-black/40 px-3 py-1.5 rounded-full"><span className="font-bold">{c.rating}⭐</span><span className="text-gray-500">({c.reviews})</span></div>
+                                                             </div>
+                                                         ))}
+                                                     </div>
                                                  </div>
                                              )}
                                          </div>
@@ -822,12 +812,13 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* GBP REVIEWS */}
+                {/* ---------------- GBP REVIEWS ---------------- */}
                 {activeTab === 'gbp-reviews' && (
                     <div className="space-y-6 animate-fade-in">
-                        <h2 className="text-2xl font-bold mb-2">⭐ Gestão de Avaliações</h2>
+                        <h2 className="text-2xl font-bold mb-2">⭐ Gestão de Avaliações (com IA)</h2>
+                        <p className="text-gray-400 mb-8">Responda clientes rapidamente com sugestões da IA.</p>
                         {loadingLocal ? (
-                            <div className="text-center p-16 text-[#4285F4] animate-pulse bg-[#0a0a0a] border border-[#222] rounded-2xl">Carregando avaliações...</div>
+                            <div className="text-center p-16 text-[#4285F4] animate-pulse bg-[#0a0a0a] border border-[#222] rounded-2xl">Sincronizando avaliações...</div>
                         ) : localReviews.length === 0 ? (
                             <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50">Nenhuma avaliação disponível.</div>
                         ) : (
@@ -839,24 +830,28 @@ export default function Dashboard() {
                                                 <img src={review.reviewer?.profilePhotoUrl} alt="" className="w-12 h-12 rounded-full bg-[#222] border border-[#333]" />
                                                 <div>
                                                     <p className="font-bold text-white text-lg">{review.reviewer?.displayName}</p>
-                                                    <div className="text-yellow-500 text-sm">{'★'.repeat(review.starRating || 0)}{'☆'.repeat(5 - (review.starRating || 0))}</div>
+                                                    <div className="text-yellow-500 text-sm tracking-widest mt-1">{'★'.repeat(review.starRating || 0)}{'☆'.repeat(5 - (review.starRating || 0))}</div>
                                                 </div>
                                             </div>
-                                            <span className="text-xs text-gray-500 px-3 py-1 bg-[#111] rounded-full border border-[#222]">{review.createTime ? new Date(review.createTime).toLocaleDateString() : ''}</span>
+                                            <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-[#111] rounded-full border border-[#222]">{review.createTime ? new Date(review.createTime).toLocaleDateString() : ''}</div>
                                         </div>
-                                        <p className="text-gray-300 text-sm mb-6 leading-relaxed italic flex-1">"{review.comment || '(Sem comentário)'}"</p>
+                                        <p className="text-gray-300 text-sm mb-8 leading-relaxed italic flex-1">"{review.comment || '(Avaliação sem comentário)'}"</p>
                                         {review.reviewReply ? (
-                                            <div className="bg-[#111] border-l-4 border-l-green-500 rounded-xl p-4 mt-auto">
-                                                <p className="text-[10px] text-green-500 font-bold mb-2 uppercase">Resposta Publicada</p>
-                                                <p className="text-gray-400 text-sm">{review.reviewReply.comment}</p>
+                                            <div className="bg-[#111] border border-[#222] rounded-xl p-5 border-l-4 border-l-green-500 mt-auto">
+                                                <p className="text-[10px] text-green-500 font-bold mb-2 uppercase tracking-widest">Resposta Publicada</p>
+                                                <p className="text-gray-400 text-sm leading-relaxed">{review.reviewReply.comment}</p>
                                             </div>
                                         ) : (
-                                            <div className="bg-black/50 border border-[#222] rounded-xl p-4 mt-auto">
-                                                <p className="text-[10px] text-red-400 font-bold mb-2 uppercase">⚠️ Requer Resposta</p>
-                                                <textarea value={replyText[review.name] || ''} onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })} placeholder="Escreva sua resposta..." className="w-full bg-[#111] border border-[#333] text-gray-200 p-3 rounded-xl text-sm mb-3 focus:outline-none focus:border-[#4285F4] min-h-[80px] resize-none" />
-                                                <div className="flex gap-3 justify-end">
-                                                    <button onClick={() => handleGenerateAI(review)} disabled={generatingAI[review.name]} className="border border-[#333] text-gray-300 px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50">{generatingAI[review.name] ? '⏳ IA...' : '✨ Sugestão IA'}</button>
-                                                    <button onClick={() => handleReply(review.name)} disabled={!replyText[review.name]} className="bg-[#4285F4] text-white px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50">Publicar</button>
+                                            <div className="bg-black/50 border border-[#222] rounded-xl p-5 mt-auto">
+                                                <p className="text-[10px] text-red-400 font-bold mb-3 uppercase tracking-widest">⚠️ Requer Resposta</p>
+                                                <textarea value={replyText[review.name] || ''} onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })} placeholder="Escreva sua resposta..." className="w-full bg-[#111] border border-[#333] text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#4285F4] min-h-[100px] resize-none" />
+                                                <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                                                    <button onClick={() => handleGenerateAI(review)} disabled={generatingAI[review.name]} className="bg-transparent hover:bg-white/5 border border-[#333] text-gray-300 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors flex justify-center items-center gap-2 disabled:opacity-50">
+                                                        {generatingAI[review.name] ? '⏳ Gemini pensando...' : '✨ Sugestão IA'}
+                                                    </button>
+                                                    <button onClick={() => handleReply(review.name)} disabled={!replyText[review.name]} className="bg-[#4285F4] hover:bg-[#3367D6] text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none">
+                                                        Publicar Resposta
+                                                    </button>
                                                 </div>
                                             </div>
                                         )}
@@ -867,59 +862,72 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* GBP POSTS */}
+                {/* ---------------- GBP POSTS ---------------- */}
                 {activeTab === 'gbp-posts' && (
                     <div className="space-y-6 animate-fade-in max-w-4xl">
-                        <h2 className="text-2xl font-bold mb-2">📣 Publicar Atualização</h2>
-                        <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-2xl">
-                            <div className="space-y-6">
+                        <h2 className="text-2xl font-bold mb-2">📣 Atualizações da Empresa (Posts)</h2>
+                        <p className="text-gray-400 mb-8">Crie atualizações para manter o perfil ativo no Google.</p>
+                        <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 lg:p-10 shadow-2xl">
+                            <div className="space-y-8">
                                 <div>
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Mensagem</label>
-                                    <textarea value={postText} onChange={(e) => setPostText(e.target.value)} placeholder="O que você quer comunicar aos seus clientes?" className="w-full h-40 bg-[#111] border border-[#333] rounded-xl p-5 text-white text-sm focus:outline-none focus:border-[#4285F4] resize-none" />
-                                    <div className="text-right text-[11px] text-gray-500 mt-2">{postText.length} / 1500</div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Mensagem para os clientes</label>
+                                    <textarea value={postText} onChange={(e) => setPostText(e.target.value)} placeholder="Ex: Estamos abertos no feriado! Venha nos visitar..." className="w-full h-40 bg-[#111] border border-[#333] rounded-xl p-5 text-white text-sm focus:outline-none focus:border-[#4285F4] resize-none" />
+                                    <div className="text-right text-[11px] text-gray-500 mt-2 font-medium">{postText.length} / 1500</div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div>
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Foto (Opcional)</label>
-                                        <div className={`border-2 border-dashed ${imageUrl ? 'border-[#4285F4]' : 'border-[#333]'} rounded-xl p-6 flex flex-col items-center relative overflow-hidden h-36 bg-[#111]`}>
+                                        <div className={`border-2 border-dashed ${imageUrl ? 'border-[#4285F4]' : 'border-[#333] hover:border-[#555]'} rounded-xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden h-40 transition-colors bg-[#111]`}>
                                             {imageUrl ? (
                                                 <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${imageUrl})` }}>
-                                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => setImageUrl('')} className="bg-red-500 text-white px-3 py-1.5 rounded-lg font-bold text-sm">🗑️ Remover</button>
+                                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity backdrop-blur-sm">
+                                                        <button onClick={() => setImageUrl('')} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-xl">🗑️ Remover</button>
                                                     </div>
                                                 </div>
-                                            ) : (<><div className="text-3xl mb-2">📸</div><p className="text-xs text-gray-400">Clique para selecionar</p>{uploadingImage && <p className="text-[#4285F4] text-xs animate-pulse">⏳ Upload...</p>}</>)}
+                                            ) : (
+                                                <>
+                                                    <div className="text-4xl mb-3">📸</div>
+                                                    <p className="text-xs text-gray-400 font-medium">Clique para selecionar</p>
+                                                    {uploadingImage && <p className="text-[#4285F4] text-xs font-bold mt-3 animate-pulse">⏳ Fazendo upload...</p>}
+                                                </>
+                                            )}
                                             <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Call to Action</label>
-                                        <select value={buttonType} onChange={e => setButtonType(e.target.value)} className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4] appearance-none cursor-pointer font-medium mb-4">
-                                            <option value="NONE">Nenhum</option>
-                                            <option value="LEARN_MORE">🔗 Saiba Mais</option>
-                                            <option value="BOOK">📅 Reservar</option>
-                                            <option value="ORDER">🛍️ Fazer Pedido</option>
-                                            <option value="CALL">📞 Ligar</option>
-                                        </select>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Call to Action</label>
+                                            <div className="relative">
+                                                <select value={buttonType} onChange={e => setButtonType(e.target.value)} className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4] appearance-none cursor-pointer font-medium">
+                                                    <option value="NONE">Nenhum botão</option>
+                                                    <option value="LEARN_MORE">🔗 Saiba Mais</option>
+                                                    <option value="BOOK">📅 Reservar</option>
+                                                    <option value="ORDER">🛍️ Fazer Pedido</option>
+                                                    <option value="CALL">📞 Ligar Agora</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                         {(buttonType !== 'NONE' && buttonType !== 'CALL') && (
-                                            <input type="url" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} placeholder="https://seusite.com.br" className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#4285F4]" />
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">URL de Destino</label>
+                                                <input type="url" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} placeholder="https://seudominio.com.br" className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4]" />
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-8 pt-6 border-t border-[#222] flex flex-col md:flex-row justify-between items-center gap-4 bg-[#111]/30 -mx-8 -mb-8 p-8 rounded-b-2xl">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Agendar? (Opcional)</label>
-                                    <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none" />
+                            <div className="mt-10 pt-8 border-t border-[#222] flex flex-col md:flex-row justify-between items-center gap-6 bg-[#111]/30 -mx-8 -mb-8 p-8 rounded-b-2xl">
+                                <div className="w-full md:w-auto">
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Agendar? (Opcional)</label>
+                                    <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="w-full md:w-64 bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#4285F4] font-medium" />
                                 </div>
-                                <button onClick={handlePost} disabled={!postText} className={`px-10 py-4 rounded-xl font-bold text-sm transition-all ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-black hover:bg-yellow-400' : 'bg-[#4285F4] text-white hover:bg-[#3367D6]') : 'bg-[#222] text-gray-500 cursor-not-allowed'}`}>
-                                    {scheduledDate ? '🕒 Agendar' : '🚀 Publicar Agora'}
+                                <button onClick={handlePost} disabled={!postText} className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-black hover:bg-yellow-400 shadow-yellow-500/20' : 'bg-[#4285F4] text-white hover:bg-[#3367D6] shadow-blue-500/20 hover:shadow-blue-500/40') : 'bg-[#222] text-gray-500 cursor-not-allowed shadow-none'}`}>
+                                    {scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
-
               </div>
             )
           )}
