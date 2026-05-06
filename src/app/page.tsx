@@ -893,7 +893,7 @@ export default function Dashboard() {
                                                  doc.setFont('helvetica', 'bold');
                                                  doc.text('TOP 3 CONCORRENTES', 16, y + 30);
                                                  competitors.forEach((c: any, idx: number) => {
-                                                     doc.setTextColor(c.isUs ? [...blue] : [...white] as [number,number,number]);
+                                                     doc.setTextColor(...(c.isUs ? blue : white));
                                                      doc.setFont('helvetica', c.isUs ? 'bold' : 'normal');
                                                      doc.setFontSize(8);
                                                      const label = `${idx + 1}. ${c.isUs ? '★ Você' : c.title}`;
