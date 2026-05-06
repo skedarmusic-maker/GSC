@@ -127,22 +127,30 @@ export default function Dashboard() {
   };
 
   const handleAddKeyword = async () => {
-    if (!newKeyword || !data?.maps) return;
+    // Busca dados do Maps do objeto unificado ou do perfil selecionado (para Maps Only)
+    const mapsData = data?.maps || (selectedGbp ? {
+      locationId: selectedGbp.id.replace('locations/', ''),
+      accountId: selectedGbp.accountId,
+      title: selectedGbp.name
+    } : null);
+
+    if (!newKeyword || !mapsData) return;
+    
     setLoadingRank(true);
     try {
       const res = await fetch('/api/rank', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          locationId: data.maps.locationId,
-          accountId: data.maps.accountId,
-          businessName: data.maps.title,
+          locationId: mapsData.locationId,
+          accountId: mapsData.accountId,
+          businessName: mapsData.title,
           keyword: newKeyword
         })
       });
       if (res.ok) {
         setNewKeyword('');
-        fetchRankData(data.maps.locationId);
+        fetchRankData(mapsData.locationId);
       }
     } catch(e) { console.error(e); } finally { setLoadingRank(false); }
   };
