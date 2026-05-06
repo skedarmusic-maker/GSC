@@ -5,7 +5,23 @@ const KEY_FILE_PATH = path.join(process.cwd(), 'acountGSC', 'gsc-insight-engine-
 const SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly'];
 
 export async function getGSCClient() {
-  const auth = new google.auth.GoogleAuth({ keyFile: KEY_FILE_PATH, scopes: SCOPES });
+  let auth;
+  
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    // Autenticação via Variável de Ambiente (Ideal para Vercel)
+    const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: SCOPES
+    });
+  } else {
+    // Autenticação via Arquivo Físico (Local)
+    auth = new google.auth.GoogleAuth({ 
+      keyFile: KEY_FILE_PATH, 
+      scopes: SCOPES 
+    });
+  }
+  
   return google.searchconsole({ version: 'v1', auth });
 }
 

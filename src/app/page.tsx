@@ -48,7 +48,12 @@ export default function Dashboard() {
       try {
         const res = await fetch('/api/sites');
         const d = await res.json();
-        setSites(d);
+        if (Array.isArray(d)) {
+          setSites(d);
+        } else {
+          setSites([]);
+          console.error('API /api/sites não retornou um array:', d);
+        }
       } catch (err) { console.error(err); } finally { setLoading(false); }
     }
     fetchSites();
@@ -785,12 +790,17 @@ export default function Dashboard() {
       <header className="header"><h1 className="title" style={{ fontSize: '2.5rem' }}>GSC Strategy Engine</h1></header>
       {loading ? <div>Carregando ecossistema...</div> : (
         <div className="sites-grid">
-          {sites.map((s) => (
+          {Array.isArray(sites) && sites.length > 0 ? sites.map((s) => (
             <div key={s.siteUrl} className="site-card" onClick={() => handleSelectSite(s.siteUrl)} style={{ cursor: 'pointer' }}>
                 <h3 className="site-name">{getDisplayUrl(s.siteUrl)}</h3>
                 <div className="btn-insight" style={{ marginTop: '20px' }}>Gerar Insights Estratégicos →</div>
             </div>
-          ))}
+          )) : (
+            <div className="site-card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>
+                <p style={{ color: '#888' }}>Nenhum site encontrado ou erro na conexão com a API do Google.</p>
+                <p style={{ fontSize: '0.8rem', color: '#555', marginTop: '10px' }}>Verifique se as credenciais do Google Search Console estão configuradas corretamente na Vercel.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
