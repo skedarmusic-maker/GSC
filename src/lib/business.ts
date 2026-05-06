@@ -45,7 +45,7 @@ export async function listLocations() {
       if (locData.locations) {
         const accountId = account.name.split('/')[1];
         // Filtra apenas locais verificados ou que o usuário tem permissão ativa
-        const verified = locData.locations.filter((l: any) => 
+        const verified = locData.locations.filter((l: any) =>
           l.metadata?.hasVoiceOfMerchant || l.metadata?.canUpdate
         );
 

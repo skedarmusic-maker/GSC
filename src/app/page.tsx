@@ -462,10 +462,10 @@ export default function Dashboard() {
       </div>
 
       {/* SIDEBAR */}
-      <aside className={`${showMobileMenu ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-[270px] bg-[#0a0a0a] border-r border-[#222] shrink-0 sticky top-0 z-40 h-auto lg:h-screen`}>
+      <aside className={`${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0 opacity-0 lg:opacity-100 hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 transition-all duration-300 w-full lg:w-[270px] bg-[#0a0a0a] border-r border-[#222] flex flex-col shrink-0 h-[calc(100vh-60px)] lg:h-screen top-[60px] lg:top-0`}>
         {/* Logo + Seletor de Modo */}
         <div className="p-5 border-b border-[#222]">
-          <h1 className="text-xl font-bold tracking-tighter mb-4" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
+          <h1 className="text-xl font-bold tracking-tighter mb-4 hidden lg:block" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
           <div className="flex bg-[#111] p-1 rounded-lg border border-[#222] gap-1">
             <button
               onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
@@ -491,7 +491,7 @@ export default function Dashboard() {
               value={selectedClient?.id || ''}
               onChange={(e) => {
                 const client = gscSites.find((c:any) => c.id === e.target.value);
-                if (client) handleSelectClient(client);
+                if (client) { handleSelectClient(client); setShowMobileMenu(false); }
                 else { setSelectedClient(null); setData(null); }
               }}
               className="w-full bg-[#111] border border-[#333] text-white text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0070f3] appearance-none cursor-pointer font-medium"
@@ -506,7 +506,7 @@ export default function Dashboard() {
               value={selectedGbp?.id || ''}
               onChange={(e) => {
                 const profile = gbpProfiles.find((p:any) => p.id === e.target.value);
-                if (profile) handleSelectGbpProfile(profile);
+                if (profile) { handleSelectGbpProfile(profile); setShowMobileMenu(false); }
                 else { setSelectedGbp(null); setGbpData(null); }
               }}
               className="w-full bg-[#111] border border-[#333] text-white text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#4285F4] appearance-none cursor-pointer font-medium"
