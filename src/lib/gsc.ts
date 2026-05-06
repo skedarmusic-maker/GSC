@@ -53,3 +53,14 @@ export async function getDetailedInsights(siteUrl: string, daysOrStart: any, pos
     period: { start: startDate, end: endDate }
   };
 }
+
+export async function inspectURL(siteUrl: string, inspectionUrl: string) {
+  const gsc = await getGSCClient();
+  const response = await gsc.urlInspection.index.inspect({
+    requestBody: {
+      inspectionUrl,
+      siteUrl,
+    }
+  });
+  return response.data;
+}
