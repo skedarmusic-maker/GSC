@@ -31,7 +31,14 @@ export async function GET(request: Request) {
     // 2. Processa cada postagem
     for (const post of posts) {
       try {
-        const success = await createLocalPost(post.account_id, post.location_id, post.content);
+        console.log(`Processando postagem agendada ID: ${post.id}`);
+        
+        const success = await createLocalPost(post.account_id, post.location_id, {
+          text: post.content,
+          imageUrl: post.image_url,
+          buttonType: post.button_type,
+          buttonUrl: post.button_url
+        });
         
         if (success) {
           await supabase
@@ -40,7 +47,7 @@ export async function GET(request: Request) {
             .eq('id', post.id);
           results.push({ id: post.id, status: 'success' });
         } else {
-          throw new Error('Erro na API do Google Business');
+          throw new Error('Erro na API do Google Business ao publicar post agendado');
         }
       } catch (err: any) {
         await supabase

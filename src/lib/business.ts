@@ -1,6 +1,6 @@
-// Motor com nomes de métricas oficiais da API v1
+import { supabase } from './supabase';
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken() {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -15,77 +15,82 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-const MY_LOCATIONS = [
-  {
-    id: "12629358229101559118",
-    accountId: "117500726461334844641",
-    title: "Militz Podologia",
-    website: "simonemilitzpodologa.com.br"
-  }
-];
+// === DESCOBERTA AUTOMÁTICA DE LOCAIS ===
+// Agora o sistema busca dinamicamente todos os perfis que você gerencia
 
 export async function listLocations() {
-  return MY_LOCATIONS.map(loc => ({
-    name: `locations/${loc.id}`,
-    accountId: loc.accountId,
-    title: loc.title,
-    websiteUri: `https://${loc.website}`
-  }));
-}
-
-async function fetchSingleMetric(
-  locationName: string,
-  accessToken: string,
-  metric: string,
-  start: Date,
-  end: Date
-): Promise<number> {
-  const params = new URLSearchParams({
-    'dailyMetric': metric,
-    'dailyRange.startDate.year': String(start.getFullYear()),
-    'dailyRange.startDate.month': String(start.getMonth() + 1),
-    'dailyRange.startDate.day': String(start.getDate()),
-    'dailyRange.endDate.year': String(end.getFullYear()),
-    'dailyRange.endDate.month': String(end.getMonth() + 1),
-    'dailyRange.endDate.day': String(end.getDate()),
-  });
-
-  const url = `https://businessprofileperformance.googleapis.com/v1/${locationName}:getDailyMetricsTimeSeries?${params.toString()}`;
-
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: { 'Authorization': `Bearer ${accessToken}` }
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    // Silencia o log de erro se for apenas dado inexistente
-    if (res.status !== 400) {
-      console.error(`❌ Erro Maps [${metric}] (${res.status}):`, errText.substring(0, 200));
-    }
-    return 0;
-  }
-
-  const data = await res.json();
-  const values = data.timeSeries?.datedValues || [];
-  return values.reduce((acc: number, v: any) => acc + (parseInt(v.value) || 0), 0);
-}
-
-export async function getLocationPerformance(locationName: string, days: number = 28) {
   try {
     const accessToken = await getAccessToken();
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days);
 
-    // Nomes oficiais: BUSINESS_CONVERSIONS_CALLS, BUSINESS_CONVERSIONS_DIRECTIONS, BUSINESS_CONVERSIONS_WEBSITE_CLICKS
-    const [calls, directions, websiteClicks] = await Promise.all([
-      fetchSingleMetric(locationName, accessToken, 'BUSINESS_CONVERSIONS_CALLS', start, end),
-      fetchSingleMetric(locationName, accessToken, 'BUSINESS_CONVERSIONS_DIRECTIONS', start, end),
-      fetchSingleMetric(locationName, accessToken, 'BUSINESS_CONVERSIONS_WEBSITE_CLICKS', start, end),
-    ]);
+    // 1. Listar todas as contas de gerenciamento
+    const accountsRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    const accountsData = await accountsRes.json();
 
-    console.log(`✅ Maps OK → Chamadas: ${calls} | Rotas: ${directions} | Cliques: ${websiteClicks}`);
+    if (!accountsData.accounts) return [];
+
+    let allLocations: any[] = [];
+
+    // 2. Para cada conta, buscar os locais (empresas)
+    for (const account of accountsData.accounts) {
+      const locationsRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title,websiteUri`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      const locData = await locationsRes.json();
+
+      if (locData.locations) {
+        const accountId = account.name.split('/')[1];
+        const formatted = locData.locations.map((l: any) => ({
+          ...l,
+          accountId: accountId
+        }));
+        allLocations = [...allLocations, ...formatted];
+      }
+    }
+
+    return allLocations;
+  } catch (error) {
+    console.error('Erro na descoberta automática de locais:', error);
+    return [];
+  }
+}
+
+export async function getLocationPerformance(locationName: string, days: number) {
+  try {
+    const accessToken = await getAccessToken();
+
+    // Configurar datas
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const metrics = [
+      'BUSINESS_CONVERSIONS_CALLS',
+      'BUSINESS_CONVERSIONS_DIRECTIONS',
+      'BUSINESS_CONVERSIONS_WEBSITE_CLICKS'
+    ];
+
+    const fetchSingleMetric = async (metric: string) => {
+      const url = `https://businessprofileperformance.googleapis.com/v1/${locationName}:getDailyMetricsTimeSeries?dailyMetric=${metric}&dailyRange.startDate.year=${startDate.getFullYear()}&dailyRange.startDate.month=${startDate.getMonth() + 1}&dailyRange.startDate.day=${startDate.getDate()}&dailyRange.endDate.year=${endDate.getFullYear()}&dailyRange.endDate.month=${endDate.getMonth() + 1}&dailyRange.endDate.day=${endDate.getDate()}`;
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+
+      let total = 0;
+      if (data.timeSeries && data.timeSeries.datedValues) {
+        data.timeSeries.datedValues.forEach((v: any) => {
+          total += parseInt(v.value || '0');
+        });
+      }
+      return total;
+    };
+
+    const [calls, directions, websiteClicks] = await Promise.all(
+      metrics.map(m => fetchSingleMetric(m))
+    );
 
     return { calls, directions, websiteClicks };
   } catch (error) {
@@ -96,31 +101,34 @@ export async function getLocationPerformance(locationName: string, days: number 
 
 // === NOVAS FUNÇÕES: GESTÃO DO PERFIL ===
 
-// 1. Buscar Avaliações
 export async function getReviews(accountId: string, locationId: string) {
   try {
     const accessToken = await getAccessToken();
-    // A API v4 exige o caminho completo: accounts/{accountId}/locations/{locationId}/reviews
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
 
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
     if (!res.ok) {
-      console.error('Erro ao buscar reviews:', await res.text());
-      return null;
+      const errorText = await res.text();
+      console.error('Erro ao buscar reviews:', errorText);
+      // Tenta extrair a mensagem de erro do JSON se possível
+      try {
+        const errorObj = JSON.parse(errorText);
+        return { error: errorObj.error.message };
+      } catch {
+        return { error: 'Falha desconhecida na API do Google' };
+      }
     }
     const data = await res.json();
     return data.reviews || [];
   } catch (error) {
     console.error(error);
-    return null;
+    return { error: 'Erro de conexão' };
   }
 }
 
-// 2. Responder a uma Avaliação
 export async function replyToReview(reviewName: string, replyText: string) {
   try {
     const accessToken = await getAccessToken();
-    // reviewName já vem no formato 'accounts/*/locations/*/reviews/*'
     const url = `https://mybusiness.googleapis.com/v4/${reviewName}/reply`;
 
     const res = await fetch(url, {
@@ -132,10 +140,7 @@ export async function replyToReview(reviewName: string, replyText: string) {
       body: JSON.stringify({ comment: replyText })
     });
 
-    if (!res.ok) {
-      console.error('Erro ao responder review:', await res.text());
-      return false;
-    }
+    if (!res.ok) return false;
     return true;
   } catch (error) {
     console.error(error);
@@ -143,11 +148,34 @@ export async function replyToReview(reviewName: string, replyText: string) {
   }
 }
 
-// 3. Criar Postagem (Update)
-export async function createLocalPost(accountId: string, locationId: string, postText: string) {
+export async function createLocalPost(accountId: string, locationId: string, postData: { text: string, imageUrl?: string, buttonType?: string, buttonUrl?: string }) {
   try {
     const accessToken = await getAccessToken();
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/localPosts`;
+
+    const body: any = {
+      languageCode: 'pt-BR',
+      summary: postData.text,
+      topicType: 'STANDARD'
+    };
+
+    // Adicionar Imagem se existir
+    if (postData.imageUrl) {
+      body.media = [
+        {
+          mediaFormat: 'PHOTO',
+          sourceUrl: postData.imageUrl
+        }
+      ];
+    }
+
+    // Adicionar Botão se existir
+    if (postData.buttonType && postData.buttonType !== 'NONE') {
+      body.callToAction = {
+        actionType: postData.buttonType,
+        url: postData.buttonUrl || ''
+      };
+    }
 
     const res = await fetch(url, {
       method: 'POST',
@@ -155,21 +183,42 @@ export async function createLocalPost(accountId: string, locationId: string, pos
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        languageCode: 'pt-BR',
-        summary: postText,
-        state: 'PUBLISHED',
-        topicType: 'STANDARD'
-      })
+      body: JSON.stringify(body)
     });
 
+    const resData = await res.json();
+
     if (!res.ok) {
-      console.error('Erro ao criar post:', await res.text());
+      console.error('Erro na API do Google:', resData);
       return false;
     }
+
+    console.log('Resposta do Google:', resData);
     return true;
   } catch (error) {
     console.error(error);
     return false;
+  }
+}
+
+export async function getLocationDetails(locationName: string) {
+  try {
+    const accessToken = await getAccessToken();
+    // readMask=* to get all available details for the audit
+    const url = `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}?readMask=*`;
+
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    if (!res.ok) {
+      console.error('Erro ao buscar detalhes do local:', await res.text());
+      return null;
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error('Erro em getLocationDetails:', error);
+    return null;
   }
 }

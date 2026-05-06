@@ -30,7 +30,12 @@ async function checkAndPublish() {
     try {
       console.log(`Publicando no Google Maps: "${post.content.substring(0, 30)}..."`);
       
-      const success = await createLocalPost(post.account_id, post.location_id, post.content);
+      const success = await createLocalPost(post.account_id, post.location_id, {
+        text: post.content,
+        imageUrl: post.image_url,
+        buttonType: post.button_type,
+        buttonUrl: post.button_url
+      });
 
       if (success) {
         await supabase

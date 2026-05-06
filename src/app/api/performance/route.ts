@@ -14,13 +14,15 @@ export async function POST(request: Request) {
     try {
       const locations = await listLocations();
       
-      // Limpa a URL do site para comparação (remove https:// e barras)
-      const cleanUrl = siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+      // Limpa a URL do site para comparação profunda
+      const cleanUrl = siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
       
       const myLocation = locations.find((l: any) => {
         if (!l.websiteUri) return false;
-        const cleanLocUrl = l.websiteUri.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
-        return cleanLocUrl.includes(cleanUrl) || cleanUrl.includes(cleanLocUrl);
+        const cleanLocUrl = l.websiteUri.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
+        
+        // Match exato do domínio raiz (ex: paganicustomfloripa.com.br == paganicustomfloripa.com.br)
+        return cleanLocUrl === cleanUrl || cleanLocUrl.includes(cleanUrl) || cleanUrl.includes(cleanLocUrl);
       });
       
       if (myLocation) {

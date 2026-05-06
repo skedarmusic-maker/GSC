@@ -14,10 +14,29 @@ export default function Dashboard() {
   // Estado para Gestão do Perfil Local
   const [localReviews, setLocalReviews] = useState<any[]>([]);
   const [loadingLocal, setLoadingLocal] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
+  const [generatingAI, setGeneratingAI] = useState<{ [key: string]: boolean }>({});
   const [postText, setPostText] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [buttonType, setButtonType] = useState('LEARN_MORE');
+  const [buttonUrl, setButtonUrl] = useState(''); 
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
+  
+  // Estado para Auditoria de Perfil
+  const [auditData, setAuditData] = useState<any>(null);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  
+  // Estado para Rank Tracking
+  const [trackedKeywords, setTrackedKeywords] = useState<any[]>([]);
+  const [newKeyword, setNewKeyword] = useState('');
+  const [loadingRank, setLoadingRank] = useState(false);
+  
+  // Estado para Análise de Concorrentes
+  const [competitorData, setCompetitorData] = useState<{ [key: string]: any }>({});
+  const [loadingComp, setLoadingComp] = useState<{ [key: string]: boolean }>({});
   
   // Controle de Datas Avançado
   const [days, setDays] = useState(28);
@@ -37,6 +56,7 @@ export default function Dashboard() {
 
   const fetchLocalProfile = async (accountId: string, locationId: string) => {
     setLoadingLocal(true);
+    setLocalError(null);
     try {
       const res = await fetch('/api/reviews', {
         method: 'POST',
@@ -44,8 +64,15 @@ export default function Dashboard() {
         body: JSON.stringify({ accountId, locationId })
       });
       const data = await res.json();
-      if (!data.error) setLocalReviews(data);
-    } catch(e) { console.error(e); } finally { setLoadingLocal(false); }
+      if (data.error) {
+        setLocalError(data.error);
+      } else {
+        setLocalReviews(data);
+      }
+    } catch(e: any) { 
+        setLocalError('Falha na conexão com a API local');
+        console.error(e); 
+    } finally { setLoadingLocal(false); }
   };
 
   const fetchScheduledPosts = async (locationId: string) => {
@@ -57,6 +84,71 @@ export default function Dashboard() {
       .order('scheduled_for', { ascending: true });
     
     if (!error) setScheduledPosts(posts || []);
+  };
+
+  const fetchAudit = async (accountId: string, locationId: string) => {
+    setLoadingAudit(true);
+    try {
+      const res = await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId, locationId })
+      });
+      const data = await res.json();
+      if (!data.error) setAuditData(data);
+    } catch(e) { console.error(e); } finally { setLoadingAudit(false); }
+  };
+
+  const fetchRankData = async (locationId: string) => {
+    try {
+      const res = await fetch(`/api/rank?locationId=${locationId}`);
+      const data = await res.json();
+      if (!data.error) setTrackedKeywords(data);
+    } catch(e) { console.error(e); }
+  };
+
+  const handleAddKeyword = async () => {
+    if (!newKeyword || !data?.maps) return;
+    setLoadingRank(true);
+    try {
+      const res = await fetch('/api/rank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationId: data.maps.locationId,
+          accountId: data.maps.accountId,
+          businessName: data.maps.title,
+          keyword: newKeyword
+        })
+      });
+      if (res.ok) {
+        setNewKeyword('');
+        fetchRankData(data.maps.locationId);
+      }
+    } catch(e) { console.error(e); } finally { setLoadingRank(false); }
+  };
+
+  const fetchCompetitors = async (keyword: string) => {
+    if (!data?.maps) return;
+    setLoadingComp(prev => ({ ...prev, [keyword]: true }));
+    try {
+      const res = await fetch('/api/competitors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locationId: data.maps.locationId,
+          accountId: data.maps.accountId,
+          businessName: data.maps.title,
+          keyword: keyword
+        })
+      });
+      const resData = await res.json();
+      if (!resData.error) {
+        setCompetitorData(prev => ({ ...prev, [keyword]: resData.competitors }));
+      }
+    } catch(e) { console.error(e); } finally {
+      setLoadingComp(prev => ({ ...prev, [keyword]: false }));
+    }
   };
 
   const fetchData = async (url: string, period: any) => {
@@ -79,8 +171,34 @@ export default function Dashboard() {
       if (d.maps && d.maps.accountId && d.maps.locationId) {
         fetchLocalProfile(d.maps.accountId, d.maps.locationId);
         fetchScheduledPosts(d.maps.locationId);
+        fetchAudit(d.maps.accountId, d.maps.locationId);
+        fetchRankData(d.maps.locationId);
       }
     } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
+  };
+
+  const handleGenerateAI = async (review: any) => {
+    setGeneratingAI(prev => ({ ...prev, [review.name]: true }));
+    try {
+      const res = await fetch('/api/ai/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reviewText: review.comment,
+          reviewerName: review.reviewer.displayName,
+          rating: review.starRating,
+          businessName: data?.maps?.title || 'nossa empresa'
+        })
+      });
+      const result = await res.json();
+      if (result.reply) {
+        setReplyText(prev => ({ ...prev, [review.name]: result.reply }));
+      }
+    } catch (e) {
+      alert('Erro ao gerar resposta com IA.');
+    } finally {
+      setGeneratingAI(prev => ({ ...prev, [review.name]: false }));
+    }
   };
 
   const handleReply = async (reviewName: string) => {
@@ -100,15 +218,52 @@ export default function Dashboard() {
     } catch(e) { alert('Erro ao responder a avaliação.'); }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `posts/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('post_image')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('post_image').getPublicUrl(filePath);
+      setImageUrl(data.publicUrl);
+    } catch (error: any) {
+      alert('Erro ao fazer upload da imagem: ' + (error.message || 'Desconhecido'));
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handlePost = async () => {
     if (!postText || !data?.maps) return;
 
     try {
+      const payload = {
+        accountId: data.maps.accountId,
+        locationId: data.maps.locationId,
+        postText,
+        imageUrl,
+        buttonType,
+        buttonUrl
+      };
+
       // Se tiver data agendada, salva no Supabase
       if (scheduledDate) {
         const { error } = await supabase.from('scheduled_posts').insert([{
           scheduled_for: new Date(scheduledDate).toISOString(),
           content: postText,
+          image_url: imageUrl,
+          button_type: buttonType,
+          button_url: buttonUrl,
           location_id: data.maps.locationId,
           account_id: data.maps.accountId,
           status: 'pending'
@@ -123,13 +278,16 @@ export default function Dashboard() {
         const res = await fetch('/api/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountId: data.maps.accountId, locationId: data.maps.locationId, postText })
+          body: JSON.stringify(payload)
         });
         const resData = await res.json();
         if (resData.error) throw new Error(resData.error);
         alert('Postagem enviada com sucesso ao Google Maps!');
       }
       setPostText('');
+      setImageUrl('');
+      setButtonType('LEARN_MORE');
+      // Mantém o link do Whats atual da empresa selecionada
     } catch(e: any) { 
       alert('Erro na postagem: ' + (e.message || 'Erro desconhecido')); 
     }
@@ -310,34 +468,127 @@ export default function Dashboard() {
              )}
 
              {/* ABA: PERFIL LOCAL (Google Business Profile) */}
-             {activeTab === 'perfil local' && data.maps && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }} className="animate-fade-in">
+             {activeTab === 'perfil local' && (
+                 data.maps ? (
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }} className="animate-fade-in">
                     
-                    {/* Criar Postagem */}
+                    {/* AUDITORIA DE PERFIL */}
+                    {loadingAudit ? (
+                        <div className="site-card" style={{ padding: '30px', textAlign: 'center' }}>
+                            <p style={{ color: '#888' }} className="animate-pulse">Gerando Auditoria de Perfil (Checklist SEO)...</p>
+                        </div>
+                    ) : auditData && !auditData.error && (
+                        <div className="site-card" style={{ padding: '25px', display: 'flex', gap: '30px', alignItems: 'center', background: `linear-gradient(to right, ${auditData.color}15, transparent)` }}>
+                            <div style={{ textAlign: 'center', minWidth: '150px' }}>
+                                <h3 style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', color: '#888', marginBottom: '5px' }}>Health Score</h3>
+                                <div style={{ fontSize: '3.5rem', fontWeight: 'bold', color: auditData.color, lineHeight: '1' }}>{auditData.score}</div>
+                                <p style={{ color: auditData.color, fontWeight: 'bold', fontSize: '0.9rem', marginTop: '5px' }}>{auditData.grade}</p>
+                            </div>
+                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '30px' }}>
+                                {auditData.checklist.map((item: any, i: number) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                        <div style={{ fontSize: '1.2rem', marginTop: '-2px' }}>
+                                            {item.passed ? '✅' : '❌'}
+                                        </div>
+                                        <div>
+                                            <p style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#fff' }}>{item.name}</p>
+                                            <p style={{ fontSize: '0.8rem', color: item.passed ? '#aaa' : '#ff4444', marginTop: '3px' }}>{item.value}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {/* Criar Postagem Estilo Google */}
                     <div className="site-card" style={{ padding: '25px', background: '#0a0a0a' }}>
-                        <h3 style={{ fontSize: '1.2rem', marginBottom: '15px', color: '#fff' }}>Criar Nova Postagem (Update)</h3>
-                        <p style={{ color: '#888', marginBottom: '15px', fontSize: '0.9rem' }}>Publique novidades, ofertas ou atualizações diretamente no Google Maps da empresa.</p>
-                        <textarea 
-                            value={postText}
-                            onChange={(e) => setPostText(e.target.value)}
-                            placeholder="Ex: Estamos com uma promoção especial de Dia das Mães na Podologia! Agende seu horário..."
-                            style={{ width: '100%', minHeight: '100px', background: '#111', border: '1px solid #333', color: '#fff', padding: '15px', borderRadius: '8px', marginBottom: '15px', fontFamily: 'inherit' }}
-                        />
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                            <div style={{ padding: '5px 15px', borderRadius: '20px', background: '#0070f320', color: '#0070f3', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid #0070f340' }}>✓ Atualização</div>
+                            <div style={{ padding: '5px 15px', borderRadius: '20px', background: 'transparent', color: '#666', fontSize: '0.85rem', border: '1px solid #222' }}>Oferta</div>
+                            <div style={{ padding: '5px 15px', borderRadius: '20px', background: 'transparent', color: '#666', fontSize: '0.85rem', border: '1px solid #222' }}>Evento</div>
+                        </div>
 
-                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                            <div>
+                                <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>Descrição da Postagem</p>
+                                <textarea 
+                                    value={postText}
+                                    onChange={(e) => setPostText(e.target.value)}
+                                    placeholder="Escreva o que há de novo na empresa..."
+                                    style={{ width: '100%', minHeight: '150px', background: '#111', border: '1px solid #333', color: '#fff', padding: '15px', borderRadius: '8px', fontFamily: 'inherit' }}
+                                />
+                                <p style={{ textAlign: 'right', fontSize: '0.75rem', color: '#444', marginTop: '5px' }}>{postText.length}/1.500</p>
+                            </div>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div>
+                                    <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>Imagem da Postagem</p>
+                                    <div style={{ border: '2px dashed #333', borderRadius: '8px', padding: '20px', textAlign: 'center', background: imageUrl ? `url(${imageUrl}) center/cover` : '#111', height: '150px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                        {!imageUrl && !uploadingImage && (
+                                            <>
+                                                <span style={{ fontSize: '2rem', marginBottom: '10px' }}>📸</span>
+                                                <p style={{ color: '#555', fontSize: '0.85rem' }}>Clique para enviar uma foto</p>
+                                            </>
+                                        )}
+                                        {uploadingImage && <p style={{ color: '#0070f3', fontSize: '0.9rem', fontWeight: 'bold' }} className="animate-pulse">Enviando imagem...</p>}
+                                        
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                            disabled={uploadingImage}
+                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: uploadingImage ? 'not-allowed' : 'pointer' }}
+                                        />
+                                        {imageUrl && (
+                                             <button 
+                                                onClick={(e) => { e.preventDefault(); setImageUrl(''); }}
+                                                style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', zIndex: 10 }}
+                                            >✕</button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>Botão de Ação (Opcional)</p>
+                                    <select 
+                                        value={buttonType}
+                                        onChange={(e) => setButtonType(e.target.value)}
+                                        style={{ width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px', marginBottom: buttonType !== 'NONE' ? '10px' : '0' }}
+                                    >
+                                        <option value="NONE">Nenhum</option>
+                                        <option value="BOOK">Reservar</option>
+                                        <option value="ORDER">Fazer o pedido</option>
+                                        <option value="SHOP">Comprar</option>
+                                        <option value="LEARN_MORE">Saiba mais</option>
+                                        <option value="SIGN_UP">Inscrever-se</option>
+                                        <option value="CALL">Ligar agora</option>
+                                    </select>
+                                    {buttonType !== 'NONE' && buttonType !== 'CALL' && (
+                                        <input 
+                                            type="text" 
+                                            value={buttonUrl}
+                                            onChange={(e) => setButtonUrl(e.target.value)}
+                                            placeholder="URL do link (ex: https://site.com)"
+                                            style={{ width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px solid #222', paddingTop: '20px' }}>
                             <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>Agendar para (opcional):</p>
+                                <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>Programar esta postagem:</p>
                                 <input 
                                     type="datetime-local" 
                                     value={scheduledDate}
                                     onChange={(e) => setScheduledDate(e.target.value)}
-                                    style={{ width: '100%', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
+                                    style={{ width: '100%', maxWidth: '250px', background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px' }}
                                 />
                             </div>
                             <button 
                                 onClick={handlePost}
                                 disabled={!postText}
-                                style={{ alignSelf: 'flex-end', background: postText ? (scheduledDate ? '#ffbb00' : '#0070f3') : '#333', color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '8px', cursor: postText ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
+                                style={{ alignSelf: 'flex-end', background: postText ? (scheduledDate ? '#ffbb00' : '#0070f3') : '#333', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '8px', cursor: postText ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
                             >
                                 {scheduledDate ? 'Agendar Postagem' : 'Publicar Agora'}
                             </button>
@@ -362,7 +613,17 @@ export default function Dashboard() {
                     {/* Avaliações */}
                     <div className="site-card" style={{ padding: '25px' }}>
                         <h3 style={{ fontSize: '1.2rem', marginBottom: '20px' }}>Últimas Avaliações</h3>
-                        {loadingLocal ? <p style={{ color: '#888' }}>Buscando avaliações...</p> : localReviews.length === 0 ? <p style={{ color: '#888' }}>Nenhuma avaliação encontrada ou ID da conta ausente.</p> : (
+                        
+                        {loadingLocal ? (
+                            <p style={{ color: '#888' }} className="animate-pulse">Buscando avaliações no Google Maps...</p>
+                        ) : localError ? (
+                            <div style={{ padding: '15px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.2)', borderRadius: '8px' }}>
+                                <p style={{ color: '#ff4444', fontSize: '0.9rem' }}>⚠️ Erro do Google: {localError}</p>
+                                <p style={{ color: '#888', fontSize: '0.8rem', marginTop: '5px' }}>Se você acabou de ativar a API, aguarde 5 minutos e atualize a página.</p>
+                            </div>
+                        ) : !Array.isArray(localReviews) || localReviews.length === 0 ? (
+                            <p style={{ color: '#888' }}>Nenhuma avaliação encontrada para este local.</p>
+                        ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 {localReviews.map((review: any, i: number) => {
                                     const ratingNum = review.starRating === 'FIVE' ? 5 : review.starRating === 'FOUR' ? 4 : review.starRating === 'THREE' ? 3 : review.starRating === 'TWO' ? 2 : 1;
@@ -383,20 +644,29 @@ export default function Dashboard() {
                                                     <p style={{ color: '#aaa', fontSize: '0.9rem' }}>{review.reviewReply.comment}</p>
                                                 </div>
                                             ) : (
-                                                <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <input 
-                                                        type="text" 
-                                                        value={replyText[review.name] || ''}
-                                                        onChange={(e) => setReplyText({...replyText, [review.name]: e.target.value})}
-                                                        placeholder="Digite sua resposta..."
-                                                        style={{ flex: 1, background: '#111', border: '1px solid #333', color: '#fff', padding: '10px 15px', borderRadius: '8px' }}
-                                                    />
+                                                <div>
+                                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                                        <textarea 
+                                                            value={replyText[review.name] || ''}
+                                                            onChange={(e) => setReplyText({...replyText, [review.name]: e.target.value})}
+                                                            placeholder="Digite sua resposta ou use a IA..."
+                                                            style={{ flex: 1, background: '#111', border: '1px solid #333', color: '#fff', padding: '10px 15px', borderRadius: '8px', minHeight: '80px', fontFamily: 'inherit' }}
+                                                        />
+                                                        <button 
+                                                            onClick={() => handleGenerateAI(review)}
+                                                            disabled={generatingAI[review.name]}
+                                                            title="Gerar resposta com IA"
+                                                            style={{ background: 'linear-gradient(135deg, #6e8efb, #a777e3)', border: 'none', color: '#fff', borderRadius: '8px', padding: '0 15px', cursor: 'pointer', transition: 'all 0.3s' }}
+                                                        >
+                                                            {generatingAI[review.name] ? '⏳' : '✨'}
+                                                        </button>
+                                                    </div>
                                                     <button 
                                                         onClick={() => handleReply(review.name)}
                                                         disabled={!replyText[review.name]}
-                                                        style={{ background: replyText[review.name] ? '#0070f3' : '#333', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: replyText[review.name] ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
+                                                        style={{ width: '100%', background: replyText[review.name] ? '#0070f3' : '#333', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: replyText[review.name] ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
                                                     >
-                                                        Responder
+                                                        Enviar Resposta ao Google Maps
                                                     </button>
                                                 </div>
                                             )}
@@ -407,7 +677,102 @@ export default function Dashboard() {
                         )}
                     </div>
 
+                    {/* MONITORAMENTO DE RANKING (Local Rank Tracking) */}
+                    <div className="site-card" style={{ padding: '25px', background: '#0a0a0a' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ fontSize: '1.2rem' }}>📈 Local Rank Tracking (SerpApi)</h3>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <input 
+                                    type="text" 
+                                    value={newKeyword}
+                                    onChange={(e) => setNewKeyword(e.target.value)}
+                                    placeholder="Palavra-chave (ex: estética automotiva)"
+                                    style={{ background: '#111', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '8px', minWidth: '250px' }}
+                                />
+                                <button 
+                                    onClick={handleAddKeyword}
+                                    disabled={loadingRank || !newKeyword}
+                                    style={{ background: '#0070f3', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                                >
+                                    {loadingRank ? '⏳' : 'Monitorar'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {trackedKeywords.length === 0 ? (
+                            <p style={{ color: '#888', textAlign: 'center', padding: '20px' }}>Nenhuma palavra-chave monitorada. Adicione uma acima para começar!</p>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
+                                {trackedKeywords.map((kw: any, i: number) => {
+                                    const lastPos = kw.rank_history?.[0]?.position || 99;
+                                    const color = lastPos <= 3 ? '#00ff00' : lastPos <= 10 ? '#ffbb00' : '#ff4444';
+                                    return (
+                                        <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #222', borderRadius: '12px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '5px' }}>Palavra-chave</p>
+                                                    <p style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{kw.keyword}</p>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: color }}>
+                                                        {lastPos === 99 ? '20+' : `#${lastPos}`}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {!competitorData[kw.keyword] ? (
+                                                <button 
+                                                    onClick={() => fetchCompetitors(kw.keyword)}
+                                                    disabled={loadingComp[kw.keyword]}
+                                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid #333', color: '#ccc', padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+                                                >
+                                                    {loadingComp[kw.keyword] ? '🔍 Analisando líderes...' : '🔍 Analisar Concorrência'}
+                                                </button>
+                                            ) : (
+                                                <div style={{ background: '#000', borderRadius: '8px', padding: '10px', fontSize: '0.85rem' }}>
+                                                    <p style={{ color: '#888', marginBottom: '10px', fontSize: '0.75rem', textTransform: 'uppercase' }}>Benchmark de Concorrentes</p>
+                                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                        <thead>
+                                                            <tr style={{ color: '#555', textAlign: 'left', fontSize: '0.7rem' }}>
+                                                                <th style={{ paddingBottom: '5px' }}>Empresa</th>
+                                                                <th style={{ paddingBottom: '5px' }}>Reviews</th>
+                                                                <th style={{ paddingBottom: '5px' }}>Nota</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {competitorData[kw.keyword].map((c: any, idx: number) => (
+                                                                <tr key={idx} style={{ borderTop: '1px solid #111', color: c.isUs ? '#0070f3' : '#eee' }}>
+                                                                    <td style={{ padding: '8px 0', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                        {c.isUs ? '⭐ Você' : c.title}
+                                                                    </td>
+                                                                    <td>{c.reviews}</td>
+                                                                    <td>{c.rating}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
                 </div>
+                 ) : (
+                    <div className="site-card" style={{ padding: '40px 20px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🏪</div>
+                        <h3 style={{ fontSize: '1.4rem', marginBottom: '10px' }}>Perfil do Google Maps não encontrado</h3>
+                        <p style={{ color: '#888', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
+                            O sistema não encontrou nenhum Perfil de Empresa do Google (Google My Business) que tenha o site <strong>{getDisplayUrl(selectedSite)}</strong> cadastrado como site principal.
+                        </p>
+                        <p style={{ color: '#555', fontSize: '0.9rem', marginTop: '15px' }}>
+                            Para que esta aba funcione, vá ao seu painel do Google Maps e garanta que o campo "Site" esteja preenchido exatamente com esta URL.
+                        </p>
+                    </div>
+                 )
              )}
           </div>
         )}

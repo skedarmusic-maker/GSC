@@ -3,13 +3,18 @@ import { createLocalPost } from '@/lib/business';
 
 export async function POST(req: Request) {
   try {
-    const { accountId, locationId, postText } = await req.json();
+    const { accountId, locationId, postText, imageUrl, buttonType, buttonUrl } = await req.json();
 
     if (!accountId || !locationId || !postText) {
       return NextResponse.json({ error: 'accountId, locationId e postText são obrigatórios' }, { status: 400 });
     }
 
-    const success = await createLocalPost(accountId, locationId, postText);
+    const success = await createLocalPost(accountId, locationId, {
+        text: postText,
+        imageUrl,
+        buttonType,
+        buttonUrl
+    });
     
     if (!success) {
       return NextResponse.json({ error: 'Falha ao criar postagem no Google' }, { status: 500 });
