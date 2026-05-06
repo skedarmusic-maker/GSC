@@ -668,11 +668,44 @@ export default function Dashboard() {
                        {/* ======================================================== */}
                        
                        {!data.maps && activeTab.startsWith('gbp-') ? (
-                           <div className="flex flex-col items-center justify-center p-24 text-center bg-[#0a0a0a] border border-[#222] rounded-2xl animate-fade-in shadow-2xl">
-                               <div className="text-6xl mb-6">📍</div>
-                               <h3 className="text-3xl font-bold mb-3 text-[#4285F4]">Perfil Google Não Encontrado</h3>
-                               <p className="text-gray-400 max-w-md mx-auto leading-relaxed">Não encontramos um Perfil de Empresa do Google vinculado a esta conta ou a URL cadastrada no mapa difere do Search Console.</p>
-                           </div>
+                            <div className="flex flex-col items-center justify-center p-16 text-center bg-[#0a0a0a] border border-[#222] rounded-2xl animate-fade-in shadow-2xl">
+                                <div className="text-6xl mb-6">📍</div>
+                                <h3 className="text-2xl font-bold mb-3 text-[#4285F4]">Vincular Perfil do Google Maps</h3>
+                                <p className="text-gray-400 max-w-md mx-auto leading-relaxed mb-8">
+                                  Nenhum perfil foi vinculado automaticamente a este cliente. Selecione manualmente o perfil do Google Maps correspondente na lista abaixo:
+                                </p>
+                                <div className="w-full max-w-md">
+                                  <select
+                                    onChange={(e) => {
+                                      const loc = sites.find((s:any) => s.id === e.target.value);
+                                      if (loc && loc.gbpData) {
+                                        const accountId = loc.gbpData.accountId;
+                                        const locationId = loc.gbpData.name?.replace('locations/', '');
+                                        const mapsData = {
+                                          title: loc.gbpData.title,
+                                          accountId,
+                                          locationId,
+                                          metrics: { calls: 0, directions: 0, websiteClicks: 0 }
+                                        };
+                                        setData((prev: any) => ({ ...prev, maps: mapsData }));
+                                        if (accountId && locationId) {
+                                          fetchLocalProfile(accountId, locationId);
+                                          fetchScheduledPosts(locationId);
+                                          fetchAudit(accountId, locationId);
+                                          fetchRankData(locationId);
+                                        }
+                                      }
+                                    }}
+                                    defaultValue=""
+                                    className="w-full bg-[#111] border border-[#333] text-white text-sm rounded-xl px-4 py-4 focus:outline-none focus:border-[#4285F4] appearance-none cursor-pointer font-medium"
+                                  >
+                                    <option value="">📍 Selecionar perfil do Google Maps...</option>
+                                    {sites.filter((s:any) => s.gbpData).map((s:any) => (
+                                      <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                            </div>
                        ) : data.maps && (
                            <>
                                {/* ---------------- GBP DASHBOARD ---------------- */}
