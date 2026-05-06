@@ -29,6 +29,11 @@ export async function listLocations() {
       cache: 'no-store'
     });
     const accountsData = await accountsRes.json();
+    
+    console.log('DEBUG VERCEL - Contas encontradas:', accountsData.accounts?.length || 0);
+    if (accountsData.error) {
+      console.error('DEBUG VERCEL - Erro na API de Contas:', accountsData.error);
+    }
 
     if (!accountsData.accounts) return [];
 
@@ -41,6 +46,7 @@ export async function listLocations() {
         cache: 'no-store'
       });
       const locData = await locationsRes.json();
+      console.log(`DEBUG VERCEL - Locais na conta ${account.name}:`, locData.locations?.length || 0);
 
       if (locData.locations) {
         const accountId = account.name.split('/')[1];
