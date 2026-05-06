@@ -51,7 +51,51 @@ export async function POST(req: Request) {
     }
 
     // 3. Montar a Análise de Saúde (Health Check)
+    const checks = [
+      {
+        id: 'reviews_count',
+        name: 'Quantidade de Avaliações',
+        description: `O negócio possui ${business.reviews || 0} avaliações. A média do segmento é ${avgReviews}.`,
+        status: (business.reviews || 0) >= avgReviews ? 'Bom' : (business.reviews || 0) > 0 ? 'Razoável' : 'Fraco',
+        passed: (business.reviews || 0) >= avgReviews
+      },
+      {
+        id: 'rating_avg',
+        name: 'Média de Avaliações',
+        description: `A nota atual é ${business.rating || 0}. A média do segmento é ${avgRating}.`,
+        status: (business.rating || 0) >= 4.5 ? 'Bom' : (business.rating || 0) >= 4.0 ? 'Razoável' : 'Fraco',
+        passed: (business.rating || 0) >= 4.5
+      },
+      {
+        id: 'phone',
+        name: 'Número de Telefone',
+        description: 'O número de telefone é uma das informações chave para o seu negócio.',
+        status: business.phone ? 'Bom' : 'Fraco',
+        passed: !!business.phone
+      },
+      {
+        id: 'website',
+        name: 'Website',
+        description: 'Ter um website transmite credibilidade.',
+        status: business.website ? 'Bom' : 'Fraco',
+        passed: !!business.website
+      },
+      {
+        id: 'hours',
+        name: 'Horário de Funcionamento',
+        description: 'É uma informação chave para que os clientes saibam quando visitá-lo.',
+        status: business.operating_hours ? 'Bom' : 'Fraco',
+        passed: !!business.operating_hours
+      }
+    ];
+
+    // Calcular o Score final (0 a 100) antes de montar o objeto
+    const passedCount = checks.filter((c: any) => c.status === 'Bom').length;
+    const partialCount = checks.filter((c: any) => c.status === 'Razoável').length;
+    const score = Math.min(Math.round((passedCount * 20) + (partialCount * 10)), 100);
+
     const audit = {
+      score,
       target: {
         name: business.title,
         address: business.address,
@@ -66,50 +110,8 @@ export async function POST(req: Request) {
         avgRating,
         top10: competitors
       },
-      checks: [
-        {
-          id: 'reviews_count',
-          name: 'Quantidade de Avaliações',
-          description: `O negócio possui ${business.reviews || 0} avaliações. A média do segmento é ${avgReviews}.`,
-          status: (business.reviews || 0) >= avgReviews ? 'Bom' : (business.reviews || 0) > 0 ? 'Razoável' : 'Fraco',
-          passed: (business.reviews || 0) >= avgReviews
-        },
-        {
-          id: 'rating_avg',
-          name: 'Média de Avaliações',
-          description: `A nota atual é ${business.rating || 0}. A média do segmento é ${avgRating}.`,
-          status: (business.rating || 0) >= 4.5 ? 'Bom' : (business.rating || 0) >= 4.0 ? 'Razoável' : 'Fraco',
-          passed: (business.rating || 0) >= 4.5
-        },
-        {
-          id: 'phone',
-          name: 'Número de Telefone',
-          description: 'O número de telefone é uma das informações chave para o seu negócio.',
-          status: business.phone ? 'Bom' : 'Fraco',
-          passed: !!business.phone
-        },
-        {
-          id: 'website',
-          name: 'Website',
-          description: 'Ter um website transmite credibilidade.',
-          status: business.website ? 'Bom' : 'Fraco',
-          passed: !!business.website
-        },
-        {
-          id: 'hours',
-          name: 'Horário de Funcionamento',
-          description: 'É uma informação chave para que os clientes saibam quando visitá-lo.',
-          status: business.operating_hours ? 'Bom' : 'Fraco',
-          passed: !!business.operating_hours
-        }
-      ]
+      checks
     };
-
-    // Calcular o Score final (0 a 100)
-    let passedCount = audit.checks.filter(c => c.status === 'Bom').length;
-    let partialCount = audit.checks.filter(c => c.status === 'Razoável').length;
-    audit.score = Math.round(((passedCount * 20) + (partialCount * 10)));
-    if (audit.score > 100) audit.score = 100;
 
     return NextResponse.json(audit);
 
