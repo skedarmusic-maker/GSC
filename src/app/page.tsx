@@ -346,10 +346,8 @@ export default function Dashboard() {
     }
   };
 
-  const handleSelectSite = (url: string) => {
-    setSelectedSite(url);
-    fetchData(url, days);
-  };
+
+
 
   // Funções de Inteligência (Insights)
   const getStrategicInsights = () => {
