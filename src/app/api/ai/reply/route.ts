@@ -24,8 +24,8 @@ export async function POST(req: Request) {
       Gere apenas o texto da resposta, sem introduções ou explicações.
     `;
 
-    // Usando a configuração EXATA que funciona no seu projeto da Samsung
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    // Usando o modelo Pro que é o mais estável para geração de texto
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
