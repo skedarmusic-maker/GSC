@@ -36,7 +36,7 @@ export async function listLocations() {
 
     // 2. Para cada conta, buscar os locais (empresas)
     for (const account of accountsData.accounts) {
-      const locationsRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title,websiteUri,metadata`, {
+      const locationsRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title,websiteUri,metadata,storefrontAddress`, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
         cache: 'no-store'
       });

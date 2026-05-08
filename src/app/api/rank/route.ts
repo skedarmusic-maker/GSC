@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { locationId, businessName, keyword, accountId } = await req.json();
+    const { locationId, businessName, keyword, accountId, zoom } = await req.json();
 
     // 1. Salvar a palavra-chave no banco
     const { data: kw, error } = await supabase
@@ -37,12 +37,13 @@ export async function POST(req: Request) {
     const locationName = `accounts/${accountId}/locations/${locationId}`;
     const details = await getLocationDetails(locationName);
     
-    // Pegar coordenadas para precisão (se disponível)
+    // Pegar coordenadas para precisão total (Geolocalização Local)
     const lat = details?.latlng?.latitude;
     const lng = details?.latlng?.longitude;
-    const center = lat && lng ? `@${lat},${lng},14z` : '';
+    const ll = lat && lng ? `${lat},${lng}` : '';
 
-    const serpRes = await fetch(`https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(keyword)}&ll=${center}&api_key=${process.env.SERPAPI_KEY}`);
+    const currentZoom = zoom || '15z';
+    const serpRes = await fetch(`https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(keyword)}${ll ? `&ll=@${ll},${currentZoom}` : ''}&api_key=${process.env.SERPAPI_KEY}`);
     const serpData = await serpRes.json();
 
     let position = 99; // 99 significa que não foi encontrado no top 20

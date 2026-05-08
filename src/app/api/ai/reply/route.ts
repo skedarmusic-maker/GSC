@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { reviewText, reviewerName, rating, businessName } = await req.json();
@@ -24,8 +26,8 @@ export async function POST(req: Request) {
       Gere apenas o texto da resposta, sem introduções ou explicações.
     `;
 
-    // Usando o modelo Pro que é o mais estável para geração de texto
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    // Usando o nome exato do modelo disponível na sua conta (gemini-flash-latest)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -45,6 +47,10 @@ export async function POST(req: Request) {
 
     const data = await response.json();
     
+    if (response.status === 429) {
+      return NextResponse.json({ error: 'Limite de cota atingido. O Google está processando seu faturamento. Tente novamente em alguns minutos.' }, { status: 429 });
+    }
+
     if (data.error) {
       console.error('Resposta de erro do Google Gemini:', data.error);
       return NextResponse.json({ error: data.error.message }, { status: 500 });

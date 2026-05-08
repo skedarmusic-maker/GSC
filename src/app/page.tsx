@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [trackedKeywords, setTrackedKeywords] = useState<any[]>([]);
   const [newKeyword, setNewKeyword] = useState('');
   const [loadingRank, setLoadingRank] = useState(false);
+  const [rankRadius, setRankRadius] = useState('15z'); // Padrão 5km (15z)
   
   // Estado para Análise de Concorrentes
   const [competitorData, setCompetitorData] = useState<{ [key: string]: any }>({});
@@ -145,7 +146,8 @@ export default function Dashboard() {
           locationId: mapsData.locationId,
           accountId: mapsData.accountId,
           businessName: mapsData.title,
-          keyword: newKeyword
+          keyword: newKeyword,
+          zoom: rankRadius
         })
       });
       if (res.ok) {
@@ -156,26 +158,32 @@ export default function Dashboard() {
   };
 
   const fetchCompetitors = async (keyword: string) => {
-    if (!data?.maps) return;
+    const mapsData = data?.maps || (selectedGbp ? {
+      locationId: selectedGbp.id.replace('locations/', ''),
+      accountId: selectedGbp.accountId,
+      title: selectedGbp.name
+    } : null);
+
+    if (!mapsData) return;
+    
+    alert('Buscando análise técnica do Top 3... aguarde alguns segundos.');
     setLoadingComp(prev => ({ ...prev, [keyword]: true }));
     try {
       const res = await fetch('/api/competitors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          locationId: data.maps.locationId,
-          accountId: data.maps.accountId,
-          businessName: data.maps.title,
-          keyword: keyword
+          locationId: mapsData.locationId,
+          accountId: mapsData.accountId,
+          businessName: mapsData.title,
+          keyword
         })
       });
       const resData = await res.json();
-      if (!resData.error) {
+      if (resData.competitors) {
         setCompetitorData(prev => ({ ...prev, [keyword]: resData.competitors }));
       }
-    } catch(e) { console.error(e); } finally {
-      setLoadingComp(prev => ({ ...prev, [keyword]: false }));
-    }
+    } catch(e) { console.error(e); } finally { setLoadingComp(prev => ({ ...prev, [keyword]: false })); }
   };
 
   const fetchData = async (url: string, period: any, gbpFallback?: any) => {
@@ -931,6 +939,20 @@ export default function Dashboard() {
                          <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
                              <div className="flex flex-col sm:flex-row gap-4">
                                  <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="Ex: advogado trabalhista em são paulo" className="flex-1 bg-[#111] border border-[#333] text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#4285F4] text-sm font-medium" onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
+                                 
+                                 <div className="flex items-center gap-2 bg-[#111] border border-[#333] px-3 py-2 rounded-xl">
+                                     <span className="text-[10px] font-bold text-gray-500 uppercase px-1">Raio</span>
+                                     <select 
+                                         value={rankRadius} 
+                                         onChange={(e) => setRankRadius(e.target.value)}
+                                         className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+                                     >
+                                         <option value="16z">3 km</option>
+                                         <option value="15z">5 km</option>
+                                         <option value="14z">10 km</option>
+                                     </select>
+                                 </div>
+
                                  <button onClick={handleAddKeyword} disabled={loadingRank || !newKeyword} className="bg-[#4285F4] hover:bg-[#3367D6] disabled:bg-[#222] disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold px-8 py-3.5 rounded-xl transition-colors shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none">
                                      {loadingRank ? '⏳ Analisando...' : 'Monitorar Palavra-chave'}
                                  </button>
