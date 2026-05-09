@@ -132,23 +132,27 @@ export default function Dashboard() {
   
   const fetchOpportunities = async (clientId: string) => {
     setLoadingOpps(true);
-    const { data: opps, error } = await supabase
-      .from('oportunidades_seo')
-      .select('*')
-      .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
-    
-    if (!error) setSeoOpportunities(opps || []);
-    setLoadingOpps(false);
+    try {
+      const res = await fetch(`/api/opportunities?clientId=${clientId}`);
+      const opps = await res.json();
+      if (Array.isArray(opps)) {
+        setSeoOpportunities(opps);
+      }
+    } catch (e) {
+      console.error('Erro ao buscar oportunidades:', e);
+    } finally {
+      setLoadingOpps(false);
+    }
   };
 
   const handleApproveOpportunity = async (oppId: string) => {
-    const { error } = await supabase
-      .from('oportunidades_seo')
-      .update({ status: 'aprovada' })
-      .eq('id', oppId);
-    
-    if (!error) {
+    const res = await fetch('/api/opportunities', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: oppId, status: 'aprovada' })
+    });
+
+    if (res.ok) {
       setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'aprovada' } : o));
       alert('Oportunidade aprovada! O n8n será notificado para gerar o conteúdo.');
     }
