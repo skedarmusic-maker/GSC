@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rank Tracker - Geographic Heatmap | APEX DIGITAL</title>
+<!-- Tailwind CSS v3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="custom-theme">
+    body {
+      background-color: #0d1117;
+      color: #e6edf3;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .glass-card {
+      background: rgba(22, 27, 34, 0.8);
+      border: 1px solid rgba(48, 54, 61, 0.5);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 20px rgba(0, 255, 157, 0.05);
+    }
+    .active-nav-link {
+      position: relative;
+      color: #00ff9d !important;
+    }
+    .active-nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -1.5rem;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: #00ff9d;
+      box-shadow: 0 0 8px #00ff9d;
+    }
+    /* Override emerald to neon green globally where requested */
+    .text-emerald-500 { color: #00ff9d !important; }
+    .bg-\[\#34d399\] { background-color: #00ff9d !important; }
+    .text-\[\#34d399\] { color: #00ff9d !important; }
+    input[type='range'] {
+      -webkit-appearance: none;
+      background: #30363d;
+      height: 4px;
+      border-radius: 2px;
+    }
+    input[type='range']::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #00ff9d;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+<!-- BEGIN: MainHeader -->
+<header class="w-full border-b border-gray-800 px-8 py-4 flex items-center justify-between bg-[#0d1117] sticky top-0 z-50">
+<div class="flex items-center space-x-12">
+<!-- Logo -->
+<div class="text-xl font-black tracking-tighter text-white flex items-center">
+        APEX <span class="text-emerald-500 ml-1">DIGITAL</span>
+</div>
+<!-- Navigation -->
+<nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-400">
+<a class="hover:text-white transition-colors" href="#">Dashboard</a>
+<a class="text-emerald-500 active-nav-link" href="#">Rank Tracker</a>
+<a class="hover:text-white transition-colors" href="#">GBP Management</a>
+<a class="hover:text-white transition-colors" href="#">Reports</a>
+</nav>
+</div>
+<!-- User Profile -->
+<div class="flex items-center space-x-4"><button class="text-gray-400 hover:text-white flex items-center">
+<div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+<svg class="h-5 w-5 text-gray-300" fill="currentColor" viewbox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" fill-rule="evenodd"></path>
+</svg>
+</div>
+<svg class="h-4 w-4 ml-2 text-gray-500" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button></div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-grow p-8 max-w-[1600px] mx-auto w-full">
+<!-- Title Section -->
+<div class="mb-8 mb-12">
+<h1 class="text-4xl font-bold text-white mb-6"><span class="relative inline-block font-black">Rank Tracker<svg class="absolute w-[105%] h-4 -bottom-2 -left-1 text-[#00ff9d]" fill="none" preserveaspectratio="none" viewbox="0 0 100 15" xmlns="http://www.w3.org/2000/svg"><path d="M2 10 Q 30 2 60 8 T 98 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="4"></path></svg></span> - Geographic Heatmap</h1>
+<!-- Controls Bar -->
+<div class="flex items-center space-x-6 text-gray-300 text-sm">
+<button class="bg-[#161b22] border border-gray-700 rounded-md px-4 py-2 flex items-center space-x-2 hover:bg-gray-800 transition-all">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Last 30 Days</span>
+<svg class="h-3 w-3 ml-2" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<div class="flex items-center space-x-2">
+<span class="text-gray-500">Location:</span>
+<span class="font-semibold">Chicago, IL</span>
+</div>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- LEFT SIDEBAR -->
+<div class="col-span-12 lg:col-span-3 flex flex-col space-y-6">
+<div class="glass-card rounded-xl p-6 h-full border-emerald-500/10" style="box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);">
+<div class="mb-8 mb-12" data-purpose="keyword-selector">
+<h3 class="text-sm font-semibold text-gray-200 mb-4 tracking-wide uppercase">Keyword Selection</h3>
+<div class="relative">
+<select class="w-full bg-[#0d1117] border border-gray-700 rounded-lg py-3 px-4 text-sm text-gray-400 appearance-none focus:ring-emerald-500 focus:border-emerald-500">
+<option>Select Keywords (e.g., 'Chicago SEO', 'Digital Marketing')</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+<svg class="h-4 w-4 text-gray-500" fill="currentColor" viewbox="0 0 20 20"><path clip-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" fill-rule="evenodd"></path></svg>
+</div>
+</div>
+</div>
+<div data-purpose="radius-control">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-sm font-semibold text-gray-200 tracking-wide uppercase">Search Radius</h3>
+<span class="text-xs bg-[#0d1117] border border-gray-700 px-2 py-1 rounded text-gray-300">10 mi</span>
+</div>
+<div class="relative pt-1">
+<input class="w-full" max="50" min="1" type="range" value="10"/>
+<div class="h-1 bg-emerald-500 absolute top-[13px] left-0 pointer-events-none rounded-l" style="width: 20%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- CENTER MAP -->
+<div class="col-span-12 lg:col-span-6 relative">
+<div class="glass-card rounded-xl overflow-hidden relative min-h-[500px] border-emerald-500/20 bg-[#161b22]" style="box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);"><!-- Main Map Image -->
+<img alt="Map" class="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-screen" src="https://lh3.googleusercontent.com/aida/ADBb0uhensIK4oQqwJHA5WQr20lEP_DtFqZI8hpzGMHGOfEoTqaGY9BjyCn6YCAc-2Nvu3GXPiegZUD4bUgAQUiIVrcf27UDss2ZF3xEcQF_54GUDrlJuxOBLFEI4xtgU0TeSviH98IZh0TT24JUXtFuWcADqmuRP7iScBWN3GHBcoQunMxA9zQTt_wB_Jk2UXKF5A5XtSnOmOUlvR6SXP391-5KiWC8i6radU_RP1wFewTew94NvGG8ATdBhug"/>
+<!-- Map Grid Markers (Absolute Positioning representation) -->
+<div class="absolute inset-0 p-8 grid grid-cols-5 grid-rows-5 gap-4">
+<!-- Row 1 -->
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">1</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">2</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">3</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">4</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">5</span></div>
+<!-- Row 2 -->
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">6</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">7</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">8</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">9</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">10</span></div>
+<!-- Row 3 -->
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">11</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">12</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#34d399] text-gray-900 font-bold flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.5)]">13</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">14</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">15</span></div>
+<!-- Row 4 -->
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">15</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">16</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">17</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">18</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">19</span></div>
+<!-- Row 5 -->
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">15</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">20</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">21</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">22</span></div>
+<div class="flex items-center justify-center"><span class="w-12 h-12 rounded-full bg-[#4b5563] text-gray-300 font-bold flex items-center justify-center">11+</span></div>
+</div>
+<!-- Map Controls -->
+<div class="absolute bottom-6 right-6 flex flex-col bg-[#161b22] border border-gray-700 rounded-md overflow-hidden shadow-lg">
+<button class="p-2 hover:bg-gray-800 text-gray-300 border-b border-gray-700">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<button class="p-2 hover:bg-gray-800 text-gray-300">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 12H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+<!-- Google Logo Placeholder -->
+<div class="absolute bottom-6 left-6 text-white/50 font-bold text-lg select-none">
+            Google
+          </div></div>
+</div>
+<!-- RIGHT SIDEBAR -->
+<div class="col-span-12 lg:col-span-3 flex flex-col space-y-6">
+<!-- Average Position Card -->
+<div class="glass-card rounded-xl p-8 text-center border-emerald-500/10" style="box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);">
+<h3 class="text-sm font-semibold text-gray-400 mb-6 tracking-widest uppercase">Average Position</h3>
+<div class="text-8xl font-black text-[#34d399] mb-4 drop-shadow-[0_0_20px_rgba(52,211,153,0.6)]">2.4</div>
+<p class="text-gray-500 text-sm">Across all keywords</p>
+</div>
+<!-- Top 3 Distribution Card -->
+<div class="glass-card rounded-xl p-8 border-emerald-500/10" style="box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);">
+<h3 class="text-sm font-semibold text-gray-400 mb-6 tracking-widest uppercase">Top 3 Distribution</h3>
+<div class="relative w-full h-10 bg-[#21262d] rounded-lg overflow-hidden flex items-center px-4 mb-4"><!-- Progress Fill -->
+<div class="absolute inset-y-0 left-0 bg-[#34d399] shadow-[0_0_15px_rgba(52,211,153,0.5)] flex items-center justify-end px-4 rounded-lg" style="width: 68%;">
+<span class="text-gray-900 font-bold">68%</span>
+</div></div>
+<p class="text-gray-500 text-sm">17 of 25 Locations</p>
+</div>
+</div>
+</div>
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: MainFooter -->
+<footer class="w-full py-8 border-t border-gray-800 text-center text-gray-600 text-xs">
+<p>© 2024 Apex Digital Agency. All rights reserved.</p>
+</footer>
+<!-- END: MainFooter -->
+</body></html>

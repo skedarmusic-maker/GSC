@@ -3,34 +3,76 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --bg-color: #050505;
-  --card-bg: rgba(20, 20, 25, 0.7);
+  --bg-color: #0d1117;
+  --card-bg: rgba(22, 27, 34, 0.8);
   --accent-blue: #0070f3;
   --accent-purple: #7928ca;
-  --text-main: #ffffff;
-  --text-muted: #888888;
-  --border-color: rgba(255, 255, 255, 0.1);
+  --text-main: #e6edf3;
+  --text-muted: #8b949e;
+  --border-color: rgba(48, 54, 61, 0.5);
 }
 
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
-  font-family: 'Outfit', sans-serif;
 }
 
 body {
   background-color: var(--bg-color);
   color: var(--text-main);
-  background-image: 
-    radial-gradient(circle at 50% -20%, #1a1a2e 0%, transparent 50%),
-    radial-gradient(circle at 0% 100%, #101010 0%, transparent 40%);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
-  /* Evita zoom indesejado em inputs no iOS */
   -webkit-text-size-adjust: 100%;
 }
+
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.05);
+}
+
+.active-nav-link {
+  position: relative;
+  color: #00ff9d !important;
+}
+
+.active-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1.5rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #00ff9d;
+  box-shadow: 0 0 8px #00ff9d;
+}
+
+.text-emerald-500 { color: #00ff9d !important; }
+.bg-\[\#34d399\] { background-color: #00ff9d !important; }
+.text-\[\#34d399\] { color: #00ff9d !important; }
+
+input[type='range'] {
+  -webkit-appearance: none;
+  background: #30363d;
+  height: 4px;
+  border-radius: 2px;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #00ff9d;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+}
+
 
 .container {
   max-width: 1200px;

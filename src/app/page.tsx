@@ -463,11 +463,11 @@ export default function Dashboard() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col lg:flex-row" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
       
       {/* HEADER MOBILE */}
-      <div className="lg:hidden flex items-center justify-between p-4 border-b border-[#222] bg-[#0a0a0a] sticky top-0 z-50">
-          <h1 className="text-lg font-bold tracking-tighter" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-[#0d1117] sticky top-0 z-50">
+          <h1 className="text-lg font-black tracking-tighter" style={{ color: '#00ff9d' }}>GSC<span className="text-white">Strategy</span></h1>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
               {showMobileMenu ? (
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -478,20 +478,20 @@ export default function Dashboard() {
       </div>
 
       {/* SIDEBAR */}
-      <aside className={`${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0 opacity-0 lg:opacity-100 hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 transition-all duration-300 w-full lg:w-[270px] bg-[#0a0a0a] border-r border-[#222] flex flex-col shrink-0 h-[calc(100vh-60px)] lg:h-screen top-[60px] lg:top-0`}>
+      <aside className={`${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0 opacity-0 lg:opacity-100 hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 transition-all duration-300 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex flex-col shrink-0 h-[calc(100vh-60px)] lg:h-screen top-[60px] lg:top-0`}>
         {/* Logo + Seletor de Modo */}
-        <div className="p-5 border-b border-[#222]">
-          <h1 className="text-xl font-bold tracking-tighter mb-4 hidden lg:block" style={{ color: '#0070f3' }}>GSC<span style={{ color: '#fff' }}>Strategy</span></h1>
-          <div className="flex bg-[#111] p-1 rounded-lg border border-[#222] gap-1">
+        <div className="p-5 border-b border-gray-800">
+          <h1 className="text-2xl font-black tracking-tighter mb-6 hidden lg:block text-white">GSC<span className="text-[#00ff9d] ml-1">Strategy</span></h1>
+          <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
             <button
               onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'seo' ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'seo' ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white'}`}
             >
               🌐 SEO
             </button>
             <button
               onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'gbp' ? 'bg-[#4285F4] text-white shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'gbp' ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white'}`}
             >
               📍 Maps
             </button>
@@ -499,7 +499,7 @@ export default function Dashboard() {
         </div>
 
         {/* Seletor de Cliente no Sidebar */}
-        <div className="p-4 border-b border-[#111]" key={sites.length}>
+        <div className="p-4 border-b border-gray-800" key={sites.length}>
           {loading ? (
             <div className="text-xs text-gray-500 animate-pulse px-2">Carregando clientes...</div>
           ) : appMode === 'seo' ? (
@@ -510,7 +510,7 @@ export default function Dashboard() {
                 if (client) { handleSelectClient(client); setShowMobileMenu(false); }
                 else { setSelectedClient(null); setData(null); }
               }}
-              className="w-full bg-[#111] border border-[#333] text-white text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#0070f3] appearance-none cursor-pointer font-medium"
+              className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] appearance-none cursor-pointer font-medium"
             >
               <option value="">🌐 Selecionar site GSC...</option>
               {gscSites.map((c:any) => (
@@ -525,7 +525,7 @@ export default function Dashboard() {
                 if (profile) { handleSelectGbpProfile(profile); setShowMobileMenu(false); }
                 else { setSelectedGbp(null); setGbpData(null); }
               }}
-              className="w-full bg-[#111] border border-[#333] text-white text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#4285F4] appearance-none cursor-pointer font-medium"
+              className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] appearance-none cursor-pointer font-medium"
             >
               <option value="">📍 Selecionar perfil Maps...</option>
               {gbpProfiles.map((p:any) => (
@@ -540,10 +540,10 @@ export default function Dashboard() {
           {appMode === 'seo' ? (
             selectedClient ? (
               <ul className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-600 mb-3 uppercase tracking-wider px-2">SEO &amp; Orgânico</p>
-                <li><button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-insights' ? 'bg-[#0070f3]/10 text-[#0070f3]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>✨ Visão Geral (IA)</button></li>
-                <li><button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-keywords' ? 'bg-[#0070f3]/10 text-[#0070f3]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📊 Palavras-chave</button></li>
-                <li><button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-pages' ? 'bg-[#0070f3]/10 text-[#0070f3]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📄 Top Páginas</button></li>
+                <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider px-2">SEO &amp; Orgânico</p>
+                <li><button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-insights' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>✨ Visão Geral (IA)</button></li>
+                <li><button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-keywords' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📊 Palavras-chave</button></li>
+                <li><button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-pages' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📄 Top Páginas</button></li>
               </ul>
             ) : (
               <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um site GSC acima</p>
@@ -551,19 +551,19 @@ export default function Dashboard() {
           ) : (
             selectedGbp ? (
               <ul className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-600 mb-3 uppercase tracking-wider px-2 flex items-center gap-2">Perfil Google Maps <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span></p>
-                <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🏪 Resumo Local</button></li>
-                <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>🛡️ Auditoria de Saúde</button></li>
-                <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📈 Rank Tracker</button></li>
+                <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider px-2 flex items-center gap-2">Perfil Google Maps <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] inline-block shadow-[0_0_8px_#00ff9d]"></span></p>
+                <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>🏪 Resumo Local</button></li>
+                <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>🛡️ Auditoria de Saúde</button></li>
+                <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📈 Rank Tracker</button></li>
                 <li>
-                  <button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'gbp-reviews' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>
+                  <button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>
                     <span>⭐ Avaliações</span>
                     {(localReviews || []).filter((r:any) => !r.reviewReply).length > 0 && (
                       <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{(localReviews || []).filter((r:any) => !r.reviewReply).length}</span>
                     )}
                   </button>
                 </li>
-                <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#4285F4]/10 text-[#4285F4]' : 'text-gray-400 hover:text-white hover:bg-[#111]'}`}>📣 Atualizações</button></li>
+                <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📣 Atualizações</button></li>
               </ul>
             ) : (
               <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um perfil do Maps acima</p>
@@ -576,7 +576,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         
         {/* TOP HEADER */}
-        <header className="h-[64px] border-b border-[#222] bg-[#0a0a0a]/95 backdrop-blur flex items-center justify-between px-8 shrink-0 z-10">
+        <header className="h-[64px] border-b border-gray-800 bg-[#0d1117]/95 backdrop-blur flex items-center justify-between px-8 shrink-0 z-10">
           <div className="flex items-center gap-3">
             {appMode === 'seo' && selectedClient && (
               <span className="text-sm font-semibold text-white truncate max-w-xs">{selectedClient.name}</span>
@@ -588,19 +588,19 @@ export default function Dashboard() {
 
           {/* Filtros de Data — apenas no modo SEO */}
           {appMode === 'seo' && selectedClient && (
-            <div className="flex items-center gap-3">
-              <div className="flex bg-[#111] p-1 rounded-lg border border-[#222]">
+            <div className="flex items-center gap-3 text-sm">
+              <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800">
                 {[7, 28, 90].map(v => (
-                  <button key={v} onClick={() => { setIsCustom(false); setDays(v); fetchData(selectedClient.gscUrl, v, selectedClient.gbpData); }} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${!isCustom && days === v ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white hover:bg-[#222]'}`}>{v}d</button>
+                  <button key={v} onClick={() => { setIsCustom(false); setDays(v); fetchData(selectedClient.gscUrl, v, selectedClient.gbpData); }} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${!isCustom && days === v ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{v}d</button>
                 ))}
-                <button onClick={() => setIsCustom(true)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${isCustom ? 'bg-[#0070f3] text-white shadow' : 'text-gray-400 hover:text-white hover:bg-[#222]'}`}>Data Fixa</button>
+                <button onClick={() => setIsCustom(true)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${isCustom ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>Data Fixa</button>
               </div>
               {isCustom && (
-                <div className="flex gap-2 items-center bg-[#111] p-1 rounded-lg border border-[#222]">
-                  <input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none" />
+                <div className="flex gap-2 items-center bg-[#161b22] p-1 rounded-lg border border-gray-800">
+                  <input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none focus:ring-0" />
                   <span className="text-gray-600">-</span>
-                  <input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none" />
-                  <button onClick={() => { if(customRange.start && customRange.end) fetchData(selectedClient.gscUrl, customRange, selectedClient.gbpData); }} className="bg-white text-black text-xs font-bold px-3 py-1.5 rounded-md hover:bg-gray-200">OK</button>
+                  <input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none focus:ring-0" />
+                  <button onClick={() => { if(customRange.start && customRange.end) fetchData(selectedClient.gscUrl, customRange, selectedClient.gbpData); }} className="bg-[#00ff9d] text-gray-900 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-[#34d399] shadow-[0_0_10px_rgba(0,255,157,0.3)]">OK</button>
                 </div>
               )}
             </div>
@@ -608,7 +608,7 @@ export default function Dashboard() {
         </header>
 
         {/* SCROLLABLE CONTENT */}
-        <main className="flex-1 overflow-y-auto p-8 bg-[#050505] pb-32">
+        <main className="flex-1 overflow-y-auto p-8 bg-[#0d1117] pb-32">
 
           {/* ===== MODO SEO ===== */}
           {appMode === 'seo' && (
@@ -631,25 +631,25 @@ export default function Dashboard() {
                        {activeTab === 'seo-insights' && (
                           <div className="space-y-8 animate-fade-in">
                              {/* KPIS GSC */}
-                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
-                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">Cliques Orgânicos</p>
-                                    <h2 className="text-4xl font-bold tracking-tight">{data.current.clicks}</h2>
-                                    <p className={`text-xs mt-3 font-medium ${data.current.clicks >= data.previous.clicks ? 'text-green-500' : 'text-red-500'}`}>
+                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Cliques Orgânicos</p>
+                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{data.current.clicks}</h2>
+                                    <p className={`text-xs font-bold ${data.current.clicks >= data.previous.clicks ? 'text-[#00ff9d]' : 'text-red-400'}`}>
                                        {data.current.clicks >= data.previous.clicks ? '↑' : '↓'} {Math.abs(data.current.clicks - data.previous.clicks)} vs prev.
                                     </p>
                                 </div>
-                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
-                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">Impressões</p>
-                                    <h2 className="text-4xl font-bold tracking-tight">{data.current.impressions}</h2>
+                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Impressões</p>
+                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{data.current.impressions}</h2>
                                 </div>
-                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
-                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">CTR Médio</p>
-                                    <h2 className="text-4xl font-bold tracking-tight">{(data.current.ctr * 100).toFixed(1)}%</h2>
+                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">CTR Médio</p>
+                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{(data.current.ctr * 100).toFixed(1)}%</h2>
                                 </div>
-                                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 shadow-sm">
-                                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-3">Posição Média</p>
-                                    <h2 className="text-4xl font-bold tracking-tight">{data.current.position.toFixed(1)}</h2>
+                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
+                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Posição Média</p>
+                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{data.current.position.toFixed(1)}</h2>
                                 </div>
                              </div>
 
@@ -657,16 +657,16 @@ export default function Dashboard() {
                              <h3 className="text-xl font-bold mt-12 mb-6 flex items-center gap-2">✨ Recomendações da IA</h3>
                              <div className="space-y-4">
                                 {getStrategicInsights().length > 0 ? getStrategicInsights().map((ins: any, i: number) => (
-                                    <div key={i} className={`bg-[#0a0a0a] border-l-4 rounded-r-xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${ins.type === 'gold' ? 'border-l-[#0070f3]' : ins.type === 'maps' ? 'border-l-[#4285F4]' : 'border-l-[#ffbb00]'}`}>
+                                    <div key={i} className={`glass-card border-l-4 rounded-r-xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${ins.type === 'gold' ? 'border-l-[#00ff9d]' : ins.type === 'maps' ? 'border-l-[#4285F4]' : 'border-l-[#ffbb00]'}`}>
                                         <div>
-                                            <h4 className="text-lg font-bold mb-2">{ins.title}</h4>
+                                            <h4 className="text-lg font-bold mb-2 text-white">{ins.title}</h4>
                                             <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">{ins.desc}</p>
                                         </div>
-                                        <button className="bg-white/5 hover:bg-white/10 text-white font-bold py-2.5 px-5 rounded-lg text-sm transition-colors whitespace-nowrap">
+                                        <button className="bg-white/5 hover:bg-white/10 text-white border border-gray-700 font-bold py-2.5 px-5 rounded-lg text-sm transition-colors whitespace-nowrap">
                                             Investigar
                                         </button>
                                     </div>
-                                )) : <div className="text-gray-500 p-8 text-center border border-dashed border-[#222] rounded-xl">Coletando padrões comportamentais do site...</div>}
+                                )) : <div className="text-gray-500 p-8 text-center border border-dashed border-gray-800 rounded-xl">Coletando padrões comportamentais do site...</div>}
                              </div>
                           </div>
                        )}
@@ -675,8 +675,8 @@ export default function Dashboard() {
                        {activeTab === 'seo-keywords' && (
                           <div className="animate-fade-in">
                               <h2 className="text-2xl font-bold mb-6">📊 Palavras-chave que mais geram cliques</h2>
-                              <table className="w-full text-left text-sm border-collapse">
-                                 <thead className="bg-[#111] text-gray-400 border-b border-[#222]">
+                               <table className="w-full text-left text-sm border-collapse">
+                                 <thead className="bg-[#161b22] text-gray-400 border-b border-gray-800">
                                      <tr>
                                         <th className="px-6 py-4 font-bold rounded-tl-xl">Palavra-chave</th>
                                         <th className="px-6 py-4 font-bold">Cliques</th>
@@ -685,11 +685,11 @@ export default function Dashboard() {
                                         <th className="px-6 py-4 font-bold rounded-tr-xl">Posição</th>
                                      </tr>
                                  </thead>
-                                 <tbody className="divide-y divide-[#181818]">
+                                 <tbody className="divide-y divide-gray-800/50">
                                     {data.keywords.slice(0, 30).map((k:any, i:number) => (
-                                        <tr key={i} className="hover:bg-[#111]/80 transition-colors">
+                                        <tr key={i} className="hover:bg-[#161b22]/80 transition-colors">
                                            <td className="px-6 py-4 text-white font-medium">{k.keys[0]}</td>
-                                           <td className="px-6 py-4 text-[#0070f3] font-bold">{k.clicks}</td>
+                                           <td className="px-6 py-4 text-[#00ff9d] font-bold">{k.clicks}</td>
                                            <td className="px-6 py-4 text-gray-400">{k.impressions}</td>
                                            <td className="px-6 py-4 text-gray-400">{(k.ctr * 100).toFixed(1)}%</td>
                                            <td className="px-6 py-4 text-gray-400">{k.position.toFixed(1)}</td>
@@ -705,7 +705,7 @@ export default function Dashboard() {
                           <div className="animate-fade-in">
                               <h2 className="text-2xl font-bold mb-6">📄 Top Páginas (Landing Pages)</h2>
                               <table className="w-full text-left text-sm border-collapse">
-                                 <thead className="bg-[#111] text-gray-400 border-b border-[#222]">
+                                 <thead className="bg-[#161b22] text-gray-400 border-b border-gray-800">
                                      <tr>
                                         <th className="px-6 py-4 font-bold rounded-tl-xl">Página</th>
                                         <th className="px-6 py-4 font-bold">Cliques</th>
@@ -713,11 +713,11 @@ export default function Dashboard() {
                                         <th className="px-6 py-4 font-bold rounded-tr-xl">Posição</th>
                                      </tr>
                                  </thead>
-                                 <tbody className="divide-y divide-[#181818]">
+                                 <tbody className="divide-y divide-gray-800/50">
                                     {data.pages.slice(0, 30).map((p:any, i:number) => (
-                                        <tr key={i} className="hover:bg-[#111]/80 transition-colors">
+                                        <tr key={i} className="hover:bg-[#161b22]/80 transition-colors">
                                            <td className="px-6 py-4 max-w-sm lg:max-w-xl truncate">
-                                              <a href={p.keys[0]} target="_blank" className="text-[#0070f3] hover:underline font-medium">
+                                              <a href={p.keys[0]} target="_blank" className="text-[#00ff9d] hover:underline font-medium">
                                                  {p.keys[0].replace(selectedClient?.gscUrl || '', '') || '/'}
                                               </a>
                                            </td>
@@ -749,34 +749,34 @@ export default function Dashboard() {
                 {/* ---------------- GBP DASHBOARD ---------------- */}
                 {activeTab === 'gbp-dashboard' && (
                     <div className="space-y-8 animate-fade-in">
-                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#4285F4]/10 to-transparent border border-[#4285F4]/30 rounded-2xl p-8">
+                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/30 rounded-2xl p-8" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                              <div>
-                                 <p className="text-xs text-[#4285F4] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
-                                 <h2 className="text-3xl font-bold text-white tracking-tight">{gbpData?.title}</h2>
+                                 <p className="text-xs text-[#00ff9d] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
+                                 <h2 className="text-3xl font-black text-white tracking-tight">{gbpData?.title}</h2>
                              </div>
-                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gbpData?.title)}`} target="_blank" className="bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(66,133,244,0.3)] hover:shadow-[0_0_30px_rgba(66,133,244,0.5)]">
+                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gbpData?.title)}`} target="_blank" className="bg-[#00ff9d] text-gray-900 font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)]">
                                  Visualizar no Maps ↗
                              </a>
                          </div>
 
                          <div className="flex items-center gap-2 mb-2 text-gray-400 text-[10px] bg-white/5 w-fit px-3 py-1.5 rounded-full border border-white/10 uppercase font-bold tracking-widest">
-                             <span className="w-1.5 h-1.5 rounded-full bg-[#4285F4] animate-pulse"></span>
+                             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] animate-pulse shadow-[0_0_8px_#00ff9d]"></span>
                              Métricas dos últimos <span className="text-white">{days} dias</span>
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                             <div className="glass-card rounded-2xl p-8 shadow-sm border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                                  <div className="text-4xl mb-4">📞</div>
-                                 <h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.calls ?? 0}</h3>
+                                 <h3 className="text-5xl font-black tracking-tighter mb-2 text-[#00ff9d] drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{gbpData?.metrics?.calls ?? 0}</h3>
                                  <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Chamadas Recebidas</p>
                              </div>
-                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                             <div className="glass-card rounded-2xl p-8 shadow-sm border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                                  <div className="text-4xl mb-4">🗺️</div>
-                                 <h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.directions ?? 0}</h3>
+                                 <h3 className="text-5xl font-black tracking-tighter mb-2 text-[#00ff9d] drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{gbpData?.metrics?.directions ?? 0}</h3>
                                  <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Rotas Solicitadas</p>
                              </div>
-                             <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                             <div className="glass-card rounded-2xl p-8 shadow-sm border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                                  <div className="text-4xl mb-4">🖱️</div>
-                                 <h3 className="text-5xl font-black tracking-tighter mb-2">{gbpData?.metrics?.websiteClicks ?? 0}</h3>
+                                 <h3 className="text-5xl font-black tracking-tighter mb-2 text-[#00ff9d] drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{gbpData?.metrics?.websiteClicks ?? 0}</h3>
                                  <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Visitas ao Site</p>
                              </div>
                          </div>
@@ -788,15 +788,15 @@ export default function Dashboard() {
                     <div className="animate-fade-in">
                         <h2 className="text-2xl font-bold mb-6">🛡️ Auditoria de Saúde do Perfil</h2>
                         {loadingAudit ? (
-                            <div className="p-32 text-center bg-[#0a0a0a] border border-[#222] rounded-2xl">
-                                 <div className="w-10 h-10 border-4 border-[#4285F4] border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
-                                 <div className="text-[#4285F4] text-lg font-bold">Processando checklist de 20 pontos de ranking...</div>
+                            <div className="p-32 text-center glass-card border-[#00ff9d]/10 rounded-2xl shadow-[0_0_30px_rgba(0,255,157,0.05)]">
+                                 <div className="w-10 h-10 border-4 border-[#00ff9d] border-t-transparent rounded-full animate-spin mb-4 mx-auto drop-shadow-[0_0_10px_rgba(0,255,157,0.5)]"></div>
+                                 <div className="text-[#00ff9d] text-lg font-bold drop-shadow-[0_0_10px_rgba(0,255,157,0.3)]">Processando checklist de 20 pontos de ranking...</div>
                             </div>
                         ) : auditData && !auditData.error && (
-                            <div className="border-l-[6px] rounded-2xl p-10 bg-[#0a0a0a] border-y border-r border-y-[#222] border-r-[#222] shadow-2xl flex flex-col md:flex-row gap-16" style={{ borderLeftColor: auditData.color }}>
+                            <div className="border-l-[6px] rounded-2xl p-10 glass-card shadow-[0_0_30px_rgba(0,255,157,0.05)] flex flex-col md:flex-row gap-16" style={{ borderLeftColor: auditData.color }}>
                                 <div className="flex flex-col items-center justify-center text-center min-w-[200px]">
                                     <p className="text-xs uppercase font-bold tracking-widest text-gray-500 mb-4">Health Score</p>
-                                    <div className="text-[100px] font-black leading-none mb-4 tracking-tighter" style={{ color: auditData.color }}>{auditData.score}</div>
+                                    <div className="text-[100px] font-black leading-none mb-4 tracking-tighter drop-shadow-[0_0_20px_rgba(0,255,157,0.2)]" style={{ color: auditData.color }}>{auditData.score}</div>
                                     <div className="text-sm font-bold uppercase tracking-widest px-4 py-1.5 rounded-full bg-black/50" style={{ color: auditData.color, border: `1px solid ${auditData.color}40` }}>{auditData.grade}</div>
                                 </div>
                                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
@@ -930,17 +930,17 @@ export default function Dashboard() {
 
                                          doc.save(`Rank_Tracker_${(gbpData?.title || 'relatorio').replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
                                      }}
-                                     className="flex items-center gap-2 bg-[#4285F4] hover:bg-[#3367D6] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_4px_14px_0_rgba(66,133,244,0.3)] whitespace-nowrap flex-shrink-0"
+                                     className="flex items-center gap-2 bg-[#00ff9d] text-gray-900 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)] whitespace-nowrap flex-shrink-0"
                                  >
                                      ⬇️ Baixar Relatório PDF
                                  </button>
                              )}
                          </div>
-                         <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm">
+                         <div className="glass-card rounded-2xl p-8 border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                              <div className="flex flex-col sm:flex-row gap-4">
-                                 <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="Ex: advogado trabalhista em são paulo" className="flex-1 bg-[#111] border border-[#333] text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#4285F4] text-sm font-medium" onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
+                                 <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="Ex: advogado trabalhista em são paulo" className="flex-1 bg-[#161b22] border border-gray-800 text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] text-sm font-medium" onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
                                  
-                                 <div className="flex items-center gap-2 bg-[#111] border border-[#333] px-3 py-2 rounded-xl">
+                                 <div className="flex items-center gap-2 bg-[#161b22] border border-gray-800 px-3 py-2 rounded-xl">
                                      <span className="text-[10px] font-bold text-gray-500 uppercase px-1">Raio</span>
                                      <select 
                                          value={rankRadius} 
@@ -953,41 +953,49 @@ export default function Dashboard() {
                                      </select>
                                  </div>
 
-                                 <button onClick={handleAddKeyword} disabled={loadingRank || !newKeyword} className="bg-[#4285F4] hover:bg-[#3367D6] disabled:bg-[#222] disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold px-8 py-3.5 rounded-xl transition-colors shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none">
+                                 <button onClick={handleAddKeyword} disabled={loadingRank || !newKeyword} className="bg-[#00ff9d] text-gray-900 disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none font-bold px-8 py-3.5 rounded-xl transition-colors shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)]">
                                      {loadingRank ? '⏳ Analisando...' : 'Monitorar Palavra-chave'}
                                  </button>
                              </div>
                          </div>
                          {trackedKeywords.length === 0 ? (
-                             <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50 mt-8">Nenhuma palavra-chave monitorada.</div>
+                             <div className="text-center p-16 border border-dashed border-gray-800 rounded-2xl text-gray-500 bg-[#161b22]/30 mt-8">Nenhuma palavra-chave monitorada.</div>
                          ) : (
                              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
                                  {trackedKeywords.map((kw: any, i: number) => {
                                      const lastPos = kw.rank_history?.[0]?.position || 99;
-                                     const colorClass = lastPos <= 3 ? 'text-green-500' : lastPos <= 10 ? 'text-yellow-500' : 'text-red-500';
+                                     const colorClass = lastPos <= 3 ? 'text-[#00ff9d] drop-shadow-[0_0_10px_rgba(0,255,157,0.5)]' : lastPos <= 10 ? 'text-yellow-400' : 'text-red-400';
                                      const histLen = kw.rank_history?.length || 0;
                                      return (
-                                         <div key={i} className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 flex flex-col shadow-sm">
-                                             <div className="flex justify-between items-start mb-2 border-b border-[#111] pb-6">
+                                         <div key={i} className="glass-card rounded-2xl p-8 flex flex-col border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
+                                             <div className="flex justify-between items-start mb-2 border-b border-gray-800 pb-6">
                                                  <div>
                                                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Termo</p>
-                                                     <h4 className="text-xl font-bold">{kw.keyword}</h4>
-                                                     <p className="text-[10px] text-gray-600 mt-2">{histLen} atualização{histLen !== 1 ? 'ões' : ''} registrada{histLen !== 1 ? 's' : ''}</p>
+                                                     <h4 className="text-xl font-black text-white tracking-tight">{kw.keyword}</h4>
+                                                     <p className="text-[10px] text-gray-500 mt-2">{histLen} atualização{histLen !== 1 ? 'ões' : ''} registrada{histLen !== 1 ? 's' : ''}</p>
                                                  </div>
-                                                 <div className={`text-4xl font-black tracking-tighter ${colorClass}`}>{lastPos === 99 ? '20+' : `#${lastPos}`}</div>
+                                                 <div className={`text-5xl font-black tracking-tighter ${colorClass}`}>{lastPos === 99 ? '20+' : `#${lastPos}`}</div>
                                              </div>
                                              {!competitorData[kw.keyword] ? (
-                                                 <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]} className="mt-auto w-full bg-[#111] hover:bg-[#222] border border-[#333] text-gray-300 font-bold py-3.5 rounded-xl text-sm transition-colors">
+                                                 <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]} className="mt-auto w-full bg-[#161b22] hover:bg-[#161b22]/80 border border-gray-800 text-[#00ff9d] font-bold py-3.5 rounded-xl text-sm transition-colors shadow-[0_0_10px_rgba(0,255,157,0.1)]">
                                                      {loadingComp[kw.keyword] ? '🔍 Mapeando...' : '🔍 Benchmark com Top 3'}
                                                  </button>
                                              ) : (
-                                                 <div className="mt-auto bg-[#111] rounded-xl p-5 border border-[#222]">
-                                                     <p className="text-[10px] text-[#4285F4] uppercase font-bold tracking-widest mb-4">Top 3 Concorrentes</p>
+                                                 <div className="mt-auto bg-[#0d1117]/50 rounded-xl p-5 border border-[#00ff9d]/20 shadow-[0_0_15px_rgba(0,255,157,0.05)]">
+                                                     <p className="text-[10px] text-[#00ff9d] uppercase font-bold tracking-widest mb-4">Top 3 Concorrentes</p>
                                                      <div className="space-y-4">
                                                          {competitorData[kw.keyword].map((c: any, idx: number) => (
-                                                             <div key={idx} className={`flex justify-between items-center text-sm ${c.isUs ? 'text-[#4285F4] font-bold' : 'text-gray-300'}`}>
-                                                                 <span className="truncate w-48 xl:w-64">{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
-                                                                 <div className="flex gap-4 text-xs bg-black/40 px-3 py-1.5 rounded-full"><span className="font-bold">{c.rating}⭐</span><span className="text-gray-500">({c.reviews})</span></div>
+                                                             <div key={idx} className={`flex justify-between items-center text-sm ${c.isUs ? 'text-[#00ff9d] font-bold' : 'text-gray-300'}`}>
+                                                                 <a 
+                                                                    href={c.place_id ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title)}&query_place_id=${c.place_id}` : `https://www.google.com/search?q=${encodeURIComponent(c.title)}`} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="truncate w-48 xl:w-64 hover:text-[#00ff9d] transition-colors flex items-center gap-2 group"
+                                                                 >
+                                                                    <span>{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
+                                                                    {!c.isUs && <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">↗️</span>}
+                                                                 </a>
+                                                                 <div className="flex gap-4 text-xs bg-[#161b22] px-3 py-1.5 rounded-full border border-gray-800"><span className="font-bold text-[#00ff9d]">{c.rating}⭐</span><span className="text-gray-500">({c.reviews})</span></div>
                                                              </div>
                                                          ))}
                                                      </div>
@@ -1007,38 +1015,38 @@ export default function Dashboard() {
                         <h2 className="text-2xl font-bold mb-2">⭐ Gestão de Avaliações (com IA)</h2>
                         <p className="text-gray-400 mb-8">Responda clientes rapidamente com sugestões da IA.</p>
                         {loadingLocal ? (
-                            <div className="text-center p-16 text-[#4285F4] animate-pulse bg-[#0a0a0a] border border-[#222] rounded-2xl">Sincronizando avaliações...</div>
-                        ) : localReviews.length === 0 ? (
-                            <div className="text-center p-16 border border-dashed border-[#333] rounded-2xl text-gray-500 bg-[#0a0a0a]/50">Nenhuma avaliação disponível.</div>
+                            <div className="text-center p-16 text-[#00ff9d] animate-pulse glass-card rounded-2xl border-[#00ff9d]/10">Sincronizando avaliações...</div>
+                        ) : localReviews.filter((r: any) => !r.reviewReply).length === 0 ? (
+                            <div className="text-center p-16 border border-dashed border-gray-800 rounded-2xl text-gray-500 bg-[#161b22]/30">🎉 Todas as avaliações foram respondidas!</div>
                         ) : (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {localReviews.map((review: any, i: number) => (
-                                    <div key={i} className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 shadow-sm flex flex-col">
+                                {localReviews.filter((r: any) => !r.reviewReply).map((review: any, i: number) => (
+                                    <div key={i} className="glass-card rounded-2xl p-8 flex flex-col border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="flex items-center gap-4">
-                                                <img src={review.reviewer?.profilePhotoUrl} alt="" className="w-12 h-12 rounded-full bg-[#222] border border-[#333]" />
+                                                <img src={review.reviewer?.profilePhotoUrl} alt="" className="w-12 h-12 rounded-full bg-[#161b22] border border-gray-800" />
                                                 <div>
                                                     <p className="font-bold text-white text-lg">{review.reviewer?.displayName}</p>
-                                                    <div className="text-yellow-500 text-sm tracking-widest mt-1">{'★'.repeat(review.starRating || 0)}{'☆'.repeat(5 - (review.starRating || 0))}</div>
+                                                    <div className="text-[#00ff9d] text-sm tracking-widest mt-1">{'★'.repeat(review.starRating || 0)}<span className="text-gray-700">{'☆'.repeat(5 - (review.starRating || 0))}</span></div>
                                                 </div>
                                             </div>
-                                            <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-[#111] rounded-full border border-[#222]">{review.createTime ? new Date(review.createTime).toLocaleDateString() : ''}</div>
+                                            <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-[#161b22] rounded-full border border-gray-800">{review.createTime ? new Date(review.createTime).toLocaleDateString() : ''}</div>
                                         </div>
                                         <p className="text-gray-300 text-sm mb-8 leading-relaxed italic flex-1">"{review.comment || '(Avaliação sem comentário)'}"</p>
                                         {review.reviewReply ? (
-                                            <div className="bg-[#111] border border-[#222] rounded-xl p-5 border-l-4 border-l-green-500 mt-auto">
-                                                <p className="text-[10px] text-green-500 font-bold mb-2 uppercase tracking-widest">Resposta Publicada</p>
+                                            <div className="bg-[#161b22] border border-gray-800 rounded-xl p-5 border-l-4 border-l-[#00ff9d] mt-auto">
+                                                <p className="text-[10px] text-[#00ff9d] font-bold mb-2 uppercase tracking-widest">Resposta Publicada</p>
                                                 <p className="text-gray-400 text-sm leading-relaxed">{review.reviewReply.comment}</p>
                                             </div>
                                         ) : (
-                                            <div className="bg-black/50 border border-[#222] rounded-xl p-5 mt-auto">
-                                                <p className="text-[10px] text-red-400 font-bold mb-3 uppercase tracking-widest">⚠️ Requer Resposta</p>
-                                                <textarea value={replyText[review.name] || ''} onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })} placeholder="Escreva sua resposta..." className="w-full bg-[#111] border border-[#333] text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#4285F4] min-h-[100px] resize-none" />
+                                            <div className="bg-[#0d1117]/80 border border-[#00ff9d]/20 rounded-xl p-5 mt-auto shadow-[0_0_15px_rgba(0,255,157,0.05)]">
+                                                <p className="text-[10px] text-red-400 font-bold mb-3 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span> Requer Resposta</p>
+                                                <textarea value={replyText[review.name] || ''} onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })} placeholder="Escreva sua resposta..." className="w-full bg-[#161b22] border border-gray-800 text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] min-h-[100px] resize-none font-medium" />
                                                 <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                                                    <button onClick={() => handleGenerateAI(review)} disabled={generatingAI[review.name]} className="bg-transparent hover:bg-white/5 border border-[#333] text-gray-300 px-5 py-2.5 rounded-lg text-sm font-bold transition-colors flex justify-center items-center gap-2 disabled:opacity-50">
+                                                    <button onClick={() => handleGenerateAI(review)} disabled={generatingAI[review.name]} className="bg-[#161b22] hover:bg-[#161b22]/80 border border-[#00ff9d]/30 text-[#00ff9d] px-5 py-2.5 rounded-lg text-sm font-bold transition-colors flex justify-center items-center gap-2 disabled:opacity-50">
                                                         {generatingAI[review.name] ? '⏳ Gemini pensando...' : '✨ Sugestão IA'}
                                                     </button>
-                                                    <button onClick={() => handleReply(review.name)} disabled={!replyText[review.name]} className="bg-[#4285F4] hover:bg-[#3367D6] text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgba(66,133,244,0.39)] disabled:shadow-none">
+                                                    <button onClick={() => handleReply(review.name)} disabled={!replyText[review.name]} className="bg-[#00ff9d] hover:bg-[#34d399] text-gray-900 px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)] disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed">
                                                         Publicar Resposta
                                                     </button>
                                                 </div>
@@ -1056,28 +1064,29 @@ export default function Dashboard() {
                     <div className="space-y-6 animate-fade-in max-w-4xl">
                         <h2 className="text-2xl font-bold mb-2">📣 Atualizações da Empresa (Posts)</h2>
                         <p className="text-gray-400 mb-8">Crie atualizações para manter o perfil ativo no Google.</p>
-                        <div className="bg-[#0a0a0a] border border-[#222] rounded-2xl p-8 lg:p-10 shadow-2xl">
-                            <div className="space-y-8">
+                        <div className="glass-card rounded-2xl p-8 lg:p-10 shadow-[0_0_30px_rgba(0,255,157,0.05)] border-[#00ff9d]/10 relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ff9d] to-transparent opacity-50"></div>
+                            <div className="space-y-8 relative z-10">
                                 <div>
                                     <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Mensagem para os clientes</label>
-                                    <textarea value={postText} onChange={(e) => setPostText(e.target.value)} placeholder="Ex: Estamos abertos no feriado! Venha nos visitar..." className="w-full h-40 bg-[#111] border border-[#333] rounded-xl p-5 text-white text-sm focus:outline-none focus:border-[#4285F4] resize-none" />
+                                    <textarea value={postText} onChange={(e) => setPostText(e.target.value)} placeholder="Ex: Estamos abertos no feriado! Venha nos visitar..." className="w-full h-40 bg-[#161b22] border border-gray-800 rounded-xl p-5 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] resize-none font-medium" />
                                     <div className="text-right text-[11px] text-gray-500 mt-2 font-medium">{postText.length} / 1500</div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div>
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Foto (Opcional)</label>
-                                        <div className={`border-2 border-dashed ${imageUrl ? 'border-[#4285F4]' : 'border-[#333] hover:border-[#555]'} rounded-xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden h-40 transition-colors bg-[#111]`}>
+                                        <div className={`border-2 border-dashed ${imageUrl ? 'border-[#00ff9d]' : 'border-gray-800 hover:border-[#00ff9d]/50'} rounded-xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden h-40 transition-colors bg-[#161b22]`}>
                                             {imageUrl ? (
                                                 <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${imageUrl})` }}>
                                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity backdrop-blur-sm">
-                                                        <button onClick={() => setImageUrl('')} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-xl">🗑️ Remover</button>
+                                                        <button onClick={() => setImageUrl('')} className="bg-red-500/90 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-xl hover:bg-red-500 transition-colors">🗑️ Remover</button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="text-4xl mb-3">📸</div>
+                                                    <div className="text-4xl mb-3 drop-shadow-[0_0_10px_rgba(0,255,157,0.2)]">📸</div>
                                                     <p className="text-xs text-gray-400 font-medium">Clique para selecionar</p>
-                                                    {uploadingImage && <p className="text-[#4285F4] text-xs font-bold mt-3 animate-pulse">⏳ Fazendo upload...</p>}
+                                                    {uploadingImage && <p className="text-[#00ff9d] text-xs font-bold mt-3 animate-pulse">⏳ Fazendo upload...</p>}
                                                 </>
                                             )}
                                             <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
@@ -1087,7 +1096,7 @@ export default function Dashboard() {
                                         <div>
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Call to Action</label>
                                             <div className="relative">
-                                                <select value={buttonType} onChange={e => setButtonType(e.target.value)} className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4] appearance-none cursor-pointer font-medium">
+                                                <select value={buttonType} onChange={e => setButtonType(e.target.value)} className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] appearance-none cursor-pointer font-medium">
                                                     <option value="NONE">Nenhum botão</option>
                                                     <option value="LEARN_MORE">🔗 Saiba Mais</option>
                                                     <option value="BOOK">📅 Reservar</option>
@@ -1099,18 +1108,18 @@ export default function Dashboard() {
                                         {(buttonType !== 'NONE' && buttonType !== 'CALL') && (
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">URL de Destino</label>
-                                                <input type="url" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} placeholder="https://seudominio.com.br" className="w-full bg-[#111] border border-[#333] rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#4285F4]" />
+                                                <input type="url" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} placeholder="https://seudominio.com.br" className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] font-medium" />
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-10 pt-8 border-t border-[#222] flex flex-col md:flex-row justify-between items-center gap-6 bg-[#111]/30 -mx-8 -mb-8 p-8 rounded-b-2xl">
+                            <div className="mt-10 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6 bg-[#0d1117]/50 -mx-8 lg:-mx-10 -mb-8 lg:-mb-10 p-8 lg:p-10 rounded-b-2xl relative z-10">
                                 <div className="w-full md:w-auto">
                                     <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Agendar? (Opcional)</label>
-                                    <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="w-full md:w-64 bg-[#0a0a0a] border border-[#333] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#4285F4] font-medium" />
+                                    <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="w-full md:w-64 bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] font-medium cursor-pointer" />
                                 </div>
-                                <button onClick={handlePost} disabled={!postText} className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-black hover:bg-yellow-400 shadow-yellow-500/20' : 'bg-[#4285F4] text-white hover:bg-[#3367D6] shadow-blue-500/20 hover:shadow-blue-500/40') : 'bg-[#222] text-gray-500 cursor-not-allowed shadow-none'}`}>
+                                <button onClick={handlePost} disabled={!postText} className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-gray-900 hover:bg-yellow-400 shadow-[0_0_15px_rgba(255,187,0,0.3)] hover:shadow-[0_0_25px_rgba(255,187,0,0.5)]' : 'bg-[#00ff9d] text-gray-900 shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)]') : 'bg-[#161b22] text-gray-500 cursor-not-allowed shadow-none'}`}>
                                     {scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
                                 </button>
                             </div>

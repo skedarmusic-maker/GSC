@@ -16,14 +16,11 @@ export async function POST(req: Request) {
       - Comentário: "${reviewText || '(Sem comentário, apenas nota)'}"
 
       DIRETRIZES DA RESPOSTA:
-      1. Comece saudando o cliente pelo nome.
-      2. Se a nota for 4 ou 5 estrelas, seja alegre e agradeça a confiança.
-      3. Se a nota for 1, 2 ou 3 estrelas, seja empático, peça desculpas se necessário e convide o cliente a conversar no privado para resolver.
-      4. Use um tom humano, não pareça um robô.
-      5. A resposta deve ter no máximo 3 ou 4 frases.
-      6. Responda sempre em Português Brasileiro.
-
-      Gere apenas o texto da resposta, sem introduções ou explicações.
+      1. PROPORCIONALIDADE (CRÍTICO): Se o comentário do cliente for curto (menos de 5 palavras) ou inexistente (apenas nota), a resposta DEVE ser curta, direta e amigável (máximo 1 ou 2 frases). Ex: "Obrigado pelas estrelas, [Nome]! Ficamos felizes que gostou."
+      2. TOM HUMANO: Evite palavras rebuscadas como "magnânima", "preclaro", "imensamente honrado", "sua preferência é nosso combustível". Use linguagem do dia a dia, como se estivesse conversando com um cliente na sua loja.
+      3. PERSONALIZAÇÃO: Comece saudando pelo nome. Se houver comentário, mencione algo do que ele disse. Se não houver, apenas agradeça a avaliação positiva.
+      4. NOTAS BAIXAS: Para 1 a 3 estrelas, seja empático, não se defenda, peça desculpas e peça para entrar em contato para resolver (sem prometer mundos e fundos).
+      5. FORMATO: Sem introduções. Apenas o texto da resposta. Responda em Português Brasileiro.
     `;
 
     // Usando o nome exato do modelo disponível na sua conta (gemini-flash-latest)

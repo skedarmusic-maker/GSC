@@ -29,3 +29,5 @@ yarn-error.log*
 
 # SO
 .DS_Store
+.vercel
+.env*.local

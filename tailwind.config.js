@@ -6,7 +6,18 @@ module.exports = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        brand: {
+          dark: '#0d1117',
+          card: 'rgba(22, 27, 34, 0.8)',
+          accent: '#00ff9d',
+        }
+      }
+    },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/container-queries')
+  ],
 }

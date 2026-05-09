@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       rating: c.rating || 0,
       reviews: c.reviews || 0,
       type: c.type || 'N/A',
+      place_id: c.place_id,
       isUs: c.title.toLowerCase().includes(businessName.toLowerCase())
     }));
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
         rating: ourPlace.rating || 0,
         reviews: ourPlace.reviews || 0,
         type: ourPlace.type || 'N/A',
+        place_id: ourPlace.place_id,
         isUs: true
       });
     }
