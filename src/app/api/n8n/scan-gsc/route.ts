@@ -54,12 +54,12 @@ export async function POST(req: Request) {
         continue;
       }
       
-      // Filtro mais sensível: Impressões > 50 e CTR < 3%
+      // Filtro de TESTE TOTAL: Qualquer palavra com impressão entra
       const opportunities = insights.keywords.filter((k: any) => 
-        k.impressions > 50 && (k.ctr * 100) < 3.0
+        k.impressions > 1
       );
 
-      console.log(`✨ ${client.name}: Encontradas ${opportunities.length} oportunidades.`);
+      console.log(`✨ ${client.name}: Encontradas ${opportunities.length} oportunidades (Threshold Mínimo).`);
 
       let addedCount = 0;
 
