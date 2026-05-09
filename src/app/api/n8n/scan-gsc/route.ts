@@ -8,25 +8,51 @@ export async function POST(req: Request) {
   try {
     // 1. Validar Chave de API
     const authHeader = req.headers.get('x-api-key');
-    if (authHeader !== process.env.N8N_API_KEY) {
+    const expectedKey = process.env.N8N_API_KEY;
+    
+    if (!expectedKey) {
+      return NextResponse.json({ error: 'Configuração ausente: N8N_API_KEY não definida na Vercel' }, { status: 500 });
+    }
+
+    if (authHeader !== expectedKey) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
+    // Criar cliente admin para ignorar RLS
+    const adminSupabase = (await import('@supabase/supabase-js')).createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
+
     const { clientId } = await req.json();
 
-    // 2. Buscar Clientes (Um específico ou todos com GSC)
-    let query = supabase.from('clients').select('*').not('gsc_url', 'is', null);
-    if (clientId) query = query.eq('id', clientId);
+    // 2. Testar Conexão Supabase
+    console.log('--- DIAGNÓSTICO: Testando Supabase ---');
+    const { data: clients, error: clientError } = await adminSupabase
+      .from('clients')
+      .select('*')
+      .not('gsc_url', 'is', null);
 
-    const { data: clients, error: clientError } = await query;
-    if (clientError) throw clientError;
+    if (clientError) {
+      console.error('ERRO SUPABASE:', clientError);
+      return NextResponse.json({ error: 'Falha ao conectar no Supabase', details: clientError }, { status: 500 });
+    }
+
+    console.log(`--- DIAGNÓSTICO: ${clients?.length || 0} clientes encontrados ---`);
 
     const results = [];
 
     for (const client of (clients || [])) {
-      console.log(`🔍 Escaneando GSC para: ${client.name}...`);
+      console.log(`🔍 Escaneando GSC para: ${client.name} (${client.gsc_url})...`);
       
-      const insights = await getDetailedInsights(client.gsc_url, 28);
+      let insights;
+      try {
+        insights = await getDetailedInsights(client.gsc_url, 28);
+      } catch (gscError: any) {
+        console.error(`ERRO GSC (${client.name}):`, gscError.message);
+        results.push({ client: client.name, status: 'error', error: gscError.message });
+        continue;
+      }
       
       // Filtro: Impressões > 500 e CTR < 1.5% (Ajustável)
       const opportunities = insights.keywords.filter((k: any) => 
