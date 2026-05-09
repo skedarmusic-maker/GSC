@@ -43,10 +43,11 @@ export default function Dashboard() {
   const [competitorData, setCompetitorData] = useState<{ [key: string]: any }>({});
   const [loadingComp, setLoadingComp] = useState<{ [key: string]: boolean }>({});
   
-  // Estado para Oportunidades SEO (Micro-SaaS)
   const [seoOpportunities, setSeoOpportunities] = useState<any[]>([]);
   const [loadingOpps, setLoadingOpps] = useState(false);
-  
+  const [generatingContent, setGeneratingContent] = useState<{ [key: string]: boolean }>({});
+  const [viewingDraft, setViewingDraft] = useState<any>(null);
+
   // Controle de Datas Avançado
   const [days, setDays] = useState(28);
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
@@ -146,6 +147,7 @@ export default function Dashboard() {
   };
 
   const handleApproveOpportunity = async (oppId: string) => {
+    // 1. Aprovar
     const res = await fetch('/api/opportunities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -154,7 +156,29 @@ export default function Dashboard() {
 
     if (res.ok) {
       setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'aprovada' } : o));
-      alert('Oportunidade aprovada! O n8n será notificado para gerar o conteúdo.');
+      
+      // 2. Gerar Conteúdo Imediatamente
+      handleGenerateContent(oppId);
+    }
+  };
+
+  const handleGenerateContent = async (oppId: string) => {
+    setGeneratingContent(prev => ({ ...prev, [oppId]: true }));
+    try {
+      const res = await fetch('/api/ai/generate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opportunityId: oppId })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'rascunho_gerado', content_draft: result.draft } : o));
+        setViewingDraft({ id: oppId, draft: result.draft });
+      }
+    } catch (e) {
+      alert('Erro ao gerar rascunho com IA.');
+    } finally {
+      setGeneratingContent(prev => ({ ...prev, [oppId]: false }));
     }
   };
 
@@ -1215,24 +1239,32 @@ export default function Dashboard() {
                                                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
                                                     opp.status === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                                     opp.status === 'aprovada' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                    opp.status === 'rascunho_gerado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
                                                     'bg-[#00ff9d]/10 text-[#00ff9d] border-[#00ff9d]/20'
                                                 }`}>
-                                                    {opp.status}
+                                                    {opp.status ? opp.status.replace('_', ' ') : 'Pendente'}
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right">
                                                 {opp.status === 'pendente' ? (
                                                     <button 
                                                         onClick={() => handleApproveOpportunity(opp.id)}
+                                                        disabled={generatingContent[opp.id]}
                                                         className="bg-[#00ff9d] text-gray-900 font-bold px-4 py-2 rounded-lg text-xs shadow-[0_0_10px_rgba(0,255,157,0.2)] hover:shadow-[0_0_15px_rgba(0,255,157,0.4)] transition-all">
-                                                        Aprovar &amp; Escrever
+                                                        {generatingContent[opp.id] ? '⏳ Gerando...' : 'Aprovar & Escrever'}
+                                                    </button>
+                                                ) : opp.status === 'rascunho_gerado' ? (
+                                                    <button 
+                                                        onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft })}
+                                                        className="bg-[#161b22] border border-purple-500/50 text-purple-400 font-bold px-4 py-2 rounded-lg text-xs hover:bg-purple-500/10 transition-all">
+                                                        👁️ Ver Rascunho
                                                     </button>
                                                 ) : opp.status === 'publicada' ? (
                                                     <a href={opp.published_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-xs font-bold underline">
                                                         Ver Página ↗
                                                     </a>
                                                 ) : (
-                                                    <span className="text-gray-500 text-xs italic">Processando...</span>
+                                                    <span className="text-gray-500 text-xs italic">Aguardando IA...</span>
                                                 )}
                                             </td>
                                         </tr>
@@ -1240,6 +1272,32 @@ export default function Dashboard() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* MODAL DE RASCUNHO */}
+                        {viewingDraft && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                                <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+                                    <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-white">Rascunho de Conteúdo IA</h3>
+                                            <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini 1.5 Pro</p>
+                                        </div>
+                                        <button onClick={() => setViewingDraft(null)} className="p-2 text-gray-400 hover:text-white">✕</button>
+                                    </div>
+                                    <div className="p-8 overflow-y-auto bg-[#0d1117]/50 text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
+                                        {viewingDraft.draft}
+                                    </div>
+                                    <div className="p-6 border-t border-gray-800 flex justify-end gap-4 bg-[#0d1117]">
+                                        <button onClick={() => setViewingDraft(null)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-400 hover:text-white transition-colors">Fechar</button>
+                                        <button 
+                                            onClick={() => { alert('Postagem automática sendo enviada para o WordPress/n8n...'); setViewingDraft(null); }}
+                                            className="bg-[#00ff9d] text-gray-900 font-bold px-8 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)] transition-all">
+                                            🚀 Publicar Agora
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
               </div>
