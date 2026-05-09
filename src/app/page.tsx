@@ -1235,17 +1235,17 @@ export default function Dashboard() {
                                                 <p className="text-xs text-gray-500 mt-1">Identificado em {new Date(opp.created_at).toLocaleDateString()}</p>
                                             </td>
                                             <td className="p-4 text-right">
-                                                <p className="text-white font-bold">{opp.impressions.toLocaleString()}</p>
-                                                <p className="text-xs text-red-400 font-medium mt-1">{opp.ctr}% CTR</p>
+                                                <p className="text-white font-bold">{(opp.impressions || 0).toLocaleString()}</p>
+                                                <p className="text-xs text-red-400 font-medium mt-1">{(opp.ctr || 0)}% CTR</p>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                                                    opp.status === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                                    (opp.status || 'pendente') === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                                     opp.status === 'aprovada' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                                                     opp.status === 'rascunho_gerado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
                                                     'bg-[#00ff9d]/10 text-[#00ff9d] border-[#00ff9d]/20'
                                                 }`}>
-                                                    {opp.status ? opp.status.replace('_', ' ') : 'Pendente'}
+                                                    {(opp.status || 'pendente').replace('_', ' ')}
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right">
