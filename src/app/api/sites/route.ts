@@ -15,6 +15,8 @@ export async function GET() {
       .order('name', { ascending: true });
 
     if (dbError) throw dbError;
+    
+    console.log(`📡 API SITES: ${dbClients?.length || 0} clientes encontrados no banco.`);
 
     // 2. Se o banco estiver vazio, fazemos o seeding automático (Primeiro Acesso)
     if (!dbClients || dbClients.length === 0) {
