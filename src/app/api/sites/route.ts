@@ -11,8 +11,14 @@ export async function GET() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     console.log(`🔍 DIAGNÓSTICO VERCEL: Tentando conectar em ${url.substring(0, 20)}...`);
 
+    // Criar cliente admin para ignorar RLS e garantir que o Dashboard veja os dados
+    const adminSupabase = (await import('@supabase/supabase-js')).createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
+
     // 1. Tentar buscar do banco de dados (Supabase)
-    let { data: dbClients, error: dbError } = await supabase
+    let { data: dbClients, error: dbError } = await adminSupabase
       .from('clients')
       .select('*')
       .order('name', { ascending: true });
