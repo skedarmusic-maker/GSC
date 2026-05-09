@@ -8,6 +8,9 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    console.log(`🔍 DIAGNÓSTICO VERCEL: Tentando conectar em ${url.substring(0, 20)}...`);
+
     // 1. Tentar buscar do banco de dados (Supabase)
     let { data: dbClients, error: dbError } = await supabase
       .from('clients')
