@@ -40,9 +40,12 @@ export default function Dashboard() {
   const [loadingRank, setLoadingRank] = useState(false);
   const [rankRadius, setRankRadius] = useState('15z'); // Padrão 5km (15z)
   
-  // Estado para Análise de Concorrentes
   const [competitorData, setCompetitorData] = useState<{ [key: string]: any }>({});
   const [loadingComp, setLoadingComp] = useState<{ [key: string]: boolean }>({});
+  
+  // Estado para Oportunidades SEO (Micro-SaaS)
+  const [seoOpportunities, setSeoOpportunities] = useState<any[]>([]);
+  const [loadingOpps, setLoadingOpps] = useState(false);
   
   // Controle de Datas Avançado
   const [days, setDays] = useState(28);
@@ -125,6 +128,30 @@ export default function Dashboard() {
       const data = await res.json();
       if (!data.error) setTrackedKeywords(data);
     } catch(e) { console.error(e); }
+  };
+  
+  const fetchOpportunities = async (clientId: string) => {
+    setLoadingOpps(true);
+    const { data: opps, error } = await supabase
+      .from('oportunidades_seo')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    
+    if (!error) setSeoOpportunities(opps || []);
+    setLoadingOpps(false);
+  };
+
+  const handleApproveOpportunity = async (oppId: string) => {
+    const { error } = await supabase
+      .from('oportunidades_seo')
+      .update({ status: 'aprovada' })
+      .eq('id', oppId);
+    
+    if (!error) {
+      setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'aprovada' } : o));
+      alert('Oportunidade aprovada! O n8n será notificado para gerar o conteúdo.');
+    }
   };
 
   const handleAddKeyword = async () => {
@@ -292,7 +319,6 @@ export default function Dashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewName, replyText: text })
-      });
       const resData = await res.json();
       if (resData.error) throw new Error(resData.error);
       alert('Resposta enviada com sucesso ao Google Maps!');
@@ -300,6 +326,12 @@ export default function Dashboard() {
       if (data?.maps) fetchLocalProfile(data.maps.accountId, data.maps.locationId);
     } catch(e) { alert('Erro ao responder a avaliação.'); }
   };
+
+  useEffect(() => {
+    if (activeTab === 'seo-opportunities' && selectedClient?.id) {
+        fetchOpportunities(selectedClient.id);
+    }
+  }, [activeTab, selectedClient]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -544,6 +576,13 @@ export default function Dashboard() {
                 <li><button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-insights' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>✨ Visão Geral (IA)</button></li>
                 <li><button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-keywords' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📊 Palavras-chave</button></li>
                 <li><button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-pages' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📄 Top Páginas</button></li>
+                <li className="pt-2"><p className="text-[10px] font-bold text-[#00ff9d] mb-3 uppercase tracking-wider px-2">Automação Micro-SaaS</p></li>
+                <li>
+                  <button onClick={() => setActiveTab('seo-opportunities')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'seo-opportunities' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>
+                    <span>🎯 Oportunidades IA</span>
+                    <span className="bg-[#00ff9d] text-gray-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_8px_#00ff9d]">Novo</span>
+                  </button>
+                </li>
               </ul>
             ) : (
               <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um site GSC acima</p>
@@ -1123,6 +1162,78 @@ export default function Dashboard() {
                                     {scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ---------------- MICRO-SAAS: OPORTUNIDADES IA ---------------- */}
+                {activeTab === 'seo-opportunities' && (
+                    <div className="space-y-6 animate-fade-in max-w-5xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                             <div>
+                                 <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA</h2>
+                                 <p className="text-gray-400 mt-1">Sugestões automáticas do n8n (Alto Volume, Baixo CTR) prontas para virar artigos e páginas.</p>
+                             </div>
+                             <button 
+                                onClick={() => selectedClient?.id && fetchOpportunities(selectedClient.id)}
+                                className="bg-[#161b22] border border-[#00ff9d]/30 text-[#00ff9d] font-bold px-5 py-2.5 rounded-xl text-sm transition-colors hover:bg-[#161b22]/80">
+                                 🔄 Sincronizar Fila
+                             </button>
+                        </div>
+                        
+                        <div className="glass-card rounded-2xl border-[#00ff9d]/10 p-1 mt-6">
+                            <table className="w-full text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-gray-800 text-gray-500 uppercase tracking-wider text-[10px] font-bold bg-[#161b22]/50">
+                                        <th className="p-4 rounded-tl-xl">Termo Encontrado</th>
+                                        <th className="p-4 text-right">Métricas (Imp. / CTR)</th>
+                                        <th className="p-4 text-center">Status</th>
+                                        <th className="p-4 text-right rounded-tr-xl">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {loadingOpps ? (
+                                        <tr><td colSpan={4} className="p-10 text-center text-gray-500">Carregando oportunidades...</td></tr>
+                                    ) : seoOpportunities.length === 0 ? (
+                                        <tr><td colSpan={4} className="p-10 text-center text-gray-500">Nenhuma oportunidade pendente para este cliente.</td></tr>
+                                    ) : seoOpportunities.map((opp) => (
+                                        <tr key={opp.id} className="border-b border-gray-800/50 hover:bg-[#161b22]/40 transition-colors group">
+                                            <td className="p-4">
+                                                <p className="font-bold text-white text-[15px]">{opp.keyword}</p>
+                                                <p className="text-xs text-gray-500 mt-1">Identificado em {new Date(opp.created_at).toLocaleDateString()}</p>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <p className="text-white font-bold">{opp.impressions.toLocaleString()}</p>
+                                                <p className="text-xs text-red-400 font-medium mt-1">{opp.ctr}% CTR</p>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                                                    opp.status === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                                    opp.status === 'aprovada' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                    'bg-[#00ff9d]/10 text-[#00ff9d] border-[#00ff9d]/20'
+                                                }`}>
+                                                    {opp.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                {opp.status === 'pendente' ? (
+                                                    <button 
+                                                        onClick={() => handleApproveOpportunity(opp.id)}
+                                                        className="bg-[#00ff9d] text-gray-900 font-bold px-4 py-2 rounded-lg text-xs shadow-[0_0_10px_rgba(0,255,157,0.2)] hover:shadow-[0_0_15px_rgba(0,255,157,0.4)] transition-all">
+                                                        Aprovar &amp; Escrever
+                                                    </button>
+                                                ) : opp.status === 'publicada' ? (
+                                                    <a href={opp.published_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-xs font-bold underline">
+                                                        Ver Página ↗
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-500 text-xs italic">Processando...</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}
