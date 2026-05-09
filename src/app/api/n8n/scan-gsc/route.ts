@@ -70,25 +70,30 @@ export async function POST(req: Request) {
         const ctr = ((opp.ctr || 0) * 100).toFixed(2);
         const position = (opp.position || 0).toFixed(1);
 
-        // Verificar duplicata (Termo + Cliente)
-        const { data: existing } = await supabase
+        // Verificar duplicata (Termo + Cliente) usando adminSupabase
+        const { data: existing } = await adminSupabase
           .from('oportunidades_seo')
           .select('id')
           .eq('client_id', client.id)
           .eq('keyword', keyword)
-          .single();
+          .maybeSingle();
 
         if (!existing) {
-          await supabase.from('oportunidades_seo').insert({
+          const { error: insertError } = await adminSupabase.from('oportunidades_seo').insert({
             client_id: client.id,
             keyword: keyword,
             impressions: impressions,
             clicks: clicks,
-            ctr: ctr,
-            position: position,
+            ctr: parseFloat(ctr),
+            position: parseFloat(position),
             status: 'pendente'
           });
-          addedCount++;
+          
+          if (insertError) {
+            console.error(`❌ Erro ao inserir palavra '${keyword}':`, insertError.message);
+          } else {
+            addedCount++;
+          }
         }
       }
 
