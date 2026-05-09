@@ -319,6 +319,7 @@ export default function Dashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewName, replyText: text })
+      });
       const resData = await res.json();
       if (resData.error) throw new Error(resData.error);
       alert('Resposta enviada com sucesso ao Google Maps!');
