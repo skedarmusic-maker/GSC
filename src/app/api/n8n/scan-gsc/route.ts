@@ -36,22 +36,28 @@ export async function POST(req: Request) {
       let addedCount = 0;
 
       for (const opp of opportunities) {
+        const keyword = opp.keys?.[0] || 'unknown';
+        const impressions = opp.impressions || 0;
+        const clicks = opp.clicks || 0;
+        const ctr = ((opp.ctr || 0) * 100).toFixed(2);
+        const position = (opp.position || 0).toFixed(1);
+
         // Verificar duplicata (Termo + Cliente)
         const { data: existing } = await supabase
           .from('oportunidades_seo')
           .select('id')
           .eq('client_id', client.id)
-          .eq('keyword', opp.keys[0])
+          .eq('keyword', keyword)
           .single();
 
         if (!existing) {
           await supabase.from('oportunidades_seo').insert({
             client_id: client.id,
-            keyword: opp.keys[0],
-            impressions: opp.impressions,
-            clicks: opp.clicks,
-            ctr: (opp.ctr * 100).toFixed(2),
-            position: opp.position.toFixed(1),
+            keyword: keyword,
+            impressions: impressions,
+            clicks: clicks,
+            ctr: ctr,
+            position: position,
             status: 'pendente'
           });
           addedCount++;
