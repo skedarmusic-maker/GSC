@@ -79,7 +79,14 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('ERRO SCAN GSC:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('ERRO DETALHADO SCAN GSC:', {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+    return NextResponse.json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    }, { status: 500 });
   }
 }
