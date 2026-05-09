@@ -174,9 +174,12 @@ export default function Dashboard() {
       if (result.success) {
         setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'rascunho_gerado', content_draft: result.draft } : o));
         setViewingDraft({ id: oppId, draft: result.draft });
+      } else {
+        alert("Erro na geração da IA: " + (result.error || "Erro desconhecido."));
       }
-    } catch (e) {
-      alert('Erro ao gerar rascunho com IA.');
+    } catch (e: any) {
+      console.error('Erro na IA:', e);
+      alert("Falha ao comunicar com o servidor: " + e.message);
     } finally {
       setGeneratingContent(prev => ({ ...prev, [oppId]: false }));
     }
