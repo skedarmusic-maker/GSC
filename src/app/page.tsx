@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [loadingSession, setLoadingSession] = useState(true);
 
   // Estados Gerais
-  const [clients, setClients] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [data, setData] = useState<any>(null);
@@ -345,43 +345,57 @@ export default function Dashboard() {
   };
 
   const handleSelectGbpProfile = async (profile: any) => {
+    if (!profile) return;
+    
     setSelectedGbp(profile);
     setLoadingPerf(true);
     try {
+      // gbpData.id já vem no formato correto: "locations/XXXX" da rota /api/sites
+      // profile.id é o UUID do Supabase - NÃO usar para locationId
       const accountId = profile.gbpData?.accountId || profile.accountId;
-      const locationId = profile.id?.replace('locations/', '');
-      // A API do Google exige o formato completo: accounts/{id}/locations/{id}
-      const fullLocationName = accountId 
-        ? `accounts/${accountId}/locations/${locationId}` 
-        : profile.id;
+      const rawLocationId = profile.gbpData?.id || profile.id;
+      const locationId = rawLocationId?.replace('locations/', '').replace(/^accounts\/[^/]+\//, '');
+      
+      // A API exige: locations/{id}
+      const fullLocationName = `locations/${locationId}`;
 
-      // DIAGNÓSTICO: Ver os IDs reais no terminal
-      console.log('🗺️ GBP Profile selecionado:', { 
-        name: profile.name, 
-        accountId, 
-        locationId, 
-        fullLocationName,
-        profileRaw: JSON.stringify(profile).substring(0, 300)
-      });
+      console.log('🗺️ Solicitando Performance para:', fullLocationName);
 
       const res = await fetch('/api/maps/performance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locationName: fullLocationName, days: days })
       });
+      
       const perfData = await res.json();
+      
+      // Se a API retornar erro ou nulo, garantimos que não quebre a UI
+      const safeMetrics = (perfData && !perfData.error) 
+        ? perfData 
+        : { calls: 0, directions: 0, websiteClicks: 0 };
+
       const mapsData = {
-        title: profile.name,
+        title: profile.name || profile.title,
         accountId,
         locationId,
-        metrics: perfData || { calls: 0, directions: 0, websiteClicks: 0 }
+        metrics: safeMetrics
       };
+      
       setGbpData(mapsData);
-      fetchLocalProfile(mapsData.accountId, mapsData.locationId);
-      fetchScheduledPosts(mapsData.locationId);
-      fetchAudit(mapsData.accountId, mapsData.locationId);
-      fetchRankData(mapsData.locationId);
-    } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
+      
+      // Dispara buscas paralelas de outros dados
+      if (accountId && locationId) {
+        fetchLocalProfile(accountId, locationId);
+        fetchAudit(accountId, locationId);
+      }
+      fetchScheduledPosts(locationId);
+      fetchRankData(locationId);
+      
+    } catch (err) { 
+      console.error('Erro ao selecionar perfil GBP:', err); 
+    } finally { 
+      setLoadingPerf(false); 
+    }
   };
 
 
@@ -538,7 +552,14 @@ export default function Dashboard() {
               <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🏪 Resumo Local</button></li>
               <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🛡️ Auditoria</button></li>
               <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Rank Tracker</button></li>
-              <li><button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>⭐ Avaliações</button></li>
+              <li><button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2 rounded-md flex items-center justify-between ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>
+                <span>⭐ Avaliações</span>
+                {localReviews.filter((r: any) => !r.reviewReply).length > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {localReviews.filter((r: any) => !r.reviewReply).length}
+                  </span>
+                )}
+              </button></li>
               <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
             </ul>
           )}
