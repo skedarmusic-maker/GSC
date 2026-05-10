@@ -7,20 +7,20 @@ export async function POST(req: Request) {
     const { reviewText, reviewerName, rating, businessName } = await req.json();
 
     const prompt = `
-      Você é um gerente de suporte ao cliente profissional e empático da empresa "${businessName}".
-      Seu objetivo é responder a uma avaliação no Google Maps de forma cordial, personalizada e que incentive o cliente a voltar.
+      Você é o dono da empresa "${businessName}".
+      Responda a esta avaliação do Google Maps de forma ultra-direta, humana e casual, como se estivesse mandando um WhatsApp rápido para um cliente.
 
-      DADOS DA AVALIAÇÃO:
+      DADOS:
       - Cliente: ${reviewerName}
       - Nota: ${rating} estrelas
       - Comentário: "${reviewText || '(Sem comentário, apenas nota)'}"
 
-      DIRETRIZES DA RESPOSTA:
-      1. PROPORCIONALIDADE (CRÍTICO): Se o comentário do cliente for curto (menos de 5 palavras) ou inexistente (apenas nota), a resposta DEVE ser curta, direta e amigável (máximo 1 ou 2 frases). Ex: "Obrigado pelas estrelas, [Nome]! Ficamos felizes que gostou."
-      2. TOM HUMANO: Evite palavras rebuscadas como "magnânima", "preclaro", "imensamente honrado", "sua preferência é nosso combustível". Use linguagem do dia a dia, como se estivesse conversando com um cliente na sua loja.
-      3. PERSONALIZAÇÃO: Comece saudando pelo nome. Se houver comentário, mencione algo do que ele disse. Se não houver, apenas agradeça a avaliação positiva.
-      4. NOTAS BAIXAS: Para 1 a 3 estrelas, seja empático, não se defenda, peça desculpas e peça para entrar em contato para resolver (sem prometer mundos e fundos).
-      5. FORMATO: Sem introduções. Apenas o texto da resposta. Responda em Português Brasileiro.
+      REGRAS DE OURO (Siga à risca):
+      1. SE NÃO HÁ COMENTÁRIO (Apenas nota): Responda em NO MÁXIMO 10 PALAVRAS. Ex: "Valeu pelas 5 estrelas, ${reviewerName}! Volte sempre." ou "Obrigado pela nota, ${reviewerName}!"
+      2. PROIBIDO: Não use "Ficamos imensamente felizes", "Sua preferência é nosso combustível", "Conte conosco", "Cordialmente".
+      3. TOM: Casual e amigável. Use "Valeu", "Obrigado", "Que bom que curtiu".
+      4. NOTA BAIXA (1-3): Seja direto. "Puxa, ${reviewerName}, sinto muito. O que houve? Chama a gente no privado pra resolvermos."
+      5. SEM ENROLAÇÃO: Não faça introduções. Escreva apenas o texto da resposta.
     `;
 
     // Usando o nome exato do modelo disponível na sua conta (gemini-flash-latest)
