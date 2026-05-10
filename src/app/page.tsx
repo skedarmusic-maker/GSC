@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import TabSEOInsights from '@/components/tabs/TabSEOInsights';
+import TabSEOKeywords from '@/components/tabs/TabSEOKeywords';
+import TabSEOPages from '@/components/tabs/TabSEOPages';
+import TabSEOOpportunities from '@/components/tabs/TabSEOOpportunities';
+import TabGBPDashboard from '@/components/tabs/TabGBPDashboard';
+import TabGBPAudit from '@/components/tabs/TabGBPAudit';
+import TabGBPRank from '@/components/tabs/TabGBPRank';
+import TabGBPReviews from '@/components/tabs/TabGBPReviews';
+import TabGBPPosts from '@/components/tabs/TabGBPPosts';
+import TabClientConfig from '@/components/tabs/TabClientConfig';
 
 export default function Dashboard() {
   const [sites, setSites] = useState<any[]>([]);
@@ -12,11 +22,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('insights');
   const [appMode, setAppMode] = useState<'seo' | 'gbp'>('seo');
   
-  // Cliente GBP selecionado independentemente
   const [selectedGbp, setSelectedGbp] = useState<any>(null);
   const [gbpData, setGbpData] = useState<any>(null);
   
-  // Estado para Gestão do Perfil Local
   const [localReviews, setLocalReviews] = useState<any[]>([]);
   const [loadingLocal, setLoadingLocal] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -30,15 +38,13 @@ export default function Dashboard() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   
-  // Estado para Auditoria de Perfil
   const [auditData, setAuditData] = useState<any>(null);
   const [loadingAudit, setLoadingAudit] = useState(false);
   
-  // Estado para Rank Tracking
   const [trackedKeywords, setTrackedKeywords] = useState<any[]>([]);
   const [newKeyword, setNewKeyword] = useState('');
   const [loadingRank, setLoadingRank] = useState(false);
-  const [rankRadius, setRankRadius] = useState('15z'); // Padrão 5km (15z)
+  const [rankRadius, setRankRadius] = useState('15z');
   
   const [competitorData, setCompetitorData] = useState<{ [key: string]: any }>({});
   const [loadingComp, setLoadingComp] = useState<{ [key: string]: boolean }>({});
@@ -48,7 +54,6 @@ export default function Dashboard() {
   const [generatingContent, setGeneratingContent] = useState<{ [key: string]: boolean }>({});
   const [viewingDraft, setViewingDraft] = useState<any>(null);
 
-  // Controle de Datas Avançado
   const [days, setDays] = useState(28);
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [isCustom, setIsCustom] = useState(false);
@@ -65,35 +70,56 @@ export default function Dashboard() {
   const [savingBranded, setSavingBranded] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-
   useEffect(() => {
     async function fetchSites() {
       try {
         const res = await fetch('/api/sites');
         const d = await res.json();
-        if (Array.isArray(d)) {
-          setSites(d);
-        } else {
-          setSites([]);
-          console.error('API /api/sites não retornou um array:', d);
-        }
+        if (Array.isArray(d)) setSites(d);
       } catch (err) { console.error(err); } finally { setLoading(false); }
     }
     fetchSites();
   }, []);
 
   useEffect(() => {
-    if (selectedClient) {
-      fetchData(selectedClient.gscUrl, days, selectedClient.gbpData);
-    }
-    if (selectedGbp) {
-      handleSelectGbpProfile(selectedGbp);
-    }
+    if (selectedClient) fetchData(selectedClient.gscUrl, days, selectedClient.gbpData);
+    if (selectedGbp) handleSelectGbpProfile(selectedGbp);
   }, [days]);
+
+  const fetchData = async (url: string, period: any, gbpFallback?: any) => {
+    setLoadingPerf(true);
+    try {
+      const res = await fetch('/api/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            siteUrl: url, 
+            days: typeof period === 'number' ? period : undefined,
+            startDate: typeof period === 'object' ? period.start : undefined,
+            endDate: typeof period === 'object' ? period.end : undefined
+        }),
+      });
+      const d = await res.json();
+      if (!d.maps && gbpFallback) {
+         d.maps = {
+           title: gbpFallback.title,
+           accountId: gbpFallback.accountId,
+           locationId: gbpFallback.name.replace('locations/', ''),
+           metrics: { calls: 0, directions: 0, websiteClicks: 0 }
+         };
+      }
+      setData(d);
+      if (d.maps?.accountId && d.maps?.locationId) {
+        fetchLocalProfile(d.maps.accountId, d.maps.locationId);
+        fetchScheduledPosts(d.maps.locationId);
+        fetchAudit(d.maps.accountId, d.maps.locationId);
+        fetchRankData(d.maps.locationId);
+      }
+    } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
+  };
 
   const fetchLocalProfile = async (accountId: string, locationId: string) => {
     setLoadingLocal(true);
-    setLocalError(null);
     try {
       const res = await fetch('/api/reviews', {
         method: 'POST',
@@ -101,26 +127,17 @@ export default function Dashboard() {
         body: JSON.stringify({ accountId, locationId })
       });
       const data = await res.json();
-      if (data.error) {
-        setLocalError(data.error);
-      } else {
-        setLocalReviews(data);
-      }
-    } catch(e: any) { 
-        setLocalError('Falha na conexão com a API local');
-        console.error(e); 
-    } finally { setLoadingLocal(false); }
+      if (!data.error) setLocalReviews(data);
+    } catch(e) { console.error(e); } finally { setLoadingLocal(false); }
   };
 
   const fetchScheduledPosts = async (locationId: string) => {
-    const { data: posts, error } = await supabase
+    const { data: posts } = await supabase
       .from('scheduled_posts')
       .select('*')
       .eq('location_id', locationId)
-      .eq('status', 'pending')
-      .order('scheduled_for', { ascending: true });
-    
-    if (!error) setScheduledPosts(posts || []);
+      .eq('status', 'pending');
+    setScheduledPosts(posts || []);
   };
 
   const fetchAudit = async (accountId: string, locationId: string) => {
@@ -149,28 +166,18 @@ export default function Dashboard() {
     try {
       const res = await fetch(`/api/opportunities?clientId=${clientId}`);
       const opps = await res.json();
-      if (Array.isArray(opps)) {
-        setSeoOpportunities(opps);
-      }
-    } catch (e) {
-      console.error('Erro ao buscar oportunidades:', e);
-    } finally {
-      setLoadingOpps(false);
-    }
+      if (Array.isArray(opps)) setSeoOpportunities(opps);
+    } catch (e) { console.error(e); } finally { setLoadingOpps(false); }
   };
 
   const handleApproveOpportunity = async (oppId: string) => {
-    // 1. Aprovar
     const res = await fetch('/api/opportunities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: oppId, status: 'aprovada' })
     });
-
     if (res.ok) {
       setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'aprovada' } : o));
-      
-      // 2. Gerar Conteúdo Imediatamente
       handleGenerateContent(oppId);
     }
   };
@@ -187,27 +194,17 @@ export default function Dashboard() {
       if (result.success) {
         setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'rascunho_gerado', content_draft: result.draft } : o));
         setViewingDraft({ id: oppId, draft: result.draft });
-      } else {
-        alert("Erro na geração da IA: " + (result.error || "Erro desconhecido."));
       }
-    } catch (e: any) {
-      console.error('Erro na IA:', e);
-      alert("Falha ao comunicar com o servidor: " + e.message);
-    } finally {
-      setGeneratingContent(prev => ({ ...prev, [oppId]: false }));
-    }
+    } catch (e) { console.error(e); } finally { setGeneratingContent(prev => ({ ...prev, [oppId]: false })); }
   };
 
   const handleAddKeyword = async () => {
-    // Busca dados do Maps do objeto unificado ou do perfil selecionado (para Maps Only)
     const mapsData = data?.maps || (selectedGbp ? {
       locationId: selectedGbp.id.replace('locations/', ''),
       accountId: selectedGbp.accountId,
       title: selectedGbp.name
     } : null);
-
     if (!newKeyword || !mapsData) return;
-    
     setLoadingRank(true);
     try {
       const res = await fetch('/api/rank', {
@@ -221,10 +218,7 @@ export default function Dashboard() {
           zoom: rankRadius
         })
       });
-      if (res.ok) {
-        setNewKeyword('');
-        fetchRankData(mapsData.locationId);
-      }
+      if (res.ok) { setNewKeyword(''); fetchRankData(mapsData.locationId); }
     } catch(e) { console.error(e); } finally { setLoadingRank(false); }
   };
 
@@ -234,10 +228,7 @@ export default function Dashboard() {
       accountId: selectedGbp.accountId,
       title: selectedGbp.name
     } : null);
-
     if (!mapsData) return;
-    
-    alert('Buscando análise técnica do Top 3... aguarde alguns segundos.');
     setLoadingComp(prev => ({ ...prev, [keyword]: true }));
     try {
       const res = await fetch('/api/competitors', {
@@ -251,46 +242,8 @@ export default function Dashboard() {
         })
       });
       const resData = await res.json();
-      if (resData.competitors) {
-        setCompetitorData(prev => ({ ...prev, [keyword]: resData.competitors }));
-      }
+      if (resData.competitors) setCompetitorData(prev => ({ ...prev, [keyword]: resData.competitors }));
     } catch(e) { console.error(e); } finally { setLoadingComp(prev => ({ ...prev, [keyword]: false })); }
-  };
-
-  const fetchData = async (url: string, period: any, gbpFallback?: any) => {
-    setLoadingPerf(true);
-    try {
-      const res = await fetch('/api/performance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            siteUrl: url, 
-            days: typeof period === 'number' ? period : undefined,
-            startDate: typeof period === 'object' ? period.start : undefined,
-            endDate: typeof period === 'object' ? period.end : undefined
-        }),
-      });
-      const d = await res.json();
-      
-      // Se não houver d.maps e tivemos um fallback (HYBRID), tentamos forçar o vínculo manual
-      if (!d.maps && gbpFallback) {
-         d.maps = {
-           title: gbpFallback.title,
-           accountId: gbpFallback.accountId,
-           locationId: gbpFallback.name.replace('locations/', ''),
-           metrics: { calls: 0, directions: 0, websiteClicks: 0 }
-         };
-      }
-      
-      setData(d);
-      
-      if (d.maps && d.maps.accountId && d.maps.locationId) {
-        fetchLocalProfile(d.maps.accountId, d.maps.locationId);
-        fetchScheduledPosts(d.maps.locationId);
-        fetchAudit(d.maps.accountId, d.maps.locationId);
-        fetchRankData(d.maps.locationId);
-      }
-    } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
   };
 
   const handleSaveSettings = async () => {
@@ -306,19 +259,11 @@ export default function Dashboard() {
           businessContext: configBusinessContext
         })
       });
-      const resData = await res.json();
-      if (resData.success) {
-        alert('Configurações salvas com sucesso!');
-        // Atualizar lista local
+      if (res.ok) {
+        alert('Configurações salvas!');
         setSites(prev => prev.map(s => s.id === selectedClient.id ? { ...s, localPath: configLocalPath, businessContext: configBusinessContext } : s));
-      } else {
-        throw new Error(resData.error);
       }
-    } catch (e: any) {
-      alert('Erro ao salvar: ' + e.message);
-    } finally {
-      setSavingConfig(false);
-    }
+    } catch (e) { console.error(e); } finally { setSavingConfig(false); }
   };
 
   const fetchKnowledgeBase = async (clientId: string) => {
@@ -339,11 +284,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientId: selectedClient.id, title: kbTitle, content: kbContent })
       });
-      if (res.ok) {
-        setKbTitle('');
-        setKbContent('');
-        fetchKnowledgeBase(selectedClient.id);
-      }
+      if (res.ok) { setKbTitle(''); setKbContent(''); fetchKnowledgeBase(selectedClient.id); }
     } catch (e) { console.error(e); } finally { setSavingKB(false); }
   };
 
@@ -355,7 +296,6 @@ export default function Dashboard() {
     } catch (e) { console.error(e); }
   };
 
-  
   const handleSaveBranded = async () => {
     if (!selectedClient) return;
     setSavingBranded(true);
@@ -368,40 +308,21 @@ export default function Dashboard() {
                 design_context: { ...selectedClient.design_context, branded_keywords: configBranded }
             })
         });
-        if (res.ok) alert('✅ Filtro de Marca atualizado com sucesso! A aba de Oportunidades será limpa.');
-    } catch(e) {
-        console.error(e);
-        alert('Erro ao salvar filtro.');
-    } finally {
-        setSavingBranded(false);
-    }
+        if (res.ok) alert('Filtro atualizado!');
+    } catch(e) { console.error(e); } finally { setSavingBranded(false); }
   };
 
   const handleSyncDesign = async () => {
-    if (!selectedClient || !configLocalPath) {
-        alert('Configure o caminho local primeiro!');
-        return;
-    }
+    if (!selectedClient || !configLocalPath) return;
     setSyncingDesign(true);
     try {
-        // Envia um comando para a API que dispara a análise do Antigravity
         const res = await fetch('/api/sites/sync-design', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId: selectedClient.id, localPath: configLocalPath })
         });
-        const result = await res.json();
-        if (result.success) {
-            alert('Identidade Visual sincronizada com sucesso! Antigravity agora conhece o DNA deste site.');
-        } else {
-            alert('Aviso: ' + result.message);
-        }
-    } catch (e) {
-        console.error(e);
-        alert('Erro ao sincronizar design.');
-    } finally {
-        setSyncingDesign(false);
-    }
+        if (res.ok) alert('Design sincronizado!');
+    } catch (e) { console.error(e); } finally { setSyncingDesign(false); }
   };
 
   const handleSelectClient = (client: any) => {
@@ -410,54 +331,37 @@ export default function Dashboard() {
     setConfigLocalPath(client.localPath || '');
     setConfigBusinessContext(client.businessContext || '');
     setData(null);
-    setLocalReviews([]);
-    setScheduledPosts([]);
-    setAuditData(null);
-    setTrackedKeywords([]);
-    setLocalError(null);
-    
-    if (client.type === 'GSC_ONLY' || client.type === 'HYBRID') {
+    if (client.type !== 'GBP_ONLY') {
        setActiveTab('seo-insights');
        fetchData(client.gscUrl, days, client.gbpData);
-    } else if (client.type === 'GBP_ONLY') {
-       // Cliente Exclusivo de Maps (Não chama API de Performance GSC)
+    } else {
        setActiveTab('gbp-dashboard');
-       const accountId = client.gbpData.accountId;
-       const locationId = client.gbpData.name.replace('locations/', '');
-       
-       setData({
-         current: { clicks: 0, impressions: 0, ctr: 0, position: 0 },
-         previous: { clicks: 0, impressions: 0, ctr: 0, position: 0 },
-         keywords: [],
-         pages: [],
-         maps: {
-           title: client.gbpData.title,
-           accountId: accountId,
-           locationId: locationId,
-           metrics: { calls: 0, directions: 0, websiteClicks: 0 }
-         }
-       });
-       
-       fetchLocalProfile(accountId, locationId);
-       fetchScheduledPosts(locationId);
-     }
+       handleSelectGbpProfile(client.gbpData);
+    }
   };
 
-
-
-  const handleViewLayout = async (opp: any) => {
-    alert('🎨 Antigravity está gerando o layout no Stitch baseado neste rascunho. Aguarde alguns segundos...');
+  const handleSelectGbpProfile = async (profile: any) => {
+    setSelectedGbp(profile);
+    setLoadingPerf(true);
     try {
-        const res = await fetch('/api/ai/generate-layout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ opportunityId: opp.id, clientId: selectedClient.id, content: opp.content_draft })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert('✨ Layout gerado no Stitch! O Antigravity vai te mostrar a prévia em instantes.');
-        }
-    } catch (e) { console.error(e); }
+      const res = await fetch('/api/maps/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationName: profile.id, days: days })
+      });
+      const perfData = await res.json();
+      const mapsData = {
+        title: profile.name,
+        accountId: profile.gbpData?.accountId || profile.accountId,
+        locationId: profile.id.replace('locations/', ''),
+        metrics: perfData || { calls: 0, directions: 0, websiteClicks: 0 }
+      };
+      setGbpData(mapsData);
+      fetchLocalProfile(mapsData.accountId, mapsData.locationId);
+      fetchScheduledPosts(mapsData.locationId);
+      fetchAudit(mapsData.accountId, mapsData.locationId);
+      fetchRankData(mapsData.locationId);
+    } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
   };
 
   const handleGenerateAI = async (review: any) => {
@@ -470,18 +374,12 @@ export default function Dashboard() {
           reviewText: review.comment,
           reviewerName: review.reviewer.displayName,
           rating: review.starRating,
-          businessName: data?.maps?.title || 'nossa empresa'
+          businessName: gbpData?.title || 'nossa empresa'
         })
       });
       const result = await res.json();
-      if (result.reply) {
-        setReplyText(prev => ({ ...prev, [review.name]: result.reply }));
-      }
-    } catch (e) {
-      alert('Erro ao gerar resposta com IA.');
-    } finally {
-      setGeneratingAI(prev => ({ ...prev, [review.name]: false }));
-    }
+      if (result.reply) setReplyText(prev => ({ ...prev, [review.name]: result.reply }));
+    } catch (e) { console.error(e); } finally { setGeneratingAI(prev => ({ ...prev, [review.name]: false })); }
   };
 
   const handleReply = async (reviewName: string) => {
@@ -493,181 +391,74 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewName, replyText: text })
       });
-      const resData = await res.json();
-      if (resData.error) throw new Error(resData.error);
-      alert('Resposta enviada com sucesso ao Google Maps!');
-      setReplyText({ ...replyText, [reviewName]: '' });
-      if (data?.maps) fetchLocalProfile(data.maps.accountId, data.maps.locationId);
-    } catch(e) { alert('Erro ao responder a avaliação.'); }
+      if (res.ok) {
+        alert('Resposta enviada!');
+        setReplyText({ ...replyText, [reviewName]: '' });
+        if (gbpData) fetchLocalProfile(gbpData.accountId, gbpData.locationId);
+      }
+    } catch(e) { console.error(e); }
   };
-
-  useEffect(() => {
-    if (activeTab === 'seo-opportunities' && selectedClient?.id) {
-        fetchOpportunities(selectedClient.id);
-    }
-  }, [activeTab, selectedClient]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploadingImage(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `posts/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('post_image')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
+      const filePath = `posts/${Math.random()}.${file.name.split('.').pop()}`;
+      await supabase.storage.from('post_image').upload(filePath, file);
       const { data } = supabase.storage.from('post_image').getPublicUrl(filePath);
       setImageUrl(data.publicUrl);
-    } catch (error: any) {
-      alert('Erro ao fazer upload da imagem: ' + (error.message || 'Desconhecido'));
-    } finally {
-      setUploadingImage(false);
-    }
+    } catch (error) { console.error(error); } finally { setUploadingImage(false); }
   };
 
   const handlePost = async () => {
-    if (!postText || !data?.maps) return;
-
+    if (!postText || !gbpData) return;
     try {
-      const payload = {
-        accountId: data.maps.accountId,
-        locationId: data.maps.locationId,
-        postText,
-        imageUrl,
-        buttonType,
-        buttonUrl
-      };
-
-      // Se tiver data agendada, salva no Supabase
       if (scheduledDate) {
-        const { error } = await supabase.from('scheduled_posts').insert([{
+        await supabase.from('scheduled_posts').insert([{
           scheduled_for: new Date(scheduledDate).toISOString(),
           content: postText,
           image_url: imageUrl,
           button_type: buttonType,
           button_url: buttonUrl,
-          location_id: data.maps.locationId,
-          account_id: data.maps.accountId,
+          location_id: gbpData.locationId,
+          account_id: gbpData.accountId,
           status: 'pending'
         }]);
-
-        if (error) throw error;
-        alert('Postagem agendada com sucesso!');
-        setScheduledDate('');
-        fetchScheduledPosts(data.maps.locationId);
+        alert('Agendado!');
       } else {
-        // Caso contrário, publica imediatamente
-        const res = await fetch('/api/posts', {
+        await fetch('/api/posts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            accountId: gbpData.accountId,
+            locationId: gbpData.locationId,
+            postText, imageUrl, buttonType, buttonUrl
+          })
         });
-        const resData = await res.json();
-        if (resData.error) throw new Error(resData.error);
-        alert('Postagem enviada com sucesso ao Google Maps!');
+        alert('Publicado!');
       }
-      setPostText('');
-      setImageUrl('');
-      setButtonType('LEARN_MORE');
-      // Mantém o link do Whats atual da empresa selecionada
-    } catch(e: any) { 
-      alert('Erro na postagem: ' + (e.message || 'Erro desconhecido')); 
-    }
+      setPostText(''); setImageUrl(''); setScheduledDate('');
+    } catch(e) { console.error(e); }
   };
 
-
-
-
-  // Funções de Inteligência (Insights)
   const getStrategicInsights = () => {
-    if (!data || !data.keywords) return [];
-    const insights: any[] = [];
-
-    // 1. OPORTUNIDADES DE OURO (Striking Distance - Pos 4 a 12)
-    const striking = data.keywords.filter((k:any) => k.position > 3 && k.position <= 12).slice(0, 3);
-    striking.forEach((k:any) => {
-      insights.push({
-        type: 'gold',
-        title: '🚀 Oportunidade de Ouro',
-        desc: `O termo "${k.keys[0]}" está na posição ${k.position.toFixed(1)}. Com um leve ajuste de conteúdo, você pula para o Top 3 e captura parte das ${k.impressions} visualizações atuais.`
-      });
-    });
-
-    // 2. CANIBALIZAÇÃO E GAP DE CTR (Alta impressão, CTR abaixo da média)
-    const avgCtr = data.current.ctr * 100;
-    const ctrGap = data.keywords.filter((k:any) => k.impressions > 300 && (k.ctr * 100) < (avgCtr / 2)).slice(0, 2);
-    ctrGap.forEach((k:any) => {
-      insights.push({
-        type: 'gap',
-        title: '⚓ Gap de CTR Crítico',
-        desc: `"${k.keys[0]}" aparece muito, mas quase ninguém clica. Seu título ou meta-description no Google não está atraente para este termo.`
-      });
-    });
-
-    // 3. INSIGHTS DE NEGÓCIO (Se tiver Maps)
-    if (data.maps) {
-        insights.push({
-            type: 'maps',
-            title: '📱 Força Local (GSC + Maps)',
-            desc: `O perfil "${data.maps.title}" gerou ${data.maps.metrics.calls} chamadas. Isso confirma que seu SEO está convertendo em clientes reais!`
-        });
-    }
-
-    return insights;
+    if (!data?.keywords) return [];
+    return data.keywords.filter((k:any) => k.position > 3 && k.position <= 12).slice(0, 3).map((k:any) => ({
+      type: 'gold',
+      title: '🚀 Oportunidade de Ouro',
+      desc: `"${k.keys[0]}" na pos ${k.position.toFixed(1)}. Salte para o Top 3!`
+    }));
   };
 
-  const getDisplayUrl = (url: string) => url.replace('sc-domain:', '').replace('https://', '').replace(/\/$/, '');
+  useEffect(() => {
+    if (activeTab === 'seo-opportunities' && selectedClient?.id) fetchOpportunities(selectedClient.id);
+  }, [activeTab, selectedClient]);
 
-  // Listas separadas por tipo
   const gscSites = sites.filter((s: any) => s.type === 'GSC_ONLY' || s.type === 'HYBRID');
-  const gbpProfiles = sites.filter((s: any) => s.gbpData);
+  const gbpProfiles = sites.filter((s: any) => s.gbpData || s.type === 'GBP_ONLY');
 
-  const handleSelectGbpProfile = async (profile: any) => {
-    setSelectedGbp(profile);
-    setLoadingPerf(true);
-    try {
-      // Buscar métricas reais de performance (Chamadas, Rotas, Cliques)
-      const res = await fetch('/api/maps/performance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          locationName: profile.id, // profile.id já é "locations/XXXX"
-          days: days 
-        })
-      });
-      const perfData = await res.json();
-      
-      const mapsData = {
-        title: profile.name,
-        accountId: profile.gbpData.accountId,
-        locationId: profile.id.replace('locations/', ''),
-        metrics: perfData || { calls: 0, directions: 0, websiteClicks: 0 }
-      };
-      
-      setGbpData(mapsData);
-      
-      // Carregar outros dados do perfil
-      fetchLocalProfile(profile.gbpData.accountId, mapsData.locationId);
-      fetchScheduledPosts(mapsData.locationId);
-      fetchAudit(profile.gbpData.accountId, mapsData.locationId);
-      fetchRankData(mapsData.locationId);
-      
-    } catch (err) {
-      console.error('Erro ao carregar dados do perfil:', err);
-    } finally {
-      setLoadingPerf(false);
-    }
-  };
-
-
-
+  // RENDERIZAÇÃO
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
       
@@ -675,930 +466,171 @@ export default function Dashboard() {
       <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-[#0d1117] sticky top-0 z-50">
           <h1 className="text-lg font-black tracking-tighter" style={{ color: '#00ff9d' }}>GSC<span className="text-white">Strategy</span></h1>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
-              {showMobileMenu ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
-              )}
+              {showMobileMenu ? '✕' : '☰'}
           </button>
       </div>
 
       {/* SIDEBAR */}
-      <aside className={`${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-full lg:translate-x-0 opacity-0 lg:opacity-100 hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 transition-all duration-300 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex flex-col shrink-0 h-[calc(100vh-60px)] lg:h-screen top-[60px] lg:top-0`}>
-        {/* Logo + Seletor de Modo */}
+      <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex-col shrink-0 h-screen`}>
         <div className="p-5 border-b border-gray-800">
           <h1 className="text-2xl font-black tracking-tighter mb-6 hidden lg:block text-white">GSC<span className="text-[#00ff9d] ml-1">Strategy</span></h1>
           <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
-            <button
-              onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'seo' ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white'}`}
-            >
-              🌐 SEO
-            </button>
-            <button
-              onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${appMode === 'gbp' ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white'}`}
-            >
-              📍 Maps
-            </button>
+            <button onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
+              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'seo' ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>🌐 SEO</button>
+            <button onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }}
+              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'gbp' ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>📍 Maps</button>
           </div>
         </div>
 
-        {/* Seletor de Cliente no Sidebar */}
-        <div className="p-4 border-b border-gray-800" key={sites.length}>
-          {loading ? (
-            <div className="text-xs text-gray-500 animate-pulse px-2">Carregando clientes...</div>
-          ) : appMode === 'seo' ? (
-            <select
-              value={selectedClient?.id || ''}
-              onChange={(e) => {
-                const client = gscSites.find((c:any) => c.id === e.target.value);
-                if (client) { handleSelectClient(client); setShowMobileMenu(false); }
-                else { setSelectedClient(null); setData(null); }
-              }}
-              className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] appearance-none cursor-pointer font-medium"
-            >
-              <option value="">🌐 Selecionar site GSC...</option>
-              {gscSites.map((c:any) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+        <div className="p-4 border-b border-gray-800">
+          {appMode === 'seo' ? (
+            <select value={selectedClient?.id || ''} onChange={(e) => handleSelectClient(gscSites.find((c:any) => c.id === e.target.value))}
+              className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
+              <option value="">Selecionar GSC...</option>
+              {gscSites.map((c:any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           ) : (
-            <select
-              value={selectedGbp?.id || ''}
-              onChange={(e) => {
-                const profile = gbpProfiles.find((p:any) => p.id === e.target.value);
-                if (profile) { handleSelectGbpProfile(profile); setShowMobileMenu(false); }
-                else { setSelectedGbp(null); setGbpData(null); }
-              }}
-              className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] appearance-none cursor-pointer font-medium"
-            >
-              <option value="">📍 Selecionar perfil Maps...</option>
-              {gbpProfiles.map((p:any) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+            <select value={selectedGbp?.id || ''} onChange={(e) => handleSelectGbpProfile(gbpProfiles.find((p:any) => p.id === e.target.value))}
+              className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
+              <option value="">Selecionar Maps...</option>
+              {gbpProfiles.map((p:any) => (<option key={p.id} value={p.id}>{p.name}</option>))}
             </select>
           )}
         </div>
 
-        {/* Itens de navegação */}
         <div className="flex-1 overflow-y-auto p-4">
-          {appMode === 'seo' ? (
-            selectedClient ? (
-              <ul className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider px-2">SEO &amp; Orgânico</p>
-                <li><button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-insights' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>✨ Visão Geral (IA)</button></li>
-                <li><button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-keywords' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📊 Palavras-chave</button></li>
-                <li><button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'seo-pages' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📄 Top Páginas</button></li>
-                <li className="pt-2"><p className="text-[10px] font-bold text-[#00ff9d] mb-3 uppercase tracking-wider px-2">Automação Micro-SaaS</p></li>
-                <li>
-                  <button onClick={() => setActiveTab('seo-opportunities')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'seo-opportunities' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>
-                    <span>🎯 Oportunidades IA</span>
-                    <span className="bg-[#00ff9d] text-gray-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_8px_#00ff9d]">Novo</span>
-                  </button>
-                </li>
-                <li className="pt-4"><p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider px-2">Gestão do Cliente</p></li>
-                <li><button onClick={() => setActiveTab('client-config')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'client-config' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>⚙️ Configurações</button></li>
-              </ul>
-            ) : (
-              <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um site GSC acima</p>
-            )
-          ) : (
-            selectedGbp ? (
-              <ul className="space-y-1">
-                <p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider px-2 flex items-center gap-2">Perfil Google Maps <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] inline-block shadow-[0_0_8px_#00ff9d]"></span></p>
-                <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>🏪 Resumo Local</button></li>
-                <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>🛡️ Auditoria de Saúde</button></li>
-                <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📈 Rank Tracker</button></li>
-                <li>
-                  <button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium flex justify-between items-center transition-all ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>
-                    <span>⭐ Avaliações</span>
-                    {(localReviews || []).filter((r:any) => !r.reviewReply).length > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{(localReviews || []).filter((r:any) => !r.reviewReply).length}</span>
-                    )}
-                  </button>
-                </li>
-                <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>📣 Atualizações</button></li>
-              </ul>
-            ) : (
-              <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um perfil do Maps acima</p>
-            )
+          {appMode === 'seo' && selectedClient && (
+            <ul className="space-y-1 text-sm">
+              <li><button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-insights' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>✨ Insights IA</button></li>
+              <li><button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-keywords' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📊 Palavras-chave</button></li>
+              <li><button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-pages' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📄 Top Páginas</button></li>
+              <li><button onClick={() => setActiveTab('seo-opportunities')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-opportunities' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🎯 Oportunidades</button></li>
+              <li><button onClick={() => setActiveTab('client-config')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'client-config' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>⚙️ Configurações</button></li>
+            </ul>
+          )}
+          {appMode === 'gbp' && selectedGbp && (
+            <ul className="space-y-1 text-sm">
+              <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🏪 Resumo Local</button></li>
+              <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🛡️ Auditoria</button></li>
+              <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Rank Tracker</button></li>
+              <li><button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>⭐ Avaliações</button></li>
+              <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
+            </ul>
           )}
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* TOP HEADER */}
-        <header className="h-[64px] border-b border-gray-800 bg-[#0d1117]/95 backdrop-blur flex items-center justify-between px-8 shrink-0 z-10">
-          <div className="flex items-center gap-3">
-            {appMode === 'seo' && selectedClient && (
-              <span className="text-sm font-semibold text-white truncate max-w-xs">{selectedClient.name}</span>
-            )}
-            {appMode === 'gbp' && selectedGbp && (
-              <span className="text-sm font-semibold text-white truncate max-w-xs">{selectedGbp.name}</span>
-            )}
-          </div>
-
-          {/* Filtros de Data — apenas no modo SEO */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <header className="h-[64px] border-b border-gray-800 bg-[#0d1117] flex items-center justify-between px-8">
+          <span className="text-sm font-bold text-white">{selectedClient?.name || selectedGbp?.name || 'Dashboard'}</span>
           {appMode === 'seo' && selectedClient && (
-            <div className="flex items-center gap-3 text-sm">
-              <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800">
-                {[7, 28, 90].map(v => (
-                  <button key={v} onClick={() => { setIsCustom(false); setDays(v); fetchData(selectedClient.gscUrl, v, selectedClient.gbpData); }} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${!isCustom && days === v ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>{v}d</button>
-                ))}
-                <button onClick={() => setIsCustom(true)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${isCustom ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>Data Fixa</button>
-              </div>
-              {isCustom && (
-                <div className="flex gap-2 items-center bg-[#161b22] p-1 rounded-lg border border-gray-800">
-                  <input type="date" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none focus:ring-0" />
-                  <span className="text-gray-600">-</span>
-                  <input type="date" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} className="bg-transparent border-none text-gray-300 text-xs px-2 py-1 focus:outline-none focus:ring-0" />
-                  <button onClick={() => { if(customRange.start && customRange.end) fetchData(selectedClient.gscUrl, customRange, selectedClient.gbpData); }} className="bg-[#00ff9d] text-gray-900 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-[#34d399] shadow-[0_0_10px_rgba(0,255,157,0.3)]">OK</button>
-                </div>
-              )}
+            <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
+              {[7, 28, 90].map(v => (
+                <button key={v} onClick={() => setDays(v)} className={`px-3 py-1 rounded text-[10px] font-bold ${days === v ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>{v}d</button>
+              ))}
             </div>
           )}
         </header>
 
-        {/* SCROLLABLE CONTENT */}
-        <main className="flex-1 overflow-y-auto p-8 bg-[#0d1117] pb-32">
-
-          {/* ===== MODO SEO ===== */}
-          {appMode === 'seo' && (
-            !selectedClient ? (
-              <div className="max-w-3xl mx-auto mt-24 text-center">
-                <div className="text-6xl mb-6">🌐</div>
-                <h2 className="text-3xl font-bold mb-3 tracking-tight">Google Search Console</h2>
-                <p className="text-gray-400 text-base mb-8 max-w-xl mx-auto">Selecione um site no menu lateral para visualizar cliques orgânicos, palavras-chave e recomendações de IA.</p>
-              </div>
-            ) : (
-              <div className="max-w-6xl mx-auto animate-fade-in">
-                 {loadingPerf ? (
-                    <div className="flex flex-col items-center justify-center py-40 opacity-50">
-                       <div className="w-12 h-12 border-4 border-[#0070f3] border-t-transparent rounded-full animate-spin mb-6"></div>
-                       <p className="text-xl font-bold tracking-tight animate-pulse">Agregando ecossistema de dados...</p>
-                    </div>
-                 ) : data && (
-                    <>
-                       {/* ---------------- SEO INSIGHTS ---------------- */}
-                       {activeTab === 'seo-insights' && (
-                          <div className="space-y-8 animate-fade-in">
-                             {/* KPIS GSC */}
-                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Cliques Orgânicos</p>
-                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{data.current.clicks}</h2>
-                                    <p className={`text-xs font-bold ${data.current.clicks >= data.previous.clicks ? 'text-[#00ff9d]' : 'text-red-400'}`}>
-                                       {data.current.clicks >= data.previous.clicks ? '↑' : '↓'} {Math.abs(data.current.clicks - data.previous.clicks)} vs prev.
-                                    </p>
-                                </div>
-                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Impressões</p>
-                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{data.current.impressions}</h2>
-                                </div>
-                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">CTR Médio</p>
-                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{(data.current.ctr * 100).toFixed(1)}%</h2>
-                                </div>
-                                <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-4">Posição Média</p>
-                                    <h2 className="text-5xl font-black tracking-tight text-[#00ff9d] mb-3 drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{data.current.position.toFixed(1)}</h2>
-                                </div>
-                             </div>
-
-                             {/* IA Insights */}
-                             <h3 className="text-xl font-bold mt-12 mb-6 flex items-center gap-2">✨ Recomendações da IA</h3>
-                             <div className="space-y-4">
-                                {getStrategicInsights().length > 0 ? getStrategicInsights().map((ins: any, i: number) => (
-                                    <div key={i} className={`glass-card border-l-4 rounded-r-xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${ins.type === 'gold' ? 'border-l-[#00ff9d]' : ins.type === 'maps' ? 'border-l-[#4285F4]' : 'border-l-[#ffbb00]'}`}>
-                                        <div>
-                                            <h4 className="text-lg font-bold mb-2 text-white">{ins.title}</h4>
-                                            <p className="text-gray-400 text-sm leading-relaxed max-w-3xl">{ins.desc}</p>
-                                        </div>
-                                        <button className="bg-white/5 hover:bg-white/10 text-white border border-gray-700 font-bold py-2.5 px-5 rounded-lg text-sm transition-colors whitespace-nowrap">
-                                            Investigar
-                                        </button>
-                                    </div>
-                                )) : <div className="text-gray-500 p-8 text-center border border-dashed border-gray-800 rounded-xl">Coletando padrões comportamentais do site...</div>}
-                             </div>
-                          </div>
-                       )}
-
-                       {/* ---------------- SEO KEYWORDS ---------------- */}
-                       {activeTab === 'seo-keywords' && (
-                          <div className="animate-fade-in">
-                              <h2 className="text-2xl font-bold mb-6">📊 Palavras-chave que mais geram cliques</h2>
-                               <table className="w-full text-left text-sm border-collapse">
-                                 <thead className="bg-[#161b22] text-gray-400 border-b border-gray-800">
-                                     <tr>
-                                        <th className="px-6 py-4 font-bold rounded-tl-xl">Palavra-chave</th>
-                                        <th className="px-6 py-4 font-bold">Cliques</th>
-                                        <th className="px-6 py-4 font-bold">Impressões</th>
-                                        <th className="px-6 py-4 font-bold">CTR</th>
-                                        <th className="px-6 py-4 font-bold rounded-tr-xl">Posição</th>
-                                     </tr>
-                                 </thead>
-                                 <tbody className="divide-y divide-gray-800/50">
-                                    {data.keywords.slice(0, 30).map((k:any, i:number) => (
-                                        <tr key={i} className="hover:bg-[#161b22]/80 transition-colors">
-                                           <td className="px-6 py-4 text-white font-medium">{k.keys[0]}</td>
-                                           <td className="px-6 py-4 text-[#00ff9d] font-bold">{k.clicks}</td>
-                                           <td className="px-6 py-4 text-gray-400">{k.impressions}</td>
-                                           <td className="px-6 py-4 text-gray-400">{(k.ctr * 100).toFixed(1)}%</td>
-                                           <td className="px-6 py-4 text-gray-400">{k.position.toFixed(1)}</td>
-                                        </tr>
-                                    ))}
-                                 </tbody>
-                              </table>
-                          </div>
-                       )}
-
-                       {/* ---------------- SEO PAGES ---------------- */}
-                       {activeTab === 'seo-pages' && (
-                          <div className="animate-fade-in">
-                              <h2 className="text-2xl font-bold mb-6">📄 Top Páginas (Landing Pages)</h2>
-                              <table className="w-full text-left text-sm border-collapse">
-                                 <thead className="bg-[#161b22] text-gray-400 border-b border-gray-800">
-                                     <tr>
-                                        <th className="px-6 py-4 font-bold rounded-tl-xl">Página</th>
-                                        <th className="px-6 py-4 font-bold">Cliques</th>
-                                        <th className="px-6 py-4 font-bold">CTR</th>
-                                        <th className="px-6 py-4 font-bold rounded-tr-xl">Posição</th>
-                                     </tr>
-                                 </thead>
-                                 <tbody className="divide-y divide-gray-800/50">
-                                    {data.pages.slice(0, 30).map((p:any, i:number) => (
-                                        <tr key={i} className="hover:bg-[#161b22]/80 transition-colors">
-                                           <td className="px-6 py-4 max-w-sm lg:max-w-xl truncate">
-                                              <a href={p.keys[0]} target="_blank" className="text-[#00ff9d] hover:underline font-medium">
-                                                 {p.keys[0].replace(selectedClient?.gscUrl || '', '') || '/'}
-                                              </a>
-                                           </td>
-                                           <td className="px-6 py-4 text-white font-bold">{p.clicks}</td>
-                                           <td className="px-6 py-4 text-gray-400">{(p.ctr * 100).toFixed(1)}%</td>
-                                           <td className="px-6 py-4 text-gray-400">{p.position.toFixed(1)}</td>
-                                        </tr>
-                                    ))}
-                                 </tbody>
-                              </table>
-                          </div>
-                       )}
-
-                        {/* ---------------- MICRO-SAAS: OPORTUNIDADES IA ---------------- */}
-                        {activeTab === 'seo-opportunities' && (
-                            <div className="space-y-6 animate-fade-in">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-                                     <div>
-                                         <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA</h2>
-                                         <p className="text-gray-400 mt-1">Sugestões automáticas do n8n (Alto Volume, Baixo CTR) prontas para virar artigos e páginas.</p>
-                                     </div>
-                                     <button 
-                                        onClick={() => selectedClient?.id && fetchOpportunities(selectedClient.id)}
-                                        className="bg-[#161b22] border border-[#00ff9d]/30 text-[#00ff9d] font-bold px-5 py-2.5 rounded-xl text-sm transition-colors hover:bg-[#161b22]/80">
-                                         🔄 Sincronizar Fila
-                                     </button>
-                                </div>
-                                
-                                <div className="glass-card rounded-2xl border-[#00ff9d]/10 p-1 mt-6">
-                                    <table className="w-full text-left text-sm">
-                                        <thead>
-                                            <tr className="border-b border-gray-800 text-gray-500 uppercase tracking-wider text-[10px] font-bold bg-[#161b22]/50">
-                                                <th className="p-4 rounded-tl-xl">Termo Encontrado</th>
-                                                <th className="p-4 text-right">Métricas (Imp. / CTR)</th>
-                                                <th className="p-4 text-center">Status</th>
-                                                <th className="p-4 text-right rounded-tr-xl">Ação</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {loadingOpps ? (
-                                                <tr><td colSpan={4} className="p-10 text-center text-gray-500">Carregando oportunidades...</td></tr>
-                                            ) : seoOpportunities.length === 0 ? (
-                                                <tr><td colSpan={4} className="p-10 text-center text-gray-500">Nenhuma oportunidade pendente para este cliente.</td></tr>
-                                            ) : seoOpportunities.filter(opp => {
-                                                if (!configBranded) return true;
-                                                const blocked = configBranded.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-                                                const kw = opp.keyword.toLowerCase();
-                                                return !blocked.some(b => kw.includes(b));
-                                            }).map(opp => (
-                                                <tr key={opp.id} className="border-b border-gray-800/50 hover:bg-[#161b22]/40 transition-colors group">
-                                                    <td className="p-4">
-                                                        <p className="font-bold text-white text-[15px]">{opp.keyword}</p>
-                                                        <p className="text-xs text-gray-500 mt-1">Identificado em {new Date(opp.created_at).toLocaleDateString()}</p>
-                                                    </td>
-                                                    <td className="p-4 text-right">
-                                                        <p className="text-white font-bold">{(opp.impressions || 0).toLocaleString()}</p>
-                                                        <p className="text-xs text-red-400 font-medium mt-1">{(opp.ctr || 0)}% CTR</p>
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                                                            (opp.status || 'pendente') === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                            opp.status === 'aprovada' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                            opp.status === 'rascunho_gerado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                            'bg-[#00ff9d]/10 text-[#00ff9d] border-[#00ff9d]/20'
-                                                        }`}>
-                                                            {(opp.status || 'pendente').replace('_', ' ')}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-right">
-                                                        {opp.status === 'pendente' ? (
-                                                            <button 
-                                                                onClick={() => handleApproveOpportunity(opp.id)}
-                                                                disabled={generatingContent[opp.id]}
-                                                                className="bg-[#00ff9d] text-gray-900 font-bold px-4 py-2 rounded-lg text-xs shadow-[0_0_10px_rgba(0,255,157,0.2)] hover:shadow-[0_0_15px_rgba(0,255,157,0.4)] transition-all">
-                                                                {generatingContent[opp.id] ? '⏳ Gerando...' : 'Aprovar & Escrever'}
-                                                            </button>
-                                                        ) : opp.status === 'aprovada' ? (
-                                                            <button 
-                                                                onClick={() => handleViewLayout(opp)}
-                                                                className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-2">
-                                                                🎨 Visualizar Layout (Stitch)
-                                                            </button>
-                                                        ) : opp.status === 'rascunho_gerado' ? (
-                                                            <button 
-                                                                onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft })}
-                                                                className="bg-[#161b22] border border-purple-500/50 text-purple-400 font-bold px-4 py-2 rounded-lg text-xs hover:bg-purple-500/10 transition-all">
-                                                                👁️ Ver Rascunho
-                                                            </button>
-                                                        ) : opp.status === 'publicada' ? (
-                                                            <a href={opp.published_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-xs font-bold underline">
-                                                                Ver Página ↗
-                                                            </a>
-                                                        ) : (
-                                                            <span className="text-gray-500 text-xs italic">Aguardando IA...</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* MODAL DE RASCUNHO */}
-                                {viewingDraft && (
-                                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                                        <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-                                            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-white">Rascunho de Conteúdo IA</h3>
-                                                    <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini 1.5 Pro</p>
-                                                </div>
-                                                <button onClick={() => setViewingDraft(null)} className="p-2 text-gray-400 hover:text-white">✕</button>
-                                            </div>
-                                            <div className="p-8 overflow-y-auto bg-[#0d1117]/50 text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
-                                                {viewingDraft.draft}
-                                            </div>
-                                            <div className="p-6 border-t border-gray-800 flex justify-end gap-4 bg-[#0d1117]">
-                                                                                                <button onClick={() => setViewingDraft(null)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-400 hover:text-white transition-colors">Fechar</button>
-                                                <button 
-                                                    onClick={() => {
-                                                        const opp = seoOpportunities.find(o => o.id === viewingDraft.id);
-                                                        handleViewLayout(opp);
-                                                        setViewingDraft(null);
-                                                    }}
-                                                    className="bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2">
-                                                    🎨 Gerar Layout (Stitch)
-                                                </button>
-                                                <button 
-                                                    onClick={() => { alert('Postagem automática sendo enviada para o WordPress/n8n...'); setViewingDraft(null); }}
-                                                    className="bg-[#00ff9d] text-gray-900 font-bold px-8 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)] transition-all">
-                                                    🚀 Publicar Agora
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </>
-                 )}
-              </div>
-            )
+        <main className="flex-1 overflow-y-auto p-8">
+          {appMode === 'seo' && selectedClient && (
+            <div className="max-w-6xl mx-auto">
+              {activeTab === 'seo-insights' && <TabSEOInsights data={data} getStrategicInsights={getStrategicInsights} />}
+              {activeTab === 'seo-keywords' && <TabSEOKeywords data={data} />}
+              {activeTab === 'seo-pages' && <TabSEOPages data={data} selectedClient={selectedClient} />}
+              {activeTab === 'seo-opportunities' && (
+                <TabSEOOpportunities
+                  seoOpportunities={seoOpportunities}
+                  loadingOpps={loadingOpps}
+                  generatingContent={generatingContent}
+                  viewingDraft={viewingDraft}
+                  configBranded={configBranded}
+                  selectedClient={selectedClient}
+                  setViewingDraft={setViewingDraft}
+                  fetchOpportunities={fetchOpportunities}
+                  handleApproveOpportunity={handleApproveOpportunity}
+                  handleViewLayout={() => {}}
+                />
+              )}
+              {activeTab === 'client-config' && (
+                <TabClientConfig
+                  configLocalPath={configLocalPath}
+                  configBusinessContext={configBusinessContext}
+                  configBranded={configBranded}
+                  savingConfig={savingConfig}
+                  savingBranded={savingBranded}
+                  syncingDesign={syncingDesign}
+                  knowledgeBase={knowledgeBase}
+                  loadingKB={loadingKB}
+                  savingKB={savingKB}
+                  kbTitle={kbTitle}
+                  kbContent={kbContent}
+                  setConfigLocalPath={setConfigLocalPath}
+                  setConfigBusinessContext={setConfigBusinessContext}
+                  setConfigBranded={setConfigBranded}
+                  setKbTitle={setKbTitle}
+                  setKbContent={setKbContent}
+                  handleSaveSettings={handleSaveSettings}
+                  handleSaveBranded={handleSaveBranded}
+                  handleSyncDesign={handleSyncDesign}
+                  handleAddKnowledge={handleAddKnowledge}
+                  handleDeleteKnowledge={handleDeleteKnowledge}
+                />
+              )}
+            </div>
           )}
 
-          {/* ===== MODO GBP ===== */}
-          {appMode === 'gbp' && (
-            !selectedGbp ? (
-              <div className="max-w-3xl mx-auto mt-24 text-center">
-                <div className="text-6xl mb-6">📍</div>
-                <h2 className="text-3xl font-bold mb-3 tracking-tight">Perfil Google Maps</h2>
-                <p className="text-gray-400 text-base mb-8 max-w-xl mx-auto">Selecione um Perfil de Empresa do Google no menu lateral para gerenciar avaliações, auditoria, rank e publicações.</p>
-              </div>
-            ) : (
-              <div className="max-w-6xl mx-auto animate-fade-in">
-                {/* ---------------- GBP DASHBOARD ---------------- */}
-                {activeTab === 'gbp-dashboard' && (
-                    <div className="space-y-8 animate-fade-in">
-                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/30 rounded-2xl p-8" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                             <div>
-                                 <p className="text-xs text-[#00ff9d] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
-                                 <h2 className="text-3xl font-black text-white tracking-tight">{gbpData?.title}</h2>
-                             </div>
-                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gbpData?.title)}`} target="_blank" className="bg-[#00ff9d] text-gray-900 font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)]">
-                                 Visualizar no Maps ↗
-                             </a>
-                         </div>
-
-                         <div className="flex items-center gap-2 mb-2 text-gray-400 text-[10px] bg-white/5 w-fit px-3 py-1.5 rounded-full border border-white/10 uppercase font-bold tracking-widest">
-                             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] animate-pulse shadow-[0_0_8px_#00ff9d]"></span>
-                             Métricas dos últimos <span className="text-white">{days} dias</span>
-                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <div className="glass-card rounded-2xl p-8 shadow-sm border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                 <div className="text-4xl mb-4">📞</div>
-                                 <h3 className="text-5xl font-black tracking-tighter mb-2 text-[#00ff9d] drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{gbpData?.metrics?.calls ?? 0}</h3>
-                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Chamadas Recebidas</p>
-                             </div>
-                             <div className="glass-card rounded-2xl p-8 shadow-sm border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                 <div className="text-4xl mb-4">🗺️</div>
-                                 <h3 className="text-5xl font-black tracking-tighter mb-2 text-[#00ff9d] drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{gbpData?.metrics?.directions ?? 0}</h3>
-                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Rotas Solicitadas</p>
-                             </div>
-                             <div className="glass-card rounded-2xl p-8 shadow-sm border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                 <div className="text-4xl mb-4">🖱️</div>
-                                 <h3 className="text-5xl font-black tracking-tighter mb-2 text-[#00ff9d] drop-shadow-[0_0_15px_rgba(0,255,157,0.3)]">{gbpData?.metrics?.websiteClicks ?? 0}</h3>
-                                 <p className="text-sm text-gray-500 font-bold uppercase tracking-wider">Visitas ao Site</p>
-                             </div>
-                         </div>
-                    </div>
-                )}
-
-                {/* ---------------- GBP AUDIT ---------------- */}
-                {activeTab === 'gbp-audit' && (
-                    <div className="animate-fade-in">
-                        <h2 className="text-2xl font-bold mb-6">🛡️ Auditoria de Saúde do Perfil</h2>
-                        {loadingAudit ? (
-                            <div className="p-32 text-center glass-card border-[#00ff9d]/10 rounded-2xl shadow-[0_0_30px_rgba(0,255,157,0.05)]">
-                                 <div className="w-10 h-10 border-4 border-[#00ff9d] border-t-transparent rounded-full animate-spin mb-4 mx-auto drop-shadow-[0_0_10px_rgba(0,255,157,0.5)]"></div>
-                                 <div className="text-[#00ff9d] text-lg font-bold drop-shadow-[0_0_10px_rgba(0,255,157,0.3)]">Processando checklist de 20 pontos de ranking...</div>
-                            </div>
-                        ) : auditData && !auditData.error && (
-                            <div className="border-l-[6px] rounded-2xl p-10 glass-card shadow-[0_0_30px_rgba(0,255,157,0.05)] flex flex-col md:flex-row gap-16" style={{ borderLeftColor: auditData.color }}>
-                                <div className="flex flex-col items-center justify-center text-center min-w-[200px]">
-                                    <p className="text-xs uppercase font-bold tracking-widest text-gray-500 mb-4">Health Score</p>
-                                    <div className="text-[100px] font-black leading-none mb-4 tracking-tighter drop-shadow-[0_0_20px_rgba(0,255,157,0.2)]" style={{ color: auditData.color }}>{auditData.score}</div>
-                                    <div className="text-sm font-bold uppercase tracking-widest px-4 py-1.5 rounded-full bg-black/50" style={{ color: auditData.color, border: `1px solid ${auditData.color}40` }}>{auditData.grade}</div>
-                                </div>
-                                <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-8">
-                                    {auditData.checklist.map((item: any, i: number) => (
-                                        <div key={i} className="flex gap-4">
-                                            <div className="mt-1.5 text-xl">{item.passed ? '✅' : '❌'}</div>
-                                            <div>
-                                                <p className="font-bold text-white text-[15px] mb-1.5">{item.name}</p>
-                                                <p className={`text-[13px] ${item.passed ? 'text-gray-500' : 'text-red-400 font-medium'}`}>{item.value}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ---------------- GBP RANK TRACKER ---------------- */}
-                {activeTab === 'gbp-rank' && (
-                    <div className="space-y-6 animate-fade-in">
-                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-                             <div>
-                                 <h2 className="text-2xl font-bold">📈 Rank Tracker (Local Pack)</h2>
-                                 <p className="text-gray-400 mt-1">Descubra em qual posição você aparece quando o cliente pesquisa pela palavra-chave na sua cidade.</p>
-                             </div>
-                             {trackedKeywords.length > 0 && (
-                                 <button
-                                     onClick={async () => {
-                                         const { jsPDF } = await import('jspdf');
-                                         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-                                         const blue = [66, 133, 244] as [number, number, number];
-                                         const dark = [10, 10, 10] as [number, number, number];
-                                         const white = [255, 255, 255] as [number, number, number];
-                                         const gray = [120, 120, 120] as [number, number, number];
-
-                                         // --- Fundo ---
-                                         doc.setFillColor(...dark);
-                                         doc.rect(0, 0, 210, 297, 'F');
-
-                                         // --- Cabeçalho ---
-                                         doc.setFillColor(...blue);
-                                         doc.rect(0, 0, 210, 36, 'F');
-                                         doc.setTextColor(...white);
-                                         doc.setFontSize(18);
-                                         doc.setFont('helvetica', 'bold');
-                                         doc.text('Relatório de Rank Tracker', 14, 16);
-                                         doc.setFontSize(10);
-                                         doc.setFont('helvetica', 'normal');
-                                         doc.text(`Cliente: ${gbpData?.title || selectedGbp?.name || 'N/A'}`, 14, 26);
-                                         doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'})}`, 14, 32);
-
-                                         // --- Resumo Metodológico ---
-                                         doc.setFillColor(20, 20, 30);
-                                         doc.roundedRect(10, 42, 190, 38, 3, 3, 'F');
-                                         doc.setTextColor(...blue);
-                                         doc.setFontSize(9);
-                                         doc.setFont('helvetica', 'bold');
-                                         doc.text('SOBRE OS DADOS', 16, 50);
-                                         doc.setTextColor(...gray);
-                                         doc.setFont('helvetica', 'normal');
-                                         doc.setFontSize(8);
-                                         const disclaimer = 'As posições são obtidas via SerpApi simulando uma busca no Google Maps a partir das coordenadas do perfil do cliente. O ranking pode variar por localização do usuário, horário e personalização do Google. Use estes dados como referência de tendência — o valor real está na evolução histórica semana a semana, registrada automaticamente.';
-                                         const lines = doc.splitTextToSize(disclaimer, 178);
-                                         doc.text(lines, 16, 57);
-
-                                         // --- Keywords ---
-                                         let y = 90;
-                                         doc.setTextColor(...white);
-                                         doc.setFontSize(11);
-                                         doc.setFont('helvetica', 'bold');
-                                         doc.text('PALAVRAS-CHAVE MONITORADAS', 14, y - 4);
-
-                                         trackedKeywords.forEach((kw: any) => {
-                                             if (y > 260) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,210,297,'F'); y = 20; }
-
-                                             const pos = kw.rank_history?.[0]?.position || 99;
-                                             const posLabel = pos === 99 ? '20+' : `#${pos}`;
-                                             const bgColor: [number, number, number] = pos <= 3 ? [0, 80, 0] : pos <= 10 ? [80, 60, 0] : [80, 0, 0];
-                                             const posColor: [number, number, number] = pos <= 3 ? [0, 200, 81] : pos <= 10 ? [255, 187, 51] : [255, 68, 68];
-                                             const competitors = competitorData[kw.keyword] || [];
-
-                                             // Card background
-                                             doc.setFillColor(18, 18, 28);
-                                             doc.roundedRect(10, y, 190, competitors.length > 0 ? 46 + (competitors.length * 10) : 28, 3, 3, 'F');
-
-                                             // Position badge
-                                             doc.setFillColor(...bgColor);
-                                             doc.roundedRect(170, y + 4, 24, 14, 2, 2, 'F');
-                                             doc.setTextColor(...posColor);
-                                             doc.setFontSize(13);
-                                             doc.setFont('helvetica', 'bold');
-                                             doc.text(posLabel, 182, y + 13, { align: 'center' });
-
-                                             // Keyword
-                                             doc.setTextColor(...white);
-                                             doc.setFontSize(10);
-                                             doc.setFont('helvetica', 'bold');
-                                             doc.text(kw.keyword, 16, y + 12);
-                                             doc.setTextColor(...gray);
-                                             doc.setFontSize(7);
-                                             doc.setFont('helvetica', 'normal');
-                                             const histLen = kw.rank_history?.length || 1;
-                                             doc.text(`${histLen} registro(s) histórico(s) • posição atual: ${posLabel}`, 16, y + 20);
-
-                                             // Competitors
-                                             if (competitors.length > 0) {
-                                                 doc.setTextColor(...blue);
-                                                 doc.setFontSize(7);
-                                                 doc.setFont('helvetica', 'bold');
-                                                 doc.text('TOP 3 CONCORRENTES', 16, y + 30);
-                                                 competitors.forEach((c: any, idx: number) => {
-                                                     doc.setTextColor(...(c.isUs ? blue : white));
-                                                     doc.setFont('helvetica', c.isUs ? 'bold' : 'normal');
-                                                     doc.setFontSize(8);
-                                                     const label = `${idx + 1}. ${c.isUs ? '★ Você' : c.title}`;
-                                                     doc.text(label.substring(0, 45), 16, y + 38 + (idx * 9));
-                                                     doc.setTextColor(...gray);
-                                                     doc.text(`${c.rating}★ (${c.reviews} avaliações)`, 155, y + 38 + (idx * 9), { align: 'right' });
-                                                 });
-                                                 y += 46 + (competitors.length * 9) + 6;
-                                             } else {
-                                                 y += 34;
-                                             }
-                                         });
-
-                                         // Footer
-                                         doc.setTextColor(...gray);
-                                         doc.setFontSize(7);
-                                         doc.text('Gerado por GSCStrategy • Os dados são snapshot no momento da consulta e podem variar.', 105, 292, { align: 'center' });
-
-                                         doc.save(`Rank_Tracker_${(gbpData?.title || 'relatorio').replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
-                                     }}
-                                     className="flex items-center gap-2 bg-[#00ff9d] text-gray-900 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)] whitespace-nowrap flex-shrink-0"
-                                 >
-                                     ⬇️ Baixar Relatório PDF
-                                 </button>
-                             )}
-                         </div>
-                         <div className="glass-card rounded-2xl p-8 border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                             <div className="flex flex-col sm:flex-row gap-4">
-                                 <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="Ex: advogado trabalhista em são paulo" className="flex-1 bg-[#161b22] border border-gray-800 text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] text-sm font-medium" onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
-                                 
-                                 <div className="flex items-center gap-2 bg-[#161b22] border border-gray-800 px-3 py-2 rounded-xl">
-                                     <span className="text-[10px] font-bold text-gray-500 uppercase px-1">Raio</span>
-                                     <select 
-                                         value={rankRadius} 
-                                         onChange={(e) => setRankRadius(e.target.value)}
-                                         className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
-                                     >
-                                         <option value="16z">3 km</option>
-                                         <option value="15z">5 km</option>
-                                         <option value="14z">10 km</option>
-                                     </select>
-                                 </div>
-
-                                 <button onClick={handleAddKeyword} disabled={loadingRank || !newKeyword} className="bg-[#00ff9d] text-gray-900 disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none font-bold px-8 py-3.5 rounded-xl transition-colors shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)]">
-                                     {loadingRank ? '⏳ Analisando...' : 'Monitorar Palavra-chave'}
-                                 </button>
-                             </div>
-                         </div>
-                         {trackedKeywords.length === 0 ? (
-                             <div className="text-center p-16 border border-dashed border-gray-800 rounded-2xl text-gray-500 bg-[#161b22]/30 mt-8">Nenhuma palavra-chave monitorada.</div>
-                         ) : (
-                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
-                                 {trackedKeywords.map((kw: any, i: number) => {
-                                     const lastPos = kw.rank_history?.[0]?.position || 99;
-                                     const colorClass = lastPos <= 3 ? 'text-[#00ff9d] drop-shadow-[0_0_10px_rgba(0,255,157,0.5)]' : lastPos <= 10 ? 'text-yellow-400' : 'text-red-400';
-                                     const histLen = kw.rank_history?.length || 0;
-                                     return (
-                                         <div key={i} className="glass-card rounded-2xl p-8 flex flex-col border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                             <div className="flex justify-between items-start mb-2 border-b border-gray-800 pb-6">
-                                                 <div>
-                                                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Termo</p>
-                                                     <h4 className="text-xl font-black text-white tracking-tight">{kw.keyword}</h4>
-                                                     <p className="text-[10px] text-gray-500 mt-2">{histLen} atualização{histLen !== 1 ? 'ões' : ''} registrada{histLen !== 1 ? 's' : ''}</p>
-                                                 </div>
-                                                 <div className={`text-5xl font-black tracking-tighter ${colorClass}`}>{lastPos === 99 ? '20+' : `#${lastPos}`}</div>
-                                             </div>
-                                             {!competitorData[kw.keyword] ? (
-                                                 <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]} className="mt-auto w-full bg-[#161b22] hover:bg-[#161b22]/80 border border-gray-800 text-[#00ff9d] font-bold py-3.5 rounded-xl text-sm transition-colors shadow-[0_0_10px_rgba(0,255,157,0.1)]">
-                                                     {loadingComp[kw.keyword] ? '🔍 Mapeando...' : '🔍 Benchmark com Top 3'}
-                                                 </button>
-                                             ) : (
-                                                 <div className="mt-auto bg-[#0d1117]/50 rounded-xl p-5 border border-[#00ff9d]/20 shadow-[0_0_15px_rgba(0,255,157,0.05)]">
-                                                     <p className="text-[10px] text-[#00ff9d] uppercase font-bold tracking-widest mb-4">Top 3 Concorrentes</p>
-                                                     <div className="space-y-4">
-                                                         {competitorData[kw.keyword].map((c: any, idx: number) => (
-                                                             <div key={idx} className={`flex justify-between items-center text-sm ${c.isUs ? 'text-[#00ff9d] font-bold' : 'text-gray-300'}`}>
-                                                                 <a 
-                                                                    href={c.place_id ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title)}&query_place_id=${c.place_id}` : `https://www.google.com/search?q=${encodeURIComponent(c.title)}`} 
-                                                                    target="_blank" 
-                                                                    rel="noopener noreferrer"
-                                                                    className="truncate w-48 xl:w-64 hover:text-[#00ff9d] transition-colors flex items-center gap-2 group"
-                                                                 >
-                                                                    <span>{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
-                                                                    {!c.isUs && <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">↗️</span>}
-                                                                 </a>
-                                                                 <div className="flex gap-4 text-xs bg-[#161b22] px-3 py-1.5 rounded-full border border-gray-800"><span className="font-bold text-[#00ff9d]">{c.rating}⭐</span><span className="text-gray-500">({c.reviews})</span></div>
-                                                             </div>
-                                                         ))}
-                                                     </div>
-                                                 </div>
-                                             )}
-                                         </div>
-                                     );
-                                 })}
-                             </div>
-                         )}
-                    </div>
-                )}
-
-                {/* ---------------- GBP REVIEWS ---------------- */}
-                {activeTab === 'gbp-reviews' && (
-                    <div className="space-y-6 animate-fade-in">
-                        <h2 className="text-2xl font-bold mb-2">⭐ Gestão de Avaliações (com IA)</h2>
-                        <p className="text-gray-400 mb-8">Responda clientes rapidamente com sugestões da IA.</p>
-                        {loadingLocal ? (
-                            <div className="text-center p-16 text-[#00ff9d] animate-pulse glass-card rounded-2xl border-[#00ff9d]/10">Sincronizando avaliações...</div>
-                        ) : localReviews.filter((r: any) => !r.reviewReply).length === 0 ? (
-                            <div className="text-center p-16 border border-dashed border-gray-800 rounded-2xl text-gray-500 bg-[#161b22]/30">🎉 Todas as avaliações foram respondidas!</div>
-                        ) : (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {localReviews.filter((r: any) => !r.reviewReply).map((review: any, i: number) => (
-                                    <div key={i} className="glass-card rounded-2xl p-8 flex flex-col border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="flex items-center gap-4">
-                                                <img src={review.reviewer?.profilePhotoUrl} alt="" className="w-12 h-12 rounded-full bg-[#161b22] border border-gray-800" />
-                                                <div>
-                                                    <p className="font-bold text-white text-lg">{review.reviewer?.displayName}</p>
-                                                    <div className="text-[#00ff9d] text-sm tracking-widest mt-1">{'★'.repeat(review.starRating || 0)}<span className="text-gray-700">{'☆'.repeat(5 - (review.starRating || 0))}</span></div>
-                                                </div>
-                                            </div>
-                                            <div className="text-xs font-bold text-gray-500 px-3 py-1 bg-[#161b22] rounded-full border border-gray-800">{review.createTime ? new Date(review.createTime).toLocaleDateString() : ''}</div>
-                                        </div>
-                                        <p className="text-gray-300 text-sm mb-8 leading-relaxed italic flex-1">"{review.comment || '(Avaliação sem comentário)'}"</p>
-                                        {review.reviewReply ? (
-                                            <div className="bg-[#161b22] border border-gray-800 rounded-xl p-5 border-l-4 border-l-[#00ff9d] mt-auto">
-                                                <p className="text-[10px] text-[#00ff9d] font-bold mb-2 uppercase tracking-widest">Resposta Publicada</p>
-                                                <p className="text-gray-400 text-sm leading-relaxed">{review.reviewReply.comment}</p>
-                                            </div>
-                                        ) : (
-                                            <div className="bg-[#0d1117]/80 border border-[#00ff9d]/20 rounded-xl p-5 mt-auto shadow-[0_0_15px_rgba(0,255,157,0.05)]">
-                                                <p className="text-[10px] text-red-400 font-bold mb-3 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span> Requer Resposta</p>
-                                                <textarea value={replyText[review.name] || ''} onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })} placeholder="Escreva sua resposta..." className="w-full bg-[#161b22] border border-gray-800 text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] min-h-[100px] resize-none font-medium" />
-                                                <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                                                    <button onClick={() => handleGenerateAI(review)} disabled={generatingAI[review.name]} className="bg-[#161b22] hover:bg-[#161b22]/80 border border-[#00ff9d]/30 text-[#00ff9d] px-5 py-2.5 rounded-lg text-sm font-bold transition-colors flex justify-center items-center gap-2 disabled:opacity-50">
-                                                        {generatingAI[review.name] ? '⏳ Gemini pensando...' : '✨ Sugestão IA'}
-                                                    </button>
-                                                    <button onClick={() => handleReply(review.name)} disabled={!replyText[review.name]} className="bg-[#00ff9d] hover:bg-[#34d399] text-gray-900 px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)] disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed">
-                                                        Publicar Resposta
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ---------------- GBP POSTS ---------------- */}
-                {activeTab === 'gbp-posts' && (
-                    <div className="space-y-6 animate-fade-in max-w-4xl">
-                        <h2 className="text-2xl font-bold mb-2">📣 Atualizações da Empresa (Posts)</h2>
-                        <p className="text-gray-400 mb-8">Crie atualizações para manter o perfil ativo no Google.</p>
-                        <div className="glass-card rounded-2xl p-8 lg:p-10 shadow-[0_0_30px_rgba(0,255,157,0.05)] border-[#00ff9d]/10 relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ff9d] to-transparent opacity-50"></div>
-                            <div className="space-y-8 relative z-10">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Mensagem para os clientes</label>
-                                    <textarea value={postText} onChange={(e) => setPostText(e.target.value)} placeholder="Ex: Estamos abertos no feriado! Venha nos visitar..." className="w-full h-40 bg-[#161b22] border border-gray-800 rounded-xl p-5 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] resize-none font-medium" />
-                                    <div className="text-right text-[11px] text-gray-500 mt-2 font-medium">{postText.length} / 1500</div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Foto (Opcional)</label>
-                                        <div className={`border-2 border-dashed ${imageUrl ? 'border-[#00ff9d]' : 'border-gray-800 hover:border-[#00ff9d]/50'} rounded-xl p-6 flex flex-col items-center justify-center text-center relative overflow-hidden h-40 transition-colors bg-[#161b22]`}>
-                                            {imageUrl ? (
-                                                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${imageUrl})` }}>
-                                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity backdrop-blur-sm">
-                                                        <button onClick={() => setImageUrl('')} className="bg-red-500/90 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-xl hover:bg-red-500 transition-colors">🗑️ Remover</button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className="text-4xl mb-3 drop-shadow-[0_0_10px_rgba(0,255,157,0.2)]">📸</div>
-                                                    <p className="text-xs text-gray-400 font-medium">Clique para selecionar</p>
-                                                    {uploadingImage && <p className="text-[#00ff9d] text-xs font-bold mt-3 animate-pulse">⏳ Fazendo upload...</p>}
-                                                </>
-                                            )}
-                                            <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Call to Action</label>
-                                            <div className="relative">
-                                                <select value={buttonType} onChange={e => setButtonType(e.target.value)} className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] appearance-none cursor-pointer font-medium">
-                                                    <option value="NONE">Nenhum botão</option>
-                                                    <option value="LEARN_MORE">🔗 Saiba Mais</option>
-                                                    <option value="BOOK">📅 Reservar</option>
-                                                    <option value="ORDER">🛍️ Fazer Pedido</option>
-                                                    <option value="CALL">📞 Ligar Agora</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        {(buttonType !== 'NONE' && buttonType !== 'CALL') && (
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">URL de Destino</label>
-                                                <input type="url" value={buttonUrl} onChange={e => setButtonUrl(e.target.value)} placeholder="https://seudominio.com.br" className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] font-medium" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-10 pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6 bg-[#0d1117]/50 -mx-8 lg:-mx-10 -mb-8 lg:-mb-10 p-8 lg:p-10 rounded-b-2xl relative z-10">
-                                <div className="w-full md:w-auto">
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Agendar? (Opcional)</label>
-                                    <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="w-full md:w-64 bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] font-medium cursor-pointer" />
-                                </div>
-                                <button onClick={handlePost} disabled={!postText} className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-gray-900 hover:bg-yellow-400 shadow-[0_0_15px_rgba(255,187,0,0.3)] hover:shadow-[0_0_25px_rgba(255,187,0,0.5)]' : 'bg-[#00ff9d] text-gray-900 shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)]') : 'bg-[#161b22] text-gray-500 cursor-not-allowed shadow-none'}`}>
-                                    {scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-              </div>
-            )
+          {appMode === 'gbp' && selectedGbp && (
+            <div className="max-w-6xl mx-auto">
+              {activeTab === 'gbp-dashboard' && <TabGBPDashboard gbpData={gbpData} days={days} />}
+              {activeTab === 'gbp-audit' && <TabGBPAudit auditData={auditData} loadingAudit={loadingAudit} />}
+              {activeTab === 'gbp-rank' && (
+                <TabGBPRank
+                  trackedKeywords={trackedKeywords}
+                  newKeyword={newKeyword}
+                  loadingRank={loadingRank}
+                  rankRadius={rankRadius}
+                  competitorData={competitorData}
+                  loadingComp={loadingComp}
+                  gbpData={gbpData}
+                  selectedGbp={selectedGbp}
+                  setNewKeyword={setNewKeyword}
+                  setRankRadius={setRankRadius}
+                  handleAddKeyword={handleAddKeyword}
+                  fetchCompetitors={fetchCompetitors}
+                />
+              )}
+              {activeTab === 'gbp-reviews' && (
+                <TabGBPReviews
+                  localReviews={localReviews}
+                  loadingLocal={loadingLocal}
+                  replyText={replyText}
+                  generatingAI={generatingAI}
+                  setReplyText={setReplyText}
+                  handleGenerateAI={handleGenerateAI}
+                  handleReply={handleReply}
+                />
+              )}
+              {activeTab === 'gbp-posts' && (
+                <TabGBPPosts
+                  postText={postText}
+                  imageUrl={imageUrl}
+                  uploadingImage={uploadingImage}
+                  buttonType={buttonType}
+                  buttonUrl={buttonUrl}
+                  scheduledDate={scheduledDate}
+                  setPostText={setPostText}
+                  setImageUrl={setImageUrl}
+                  setButtonType={setButtonType}
+                  setButtonUrl={setButtonUrl}
+                  setScheduledDate={setScheduledDate}
+                  handleImageUpload={handleImageUpload}
+                  handlePost={handlePost}
+                />
+              )}
+            </div>
           )}
-        
-                {activeTab === 'client-config' && (
-                    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in p-8">
-                        <div>
-                            <h2 className="text-3xl font-black text-white tracking-tight mb-2">⚙️ Configurações do Projeto</h2>
-                            <p className="text-gray-400">Gerencie onde este site está localizado no seu computador e como a IA deve se comportar.</p>
-                        </div>
-
-                        <div className="glass-card rounded-2xl p-8 border-white/5 space-y-8">
-                            {/* CAMINHO LOCAL */}
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-[#00ff9d] uppercase tracking-widest">Caminho do Projeto no Windows</label>
-                                <div className="flex gap-4">
-                                    <input 
-                                        type="text" 
-                                        value={configLocalPath}
-                                        onChange={(e) => setConfigLocalPath(e.target.value)}
-                                        placeholder="Ex: C:\Users\Skedar\Desktop\IA - SITES\Projeto-X"
-                                        className="flex-1 bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff9d] transition-all"
-                                    />
-                                    <button 
-                                        onClick={handleSyncDesign}
-                                        disabled={syncingDesign || !configLocalPath}
-                                        className="bg-[#161b22] hover:bg-[#1c2128] border border-[#00ff9d]/30 text-[#00ff9d] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
-                                        {syncingDesign ? '⌛ Sincronizando...' : '🎨 Sincronizar Design'}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 italic">Este caminho é usado pelo Antigravity para criar novas páginas e componentes diretamente na pasta do cliente.</p>
-                            </div>
-
-                            {/* FILTRO DE MARCA */}
-                            <div className="space-y-4 pt-8 border-t border-gray-800">
-                                <label className="block text-sm font-bold text-[#ffbb00] uppercase tracking-widest">Termos Negativados (Marca)</label>
-                                <div className="flex gap-4">
-                                    <input 
-                                        type="text" 
-                                        value={configBranded}
-                                        onChange={(e) => setConfigBranded(e.target.value)}
-                                        placeholder="Ex: pagani, custom floripa, mecanica pagani (separados por vírgula)"
-                                        className="flex-1 bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ffbb00] transition-all"
-                                    />
-                                    <button 
-                                        onClick={handleSaveBranded}
-                                        disabled={savingBranded}
-                                        className="bg-[#161b22] hover:bg-[#1c2128] border border-[#ffbb00]/30 text-[#ffbb00] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
-                                        {savingBranded ? '⌛ Salvando...' : '💾 Salvar Filtro'}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 italic">Digite as palavras-chave que a IA deve <b>ignorar</b> nas sugestões (ex: nome da empresa). Isso limpa a tela para mostrar apenas intenções de serviços.</p>
-                            </div>
-
-                            {/* 📚 BASE DE CONHECIMENTO (Notebook GSC) */}
-                            <div className="space-y-6 pt-8 border-t border-gray-800">
-                                <div>
-                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                        <span className="text-2xl">📚</span> Base de Conhecimento (Estilo NotebookLM)
-                                    </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Adicione fatos, serviços, história e documentos para "treinar" a inteligência deste cliente.</p>
-                                </div>
-
-                                {/* LISTA DE CONHECIMENTO */}
-                                <div className="grid grid-cols-1 gap-4">
-                                    {knowledgeBase.map((item) => (
-                                        <div key={item.id} className="bg-[#161b22] border border-gray-800 rounded-xl p-4 group relative">
-                                            <button 
-                                                onClick={() => handleDeleteKnowledge(item.id)}
-                                                className="absolute top-4 right-4 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                                                🗑️
-                                            </button>
-                                            <h4 className="font-bold text-[#00ff9d] text-sm mb-1 uppercase tracking-wider">{item.title}</h4>
-                                            <p className="text-gray-400 text-sm whitespace-pre-wrap">{item.content}</p>
-                                        </div>
-                                    ))}
-                                    {knowledgeBase.length === 0 && !loadingKB && (
-                                        <div className="text-center py-8 border-2 border-dashed border-gray-800 rounded-2xl text-gray-600 text-sm italic">
-                                            Nenhum conhecimento cadastrado ainda. Comece adicionando abaixo!
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* FORM ADICIONAR */}
-                                <div className="bg-[#0d1117] border border-gray-800 rounded-2xl p-6 space-y-4">
-                                    <input 
-                                        type="text"
-                                        value={kbTitle}
-                                        onChange={(e) => setKbTitle(e.target.value)}
-                                        placeholder="Título (Ex: Nossos Diferenciais, História, Lista de Preços...)"
-                                        className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00ff9d]"
-                                    />
-                                    <textarea 
-                                        value={kbContent}
-                                        onChange={(e) => setKbContent(e.target.value)}
-                                        rows={4}
-                                        placeholder="Cole aqui o conteúdo ou fatos detalhados..."
-                                        className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00ff9d] resize-none"
-                                    />
-                                    <button 
-                                        onClick={handleAddKnowledge}
-                                        disabled={savingKB || !kbTitle || !kbContent}
-                                        className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-2">
-                                        {savingKB ? '⌛ Adicionando...' : '➕ Adicionar à Inteligência'}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* PERFIL DE IA */}
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-[#00ff9d] uppercase tracking-widest">Perfil de Escrita IA (Treinamento)</label>
-                                <textarea 
-                                    value={configBusinessContext}
-                                    onChange={(e) => setConfigBusinessContext(e.target.value)}
-                                    rows={10}
-                                    placeholder="Descreva o tom de voz, público-alvo, serviços principais e o 'estilo' que a IA deve seguir para este cliente..."
-                                    className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff9d] transition-all font-sans leading-relaxed"
-                                />
-                            </div>
-
-                            <div className="flex justify-end pt-4">
-                                <button 
-                                    onClick={handleSaveSettings}
-                                    disabled={savingConfig}
-                                    className="bg-[#00ff9d] text-gray-900 font-black px-10 py-4 rounded-xl shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_35px_rgba(0,255,157,0.5)] transition-all flex items-center gap-2">
-                                    {savingConfig ? '⌛ Salvando...' : '💾 Salvar Configurações'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-</main>
+        </main>
       </div>
     </div>
   );
