@@ -14,12 +14,16 @@ import TabGBPPosts from '@/components/tabs/TabGBPPosts';
 import TabClientConfig from '@/components/tabs/TabClientConfig';
 
 export default function Dashboard() {
-  const [sites, setSites] = useState<any[]>([]);
+  const [session, setSession] = useState<any>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+
+  // Estados Gerais
+  const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [data, setData] = useState<any>(null);
   const [loadingPerf, setLoadingPerf] = useState(false);
-  const [activeTab, setActiveTab] = useState('insights');
+  const [activeTab, setActiveTab] = useState('seo-insights');
   const [appMode, setAppMode] = useState<'seo' | 'gbp'>('seo');
   
   const [selectedGbp, setSelectedGbp] = useState<any>(null);
@@ -73,7 +77,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function fetchSites() {
       try {
-        const res = await fetch('/api/sites');
+        const res = await fetch('/api/sites', { cache: 'no-store' });
         const d = await res.json();
         if (Array.isArray(d)) setSites(d);
       } catch (err) { console.error(err); } finally { setLoading(false); }
@@ -344,16 +348,32 @@ export default function Dashboard() {
     setSelectedGbp(profile);
     setLoadingPerf(true);
     try {
+      const accountId = profile.gbpData?.accountId || profile.accountId;
+      const locationId = profile.id?.replace('locations/', '');
+      // A API do Google exige o formato completo: accounts/{id}/locations/{id}
+      const fullLocationName = accountId 
+        ? `accounts/${accountId}/locations/${locationId}` 
+        : profile.id;
+
+      // DIAGNÓSTICO: Ver os IDs reais no terminal
+      console.log('🗺️ GBP Profile selecionado:', { 
+        name: profile.name, 
+        accountId, 
+        locationId, 
+        fullLocationName,
+        profileRaw: JSON.stringify(profile).substring(0, 300)
+      });
+
       const res = await fetch('/api/maps/performance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locationName: profile.id, days: days })
+        body: JSON.stringify({ locationName: fullLocationName, days: days })
       });
       const perfData = await res.json();
       const mapsData = {
         title: profile.name,
-        accountId: profile.gbpData?.accountId || profile.accountId,
-        locationId: profile.id.replace('locations/', ''),
+        accountId,
+        locationId,
         metrics: perfData || { calls: 0, directions: 0, websiteClicks: 0 }
       };
       setGbpData(mapsData);
@@ -363,6 +383,7 @@ export default function Dashboard() {
       fetchRankData(mapsData.locationId);
     } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
   };
+
 
   const handleGenerateAI = async (review: any) => {
     setGeneratingAI(prev => ({ ...prev, [review.name]: true }));
@@ -484,7 +505,11 @@ export default function Dashboard() {
 
         <div className="p-4 border-b border-gray-800">
           {appMode === 'seo' ? (
-            <select value={selectedClient?.id || ''} onChange={(e) => handleSelectClient(gscSites.find((c:any) => c.id === e.target.value))}
+            <select value={selectedClient?.id || ''} onChange={(e) => {
+                const client = gscSites.find((c:any) => c.id === e.target.value);
+                if (client) handleSelectClient(client);
+                else { setSelectedClient(null); setData(null); }
+              }}
               className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
               <option value="">Selecionar GSC...</option>
               {gscSites.map((c:any) => (<option key={c.id} value={c.id}>{c.name}</option>))}

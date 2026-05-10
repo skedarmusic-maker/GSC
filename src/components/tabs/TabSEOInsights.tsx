@@ -6,6 +6,8 @@ interface Props {
 }
 
 export default function TabSEOInsights({ data, getStrategicInsights }: Props) {
+  if (!data?.current) return null;
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* KPIS GSC */}

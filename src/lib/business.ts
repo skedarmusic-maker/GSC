@@ -69,28 +69,39 @@ export async function getLocationPerformance(locationName: string, days: number)
   try {
     const accessToken = await getAccessToken();
 
-    // Configurar datas
+    // A businessprofileperformance API usa APENAS 'locations/{id}'
+    // Remove o prefixo 'accounts/X/' se vier no formato completo
+    const cleanLocationName = locationName.replace(/^accounts\/[^/]+\//, '');
+
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days);
 
     const metrics = [
       'CALL_CLICKS',
-      'BUSINESS_CONVERSIONS_DIRECTIONS',
+      'BUSINESS_DIRECTION_REQUESTS',
       'WEBSITE_CLICKS'
     ];
 
     const fetchSingleMetric = async (metric: string) => {
-      const url = `https://businessprofileperformance.googleapis.com/v1/${locationName}:getDailyMetricsTimeSeries?dailyMetric=${metric}&dailyRange.startDate.year=${startDate.getFullYear()}&dailyRange.startDate.month=${startDate.getMonth() + 1}&dailyRange.startDate.day=${startDate.getDate()}&dailyRange.endDate.year=${endDate.getFullYear()}&dailyRange.endDate.month=${endDate.getMonth() + 1}&dailyRange.endDate.day=${endDate.getDate()}`;
+      const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:getDailyMetricsTimeSeries?dailyMetric=${metric}&dailyRange.startDate.year=${startDate.getFullYear()}&dailyRange.startDate.month=${startDate.getMonth() + 1}&dailyRange.startDate.day=${startDate.getDate()}&dailyRange.endDate.year=${endDate.getFullYear()}&dailyRange.endDate.month=${endDate.getMonth() + 1}&dailyRange.endDate.day=${endDate.getDate()}`;
 
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
         cache: 'no-store'
       });
-      const data = await res.json();
 
+      // Verificar se a resposta é JSON antes de parsear
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error(`Erro na API Maps performance [${metric}]:`, res.status, text.substring(0, 200));
+        return 0;
+      }
+
+      const data = await res.json();
       let total = 0;
-      if (data.timeSeries && data.timeSeries.datedValues) {
+      if (data.timeSeries?.datedValues) {
         data.timeSeries.datedValues.forEach((v: any) => {
           total += parseInt(v.value || '0');
         });
@@ -108,6 +119,7 @@ export async function getLocationPerformance(locationName: string, days: number)
     return null;
   }
 }
+
 
 // === NOVAS FUNÇÕES: GESTÃO DO PERFIL ===
 
