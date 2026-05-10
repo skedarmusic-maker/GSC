@@ -97,12 +97,40 @@ export async function GET() {
         name: client.name,
         accountId: client.gbp_account_id,
         websiteUri: client.website_url
-      } : null
+      } : null,
+      localPath: client.local_path,
+      businessContext: client.business_context
     }));
 
     return NextResponse.json(formattedList || []);
   } catch (error: any) {
     console.error('ERRO API SITES:', error);
     return NextResponse.json({ error: error.message || 'Falha ao buscar clientes' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { id, localPath, businessContext } = await req.json();
+    
+    const adminSupabase = (await import('@supabase/supabase-js')).createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
+
+    const { data, error } = await adminSupabase
+      .from('clients')
+      .update({ 
+        local_path: localPath, 
+        business_context: businessContext 
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

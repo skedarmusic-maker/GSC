@@ -3,19 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",
+    "@types/pg": "^8.20.0",
     "dotenv": "^17.4.2",
     "google-ads-api": "^23.0.0",
     "google-auth-library": "^9.0.0",
     "googleapis": "^126.0.0",
     "jspdf": "^4.2.1",
     "next": "14.1.0",
+    "pg": "^8.20.0",
     "react": "^18",
     "react-dom": "^18"
   },

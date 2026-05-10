@@ -52,6 +52,19 @@ export default function Dashboard() {
   const [days, setDays] = useState(28);
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [isCustom, setIsCustom] = useState(false);
+  const [configLocalPath, setConfigLocalPath] = useState('');
+  const [configBusinessContext, setConfigBusinessContext] = useState('');
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [knowledgeBase, setKnowledgeBase] = useState<any[]>([]);
+  const [kbTitle, setKbTitle] = useState('');
+  const [kbContent, setKbContent] = useState('');
+  const [loadingKB, setLoadingKB] = useState(false);
+  const [savingKB, setSavingKB] = useState(false);
+  const [syncingDesign, setSyncingDesign] = useState(false);
+  const [configBranded, setConfigBranded] = useState('');
+  const [savingBranded, setSavingBranded] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
 
   useEffect(() => {
     async function fetchSites() {
@@ -280,8 +293,122 @@ export default function Dashboard() {
     } catch (err) { console.error(err); } finally { setLoadingPerf(false); }
   };
 
+  const handleSaveSettings = async () => {
+    if (!selectedClient) return;
+    setSavingConfig(true);
+    try {
+      const res = await fetch('/api/sites/sync-design', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedClient.id,
+          localPath: configLocalPath,
+          businessContext: configBusinessContext
+        })
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        alert('Configurações salvas com sucesso!');
+        // Atualizar lista local
+        setSites(prev => prev.map(s => s.id === selectedClient.id ? { ...s, localPath: configLocalPath, businessContext: configBusinessContext } : s));
+      } else {
+        throw new Error(resData.error);
+      }
+    } catch (e: any) {
+      alert('Erro ao salvar: ' + e.message);
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const fetchKnowledgeBase = async (clientId: string) => {
+    setLoadingKB(true);
+    try {
+      const res = await fetch(`/api/knowledge?clientId=${clientId}`);
+      const data = await res.json();
+      if (Array.isArray(data)) setKnowledgeBase(data);
+    } catch (e) { console.error(e); } finally { setLoadingKB(false); }
+  };
+
+  const handleAddKnowledge = async () => {
+    if (!selectedClient || !kbTitle || !kbContent) return;
+    setSavingKB(true);
+    try {
+      const res = await fetch('/api/knowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: selectedClient.id, title: kbTitle, content: kbContent })
+      });
+      if (res.ok) {
+        setKbTitle('');
+        setKbContent('');
+        fetchKnowledgeBase(selectedClient.id);
+      }
+    } catch (e) { console.error(e); } finally { setSavingKB(false); }
+  };
+
+  const handleDeleteKnowledge = async (id: string) => {
+    if (!confirm('Excluir este conhecimento?')) return;
+    try {
+      const res = await fetch(`/api/knowledge?id=${id}`, { method: 'DELETE' });
+      if (res.ok) fetchKnowledgeBase(selectedClient.id);
+    } catch (e) { console.error(e); }
+  };
+
+  
+  const handleSaveBranded = async () => {
+    if (!selectedClient) return;
+    setSavingBranded(true);
+    try {
+        const res = await fetch('/api/sites', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: selectedClient.id,
+                design_context: { ...selectedClient.design_context, branded_keywords: configBranded }
+            })
+        });
+        if (res.ok) alert('✅ Filtro de Marca atualizado com sucesso! A aba de Oportunidades será limpa.');
+    } catch(e) {
+        console.error(e);
+        alert('Erro ao salvar filtro.');
+    } finally {
+        setSavingBranded(false);
+    }
+  };
+
+  const handleSyncDesign = async () => {
+    if (!selectedClient || !configLocalPath) {
+        alert('Configure o caminho local primeiro!');
+        return;
+    }
+    setSyncingDesign(true);
+    try {
+        // Envia um comando para a API que dispara a análise do Antigravity
+        const res = await fetch('/api/sites/sync-design', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: selectedClient.id, localPath: configLocalPath })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert('Identidade Visual sincronizada com sucesso! Antigravity agora conhece o DNA deste site.');
+        } else {
+            alert('Aviso: ' + result.message);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao sincronizar design.');
+    } finally {
+        setSyncingDesign(false);
+    }
+  };
+
   const handleSelectClient = (client: any) => {
+    fetchKnowledgeBase(client.id);
     setSelectedClient(client);
+    setConfigLocalPath(client.localPath || '');
+    setConfigBusinessContext(client.businessContext || '');
     setData(null);
     setLocalReviews([]);
     setScheduledPosts([]);
@@ -313,9 +440,24 @@ export default function Dashboard() {
        
        fetchLocalProfile(accountId, locationId);
        fetchScheduledPosts(locationId);
-       fetchAudit(accountId, locationId);
-       fetchRankData(locationId);
-    }
+     }
+  };
+
+
+
+  const handleViewLayout = async (opp: any) => {
+    alert('🎨 Antigravity está gerando o layout no Stitch baseado neste rascunho. Aguarde alguns segundos...');
+    try {
+        const res = await fetch('/api/ai/generate-layout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ opportunityId: opp.id, clientId: selectedClient.id, content: opp.content_draft })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✨ Layout gerado no Stitch! O Antigravity vai te mostrar a prévia em instantes.');
+        }
+    } catch (e) { console.error(e); }
   };
 
   const handleGenerateAI = async (review: any) => {
@@ -524,7 +666,7 @@ export default function Dashboard() {
     }
   };
 
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
@@ -615,6 +757,8 @@ export default function Dashboard() {
                     <span className="bg-[#00ff9d] text-gray-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_8px_#00ff9d]">Novo</span>
                   </button>
                 </li>
+                <li className="pt-4"><p className="text-[10px] font-bold text-gray-500 mb-3 uppercase tracking-wider px-2">Gestão do Cliente</p></li>
+                <li><button onClick={() => setActiveTab('client-config')} className={`w-full text-left px-3 py-2.5 rounded-md text-sm font-medium transition-all ${activeTab === 'client-config' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400 hover:text-white hover:bg-[#161b22]'}`}>⚙️ Configurações</button></li>
               </ul>
             ) : (
               <p className="text-xs text-gray-600 px-3 py-4 text-center">Selecione um site GSC acima</p>
@@ -801,6 +945,132 @@ export default function Dashboard() {
                               </table>
                           </div>
                        )}
+
+                        {/* ---------------- MICRO-SAAS: OPORTUNIDADES IA ---------------- */}
+                        {activeTab === 'seo-opportunities' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                                     <div>
+                                         <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA</h2>
+                                         <p className="text-gray-400 mt-1">Sugestões automáticas do n8n (Alto Volume, Baixo CTR) prontas para virar artigos e páginas.</p>
+                                     </div>
+                                     <button 
+                                        onClick={() => selectedClient?.id && fetchOpportunities(selectedClient.id)}
+                                        className="bg-[#161b22] border border-[#00ff9d]/30 text-[#00ff9d] font-bold px-5 py-2.5 rounded-xl text-sm transition-colors hover:bg-[#161b22]/80">
+                                         🔄 Sincronizar Fila
+                                     </button>
+                                </div>
+                                
+                                <div className="glass-card rounded-2xl border-[#00ff9d]/10 p-1 mt-6">
+                                    <table className="w-full text-left text-sm">
+                                        <thead>
+                                            <tr className="border-b border-gray-800 text-gray-500 uppercase tracking-wider text-[10px] font-bold bg-[#161b22]/50">
+                                                <th className="p-4 rounded-tl-xl">Termo Encontrado</th>
+                                                <th className="p-4 text-right">Métricas (Imp. / CTR)</th>
+                                                <th className="p-4 text-center">Status</th>
+                                                <th className="p-4 text-right rounded-tr-xl">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {loadingOpps ? (
+                                                <tr><td colSpan={4} className="p-10 text-center text-gray-500">Carregando oportunidades...</td></tr>
+                                            ) : seoOpportunities.length === 0 ? (
+                                                <tr><td colSpan={4} className="p-10 text-center text-gray-500">Nenhuma oportunidade pendente para este cliente.</td></tr>
+                                            ) : seoOpportunities.filter(opp => {
+                                                if (!configBranded) return true;
+                                                const blocked = configBranded.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                                                const kw = opp.keyword.toLowerCase();
+                                                return !blocked.some(b => kw.includes(b));
+                                            }).map(opp => (
+                                                <tr key={opp.id} className="border-b border-gray-800/50 hover:bg-[#161b22]/40 transition-colors group">
+                                                    <td className="p-4">
+                                                        <p className="font-bold text-white text-[15px]">{opp.keyword}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">Identificado em {new Date(opp.created_at).toLocaleDateString()}</p>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <p className="text-white font-bold">{(opp.impressions || 0).toLocaleString()}</p>
+                                                        <p className="text-xs text-red-400 font-medium mt-1">{(opp.ctr || 0)}% CTR</p>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                                                            (opp.status || 'pendente') === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                                            opp.status === 'aprovada' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                            opp.status === 'rascunho_gerado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                            'bg-[#00ff9d]/10 text-[#00ff9d] border-[#00ff9d]/20'
+                                                        }`}>
+                                                            {(opp.status || 'pendente').replace('_', ' ')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        {opp.status === 'pendente' ? (
+                                                            <button 
+                                                                onClick={() => handleApproveOpportunity(opp.id)}
+                                                                disabled={generatingContent[opp.id]}
+                                                                className="bg-[#00ff9d] text-gray-900 font-bold px-4 py-2 rounded-lg text-xs shadow-[0_0_10px_rgba(0,255,157,0.2)] hover:shadow-[0_0_15px_rgba(0,255,157,0.4)] transition-all">
+                                                                {generatingContent[opp.id] ? '⏳ Gerando...' : 'Aprovar & Escrever'}
+                                                            </button>
+                                                        ) : opp.status === 'aprovada' ? (
+                                                            <button 
+                                                                onClick={() => handleViewLayout(opp)}
+                                                                className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-2">
+                                                                🎨 Visualizar Layout (Stitch)
+                                                            </button>
+                                                        ) : opp.status === 'rascunho_gerado' ? (
+                                                            <button 
+                                                                onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft })}
+                                                                className="bg-[#161b22] border border-purple-500/50 text-purple-400 font-bold px-4 py-2 rounded-lg text-xs hover:bg-purple-500/10 transition-all">
+                                                                👁️ Ver Rascunho
+                                                            </button>
+                                                        ) : opp.status === 'publicada' ? (
+                                                            <a href={opp.published_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-xs font-bold underline">
+                                                                Ver Página ↗
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-gray-500 text-xs italic">Aguardando IA...</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* MODAL DE RASCUNHO */}
+                                {viewingDraft && (
+                                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                                        <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+                                            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-white">Rascunho de Conteúdo IA</h3>
+                                                    <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini 1.5 Pro</p>
+                                                </div>
+                                                <button onClick={() => setViewingDraft(null)} className="p-2 text-gray-400 hover:text-white">✕</button>
+                                            </div>
+                                            <div className="p-8 overflow-y-auto bg-[#0d1117]/50 text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
+                                                {viewingDraft.draft}
+                                            </div>
+                                            <div className="p-6 border-t border-gray-800 flex justify-end gap-4 bg-[#0d1117]">
+                                                                                                <button onClick={() => setViewingDraft(null)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-400 hover:text-white transition-colors">Fechar</button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const opp = seoOpportunities.find(o => o.id === viewingDraft.id);
+                                                        handleViewLayout(opp);
+                                                        setViewingDraft(null);
+                                                    }}
+                                                    className="bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2">
+                                                    🎨 Gerar Layout (Stitch)
+                                                </button>
+                                                <button 
+                                                    onClick={() => { alert('Postagem automática sendo enviada para o WordPress/n8n...'); setViewingDraft(null); }}
+                                                    className="bg-[#00ff9d] text-gray-900 font-bold px-8 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)] transition-all">
+                                                    🚀 Publicar Agora
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </>
                  )}
               </div>
@@ -1197,116 +1467,138 @@ export default function Dashboard() {
                         </div>
                     </div>
                 )}
-
-                {/* ---------------- MICRO-SAAS: OPORTUNIDADES IA ---------------- */}
-                {activeTab === 'seo-opportunities' && (
-                    <div className="space-y-6 animate-fade-in max-w-5xl">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
-                             <div>
-                                 <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA</h2>
-                                 <p className="text-gray-400 mt-1">Sugestões automáticas do n8n (Alto Volume, Baixo CTR) prontas para virar artigos e páginas.</p>
-                             </div>
-                             <button 
-                                onClick={() => selectedClient?.id && fetchOpportunities(selectedClient.id)}
-                                className="bg-[#161b22] border border-[#00ff9d]/30 text-[#00ff9d] font-bold px-5 py-2.5 rounded-xl text-sm transition-colors hover:bg-[#161b22]/80">
-                                 🔄 Sincronizar Fila
-                             </button>
-                        </div>
-                        
-                        <div className="glass-card rounded-2xl border-[#00ff9d]/10 p-1 mt-6">
-                            <table className="w-full text-left text-sm">
-                                <thead>
-                                    <tr className="border-b border-gray-800 text-gray-500 uppercase tracking-wider text-[10px] font-bold bg-[#161b22]/50">
-                                        <th className="p-4 rounded-tl-xl">Termo Encontrado</th>
-                                        <th className="p-4 text-right">Métricas (Imp. / CTR)</th>
-                                        <th className="p-4 text-center">Status</th>
-                                        <th className="p-4 text-right rounded-tr-xl">Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loadingOpps ? (
-                                        <tr><td colSpan={4} className="p-10 text-center text-gray-500">Carregando oportunidades...</td></tr>
-                                    ) : seoOpportunities.length === 0 ? (
-                                        <tr><td colSpan={4} className="p-10 text-center text-gray-500">Nenhuma oportunidade pendente para este cliente.</td></tr>
-                                    ) : seoOpportunities.map((opp) => (
-                                        <tr key={opp.id} className="border-b border-gray-800/50 hover:bg-[#161b22]/40 transition-colors group">
-                                            <td className="p-4">
-                                                <p className="font-bold text-white text-[15px]">{opp.keyword}</p>
-                                                <p className="text-xs text-gray-500 mt-1">Identificado em {new Date(opp.created_at).toLocaleDateString()}</p>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <p className="text-white font-bold">{(opp.impressions || 0).toLocaleString()}</p>
-                                                <p className="text-xs text-red-400 font-medium mt-1">{(opp.ctr || 0)}% CTR</p>
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                                                    (opp.status || 'pendente') === 'pendente' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                    opp.status === 'aprovada' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                    opp.status === 'rascunho_gerado' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                                    'bg-[#00ff9d]/10 text-[#00ff9d] border-[#00ff9d]/20'
-                                                }`}>
-                                                    {(opp.status || 'pendente').replace('_', ' ')}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                {opp.status === 'pendente' ? (
-                                                    <button 
-                                                        onClick={() => handleApproveOpportunity(opp.id)}
-                                                        disabled={generatingContent[opp.id]}
-                                                        className="bg-[#00ff9d] text-gray-900 font-bold px-4 py-2 rounded-lg text-xs shadow-[0_0_10px_rgba(0,255,157,0.2)] hover:shadow-[0_0_15px_rgba(0,255,157,0.4)] transition-all">
-                                                        {generatingContent[opp.id] ? '⏳ Gerando...' : 'Aprovar & Escrever'}
-                                                    </button>
-                                                ) : opp.status === 'rascunho_gerado' ? (
-                                                    <button 
-                                                        onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft })}
-                                                        className="bg-[#161b22] border border-purple-500/50 text-purple-400 font-bold px-4 py-2 rounded-lg text-xs hover:bg-purple-500/10 transition-all">
-                                                        👁️ Ver Rascunho
-                                                    </button>
-                                                ) : opp.status === 'publicada' ? (
-                                                    <a href={opp.published_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-xs font-bold underline">
-                                                        Ver Página ↗
-                                                    </a>
-                                                ) : (
-                                                    <span className="text-gray-500 text-xs italic">Aguardando IA...</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* MODAL DE RASCUNHO */}
-                        {viewingDraft && (
-                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                                <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-                                    <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-white">Rascunho de Conteúdo IA</h3>
-                                            <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini 1.5 Pro</p>
-                                        </div>
-                                        <button onClick={() => setViewingDraft(null)} className="p-2 text-gray-400 hover:text-white">✕</button>
-                                    </div>
-                                    <div className="p-8 overflow-y-auto bg-[#0d1117]/50 text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
-                                        {viewingDraft.draft}
-                                    </div>
-                                    <div className="p-6 border-t border-gray-800 flex justify-end gap-4 bg-[#0d1117]">
-                                        <button onClick={() => setViewingDraft(null)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-400 hover:text-white transition-colors">Fechar</button>
-                                        <button 
-                                            onClick={() => { alert('Postagem automática sendo enviada para o WordPress/n8n...'); setViewingDraft(null); }}
-                                            className="bg-[#00ff9d] text-gray-900 font-bold px-8 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)] transition-all">
-                                            🚀 Publicar Agora
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
               </div>
             )
           )}
-        </main>
+        
+                {activeTab === 'client-config' && (
+                    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in p-8">
+                        <div>
+                            <h2 className="text-3xl font-black text-white tracking-tight mb-2">⚙️ Configurações do Projeto</h2>
+                            <p className="text-gray-400">Gerencie onde este site está localizado no seu computador e como a IA deve se comportar.</p>
+                        </div>
+
+                        <div className="glass-card rounded-2xl p-8 border-white/5 space-y-8">
+                            {/* CAMINHO LOCAL */}
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-[#00ff9d] uppercase tracking-widest">Caminho do Projeto no Windows</label>
+                                <div className="flex gap-4">
+                                    <input 
+                                        type="text" 
+                                        value={configLocalPath}
+                                        onChange={(e) => setConfigLocalPath(e.target.value)}
+                                        placeholder="Ex: C:\Users\Skedar\Desktop\IA - SITES\Projeto-X"
+                                        className="flex-1 bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff9d] transition-all"
+                                    />
+                                    <button 
+                                        onClick={handleSyncDesign}
+                                        disabled={syncingDesign || !configLocalPath}
+                                        className="bg-[#161b22] hover:bg-[#1c2128] border border-[#00ff9d]/30 text-[#00ff9d] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
+                                        {syncingDesign ? '⌛ Sincronizando...' : '🎨 Sincronizar Design'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 italic">Este caminho é usado pelo Antigravity para criar novas páginas e componentes diretamente na pasta do cliente.</p>
+                            </div>
+
+                            {/* FILTRO DE MARCA */}
+                            <div className="space-y-4 pt-8 border-t border-gray-800">
+                                <label className="block text-sm font-bold text-[#ffbb00] uppercase tracking-widest">Termos Negativados (Marca)</label>
+                                <div className="flex gap-4">
+                                    <input 
+                                        type="text" 
+                                        value={configBranded}
+                                        onChange={(e) => setConfigBranded(e.target.value)}
+                                        placeholder="Ex: pagani, custom floripa, mecanica pagani (separados por vírgula)"
+                                        className="flex-1 bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ffbb00] transition-all"
+                                    />
+                                    <button 
+                                        onClick={handleSaveBranded}
+                                        disabled={savingBranded}
+                                        className="bg-[#161b22] hover:bg-[#1c2128] border border-[#ffbb00]/30 text-[#ffbb00] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
+                                        {savingBranded ? '⌛ Salvando...' : '💾 Salvar Filtro'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 italic">Digite as palavras-chave que a IA deve <b>ignorar</b> nas sugestões (ex: nome da empresa). Isso limpa a tela para mostrar apenas intenções de serviços.</p>
+                            </div>
+
+                            {/* 📚 BASE DE CONHECIMENTO (Notebook GSC) */}
+                            <div className="space-y-6 pt-8 border-t border-gray-800">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                        <span className="text-2xl">📚</span> Base de Conhecimento (Estilo NotebookLM)
+                                    </h3>
+                                    <p className="text-sm text-gray-500 mt-1">Adicione fatos, serviços, história e documentos para "treinar" a inteligência deste cliente.</p>
+                                </div>
+
+                                {/* LISTA DE CONHECIMENTO */}
+                                <div className="grid grid-cols-1 gap-4">
+                                    {knowledgeBase.map((item) => (
+                                        <div key={item.id} className="bg-[#161b22] border border-gray-800 rounded-xl p-4 group relative">
+                                            <button 
+                                                onClick={() => handleDeleteKnowledge(item.id)}
+                                                className="absolute top-4 right-4 text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                                🗑️
+                                            </button>
+                                            <h4 className="font-bold text-[#00ff9d] text-sm mb-1 uppercase tracking-wider">{item.title}</h4>
+                                            <p className="text-gray-400 text-sm whitespace-pre-wrap">{item.content}</p>
+                                        </div>
+                                    ))}
+                                    {knowledgeBase.length === 0 && !loadingKB && (
+                                        <div className="text-center py-8 border-2 border-dashed border-gray-800 rounded-2xl text-gray-600 text-sm italic">
+                                            Nenhum conhecimento cadastrado ainda. Comece adicionando abaixo!
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* FORM ADICIONAR */}
+                                <div className="bg-[#0d1117] border border-gray-800 rounded-2xl p-6 space-y-4">
+                                    <input 
+                                        type="text"
+                                        value={kbTitle}
+                                        onChange={(e) => setKbTitle(e.target.value)}
+                                        placeholder="Título (Ex: Nossos Diferenciais, História, Lista de Preços...)"
+                                        className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00ff9d]"
+                                    />
+                                    <textarea 
+                                        value={kbContent}
+                                        onChange={(e) => setKbContent(e.target.value)}
+                                        rows={4}
+                                        placeholder="Cole aqui o conteúdo ou fatos detalhados..."
+                                        className="w-full bg-[#161b22] border border-gray-800 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00ff9d] resize-none"
+                                    />
+                                    <button 
+                                        onClick={handleAddKnowledge}
+                                        disabled={savingKB || !kbTitle || !kbContent}
+                                        className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-2">
+                                        {savingKB ? '⌛ Adicionando...' : '➕ Adicionar à Inteligência'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* PERFIL DE IA */}
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-[#00ff9d] uppercase tracking-widest">Perfil de Escrita IA (Treinamento)</label>
+                                <textarea 
+                                    value={configBusinessContext}
+                                    onChange={(e) => setConfigBusinessContext(e.target.value)}
+                                    rows={10}
+                                    placeholder="Descreva o tom de voz, público-alvo, serviços principais e o 'estilo' que a IA deve seguir para este cliente..."
+                                    className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff9d] transition-all font-sans leading-relaxed"
+                                />
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <button 
+                                    onClick={handleSaveSettings}
+                                    disabled={savingConfig}
+                                    className="bg-[#00ff9d] text-gray-900 font-black px-10 py-4 rounded-xl shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_35px_rgba(0,255,157,0.5)] transition-all flex items-center gap-2">
+                                    {savingConfig ? '⌛ Salvando...' : '💾 Salvar Configurações'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+</main>
       </div>
     </div>
   );
