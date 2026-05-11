@@ -1,9 +1,13 @@
 'use client';
 
+import { useState, KeyboardEvent } from 'react';
+
 interface Props {
   configLocalPath: string;
   configBusinessContext: string;
   configBranded: string;
+  configProjectFolder: string;
+  configStitchPrompt: string;
   savingConfig: boolean;
   savingBranded: boolean;
   syncingDesign: boolean;
@@ -12,9 +16,12 @@ interface Props {
   savingKB: boolean;
   kbTitle: string;
   kbContent: string;
+  selectedClient: any;
   setConfigLocalPath: (v: string) => void;
   setConfigBusinessContext: (v: string) => void;
   setConfigBranded: (v: string) => void;
+  setConfigProjectFolder: (v: string) => void;
+  setConfigStitchPrompt: (v: string) => void;
   setKbTitle: (v: string) => void;
   setKbContent: (v: string) => void;
   handleSaveSettings: () => void;
@@ -25,14 +32,57 @@ interface Props {
 }
 
 export default function TabClientConfig({
-  configLocalPath, configBusinessContext, configBranded,
+  configLocalPath, configBusinessContext, configBranded, configProjectFolder, configStitchPrompt,
   savingConfig, savingBranded, syncingDesign,
   knowledgeBase, loadingKB, savingKB, kbTitle, kbContent,
-  setConfigLocalPath, setConfigBusinessContext, setConfigBranded,
+  selectedClient,
+  setConfigLocalPath, setConfigBusinessContext, setConfigBranded, setConfigProjectFolder, setConfigStitchPrompt,
   setKbTitle, setKbContent,
   handleSaveSettings, handleSaveBranded, handleSyncDesign,
   handleAddKnowledge, handleDeleteKnowledge
 }: Props) {
+  const [tagInput, setTagInput] = useState('');
+
+  // Converte a string CSV em array de tags
+  const tags = configBranded
+    ? configBranded.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const addTag = (value: string) => {
+    const newTag = value.trim().toLowerCase();
+    if (!newTag || tags.includes(newTag)) return;
+    const updated = [...tags, newTag].join(', ');
+    setConfigBranded(updated);
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    const updated = tags.filter(t => t !== tag).join(', ');
+    setConfigBranded(updated);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
+      removeTag(tags[tags.length - 1]);
+    }
+  };
+
+  const autoDetectBranded = () => {
+    if (!selectedClient?.name) return;
+    const stopWords = ['e', 'de', 'da', 'do', 'em', 'para', 'com', 'pet', 'shop', '-'];
+    const nameParts = selectedClient.name
+      .toLowerCase()
+      .split(/[\s&]+/)
+      .filter((w: string) => w.length > 2 && !stopWords.includes(w));
+
+    nameParts.forEach((word: string) => addTag(word));
+    // Também adiciona o nome completo como um termo
+    addTag(selectedClient.name.toLowerCase());
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in p-8">
       <div>
@@ -56,19 +106,88 @@ export default function TabClientConfig({
           <p className="text-xs text-gray-500 italic">Este caminho é usado pelo Antigravity para criar novas páginas e componentes diretamente na pasta do cliente.</p>
         </div>
 
-        {/* FILTRO DE MARCA */}
+        {/* STITCH DESIGN SYSTEM (Configurações da IA Geradora de Código) */}
+        <div className="space-y-6 pt-8 border-t border-gray-800">
+          <div>
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <span className="text-2xl">🎨</span> Inteligência de Layout (Stitch)
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">Defina como o GSC deve gerar e onde deve salvar as novas páginas automáticas (Landing Pages, Artigos).</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#ffbb00] uppercase tracking-widest">Nome da Pasta do Projeto</label>
+              <input type="text" value={configProjectFolder} onChange={(e) => setConfigProjectFolder(e.target.value)}
+                placeholder="Ex: Pagani Custom (deve ser exato)"
+                className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ffbb00] transition-all" />
+              <p className="text-[10px] text-gray-500">A pasta onde o Stitch vai publicar as páginas. Tem que ser uma das pastas lá no seu Desktop dentro de IA - SITES.</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#ffbb00] uppercase tracking-widest">Manual da Marca (Prompt de Design)</label>
+              <textarea value={configStitchPrompt} onChange={(e) => setConfigStitchPrompt(e.target.value)} rows={3}
+                placeholder="Ex: Estilo brutalista, fundo preto (#020202), detalhes em amarelo text-primary. Usar fonte Inter uppercase nos títulos."
+                className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ffbb00] transition-all resize-none" />
+              <p className="text-[10px] text-gray-500">Regras de ouro que o Stitch nunca pode esquecer na hora de gerar uma página pra esse cliente.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* FILTRO DE MARCA — NOVO SISTEMA DE TAGS */}
         <div className="space-y-4 pt-8 border-t border-gray-800">
-          <label className="block text-sm font-bold text-[#ffbb00] uppercase tracking-widest">Termos Negativados (Marca)</label>
-          <div className="flex gap-4">
-            <input type="text" value={configBranded} onChange={(e) => setConfigBranded(e.target.value)}
-              placeholder="Ex: pagani, custom floripa, mecanica pagani (separados por vírgula)"
-              className="flex-1 bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ffbb00] transition-all" />
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-bold text-[#ffbb00] uppercase tracking-widest">
+              🚫 Termos Negativados (Marca)
+            </label>
+            <button
+              onClick={autoDetectBranded}
+              className="text-xs bg-[#ffbb00]/10 hover:bg-[#ffbb00]/20 border border-[#ffbb00]/30 text-[#ffbb00] px-3 py-1.5 rounded-lg font-bold transition-all"
+            >
+              ✨ Auto-detectar da marca
+            </button>
+          </div>
+
+          {/* Área de tags */}
+          <div
+            className="min-h-[52px] flex flex-wrap gap-2 items-center bg-[#0d1117] border border-gray-800 rounded-xl px-3 py-2.5 focus-within:border-[#ffbb00] transition-all cursor-text"
+            onClick={() => document.getElementById('tag-input')?.focus()}
+          >
+            {tags.map(tag => (
+              <span
+                key={tag}
+                className="flex items-center gap-1.5 bg-[#ffbb00]/10 border border-[#ffbb00]/30 text-[#ffbb00] text-xs font-bold px-3 py-1.5 rounded-full"
+              >
+                {tag}
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
+                  className="text-[#ffbb00]/60 hover:text-[#ffbb00] transition-colors leading-none ml-0.5"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+            <input
+              id="tag-input"
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => { if (tagInput) addTag(tagInput); }}
+              placeholder={tags.length === 0 ? 'Digite um termo e aperte Enter para adicionar...' : ''}
+              className="flex-1 min-w-[180px] bg-transparent text-white text-sm focus:outline-none placeholder-gray-600"
+            />
+          </div>
+          <p className="text-xs text-gray-500 italic">
+            Digite o termo e aperte <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300 text-[10px]">Enter</kbd> para adicionar. Clique no <strong className="text-gray-300">✕</strong> da tag para remover. A lista é filtrada em tempo real.
+          </p>
+
+          <div className="flex justify-end">
             <button onClick={handleSaveBranded} disabled={savingBranded}
-              className="bg-[#161b22] hover:bg-[#1c2128] border border-[#ffbb00]/30 text-[#ffbb00] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
+              className="bg-[#161b22] hover:bg-[#1c2128] border border-[#ffbb00]/30 text-[#ffbb00] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
               {savingBranded ? '⌛ Salvando...' : '💾 Salvar Filtro'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 italic">Digite as palavras-chave que a IA deve <b>ignorar</b> nas sugestões. Isso limpa a tela para mostrar apenas intenções de serviços.</p>
         </div>
 
         {/* BASE DE CONHECIMENTO */}

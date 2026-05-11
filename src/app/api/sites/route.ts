@@ -99,7 +99,10 @@ export async function GET() {
         websiteUri: client.website_url
       } : null,
       localPath: client.local_path,
-      businessContext: client.business_context
+      businessContext: client.business_context,
+      designContext: client.design_context || {}, // Mantemos o objeto para compatibilidade
+      projectFolder: client.project_folder,
+      stitchPrompt: client.stitch_prompt
     }));
 
     return NextResponse.json(formattedList || []);
@@ -111,7 +114,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   try {
-    const { id, localPath, businessContext } = await req.json();
+    const { id, localPath, businessContext, design_context, projectFolder, stitchPrompt } = await req.json();
     
     const adminSupabase = (await import('@supabase/supabase-js')).createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -122,10 +125,14 @@ export async function PATCH(req: Request) {
       .from('clients')
       .update({ 
         local_path: localPath, 
-        business_context: businessContext 
+        business_context: businessContext,
+        design_context: design_context,
+        project_folder: projectFolder,
+        stitch_prompt: stitchPrompt
       })
       .eq('id', id)
       .select();
+
 
     if (error) throw error;
 

@@ -101,31 +101,84 @@ export default function TabSEOOpportunities({
         </table>
       </div>
 
-      {/* MODAL DE RASCUNHO */}
+      {/* MODAL DE RASCUNHO / LAYOUT */}
       {viewingDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+          <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
               <div>
-                <h3 className="text-xl font-bold text-white">Rascunho de Conteúdo IA</h3>
-                <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini Flash</p>
+                <h3 className="text-xl font-bold text-white">
+                  {viewingDraft.layout_draft ? 'Layout do Stitch (Aprovação Final)' : 'Rascunho de Conteúdo IA'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini AI</p>
               </div>
               <button onClick={() => setViewingDraft(null)} className="p-2 text-gray-400 hover:text-white">✕</button>
             </div>
-            <div className="p-8 overflow-y-auto bg-[#0d1117]/50 text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
-              {viewingDraft.draft}
+            
+            <div className="p-8 overflow-y-auto bg-[#0d1117]/50 flex-1 flex flex-col gap-6">
+              {!viewingDraft.layout_draft ? (
+                // Visão de Texto
+                <div className="text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
+                  {viewingDraft.draft}
+                </div>
+              ) : (
+                // Visão do Código do Layout
+                <div className="flex-1 flex flex-col h-full">
+                  <p className="text-sm text-[#00ff9d] mb-4">✨ Layout gerado com sucesso no estilo Brutalista Pagani! Inspecione o código abaixo:</p>
+                  <pre className="bg-[#050505] p-4 rounded-xl border border-gray-800 text-xs text-gray-400 overflow-x-auto overflow-y-auto max-h-[50vh]">
+                    <code>{viewingDraft.layout_draft}</code>
+                  </pre>
+                </div>
+              )}
             </div>
+
             <div className="p-6 border-t border-gray-800 flex justify-end gap-4 bg-[#0d1117]">
               <button onClick={() => setViewingDraft(null)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-gray-400 hover:text-white transition-colors">Fechar</button>
-              <button
-                onClick={() => {
-                  const opp = seoOpportunities.find(o => o.id === viewingDraft.id);
-                  handleViewLayout(opp);
-                  setViewingDraft(null);
-                }}
-                className="bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2">
-                🎨 Gerar Layout (Stitch)
-              </button>
+              
+              {!viewingDraft.layout_draft ? (
+                <button
+                  onClick={(e) => {
+                    const opp = seoOpportunities.find(o => o.id === viewingDraft.id);
+                    // Troca texto do botão para loading
+                    (e.target as HTMLButtonElement).innerText = '⏳ Gerando...';
+                    handleViewLayout(opp);
+                  }}
+                  className="bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2">
+                  🎨 Gerar Layout (Stitch)
+                </button>
+              ) : (
+                <button
+                  onClick={async (e) => {
+                    const btn = e.target as HTMLButtonElement;
+                    btn.innerText = '🚀 Enviando...';
+                    btn.disabled = true;
+                    
+                    try {
+                      const res = await fetch('/api/ai/publish-layout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ opportunityId: viewingDraft.id })
+                      });
+                      const result = await res.json();
+                      if (result.success) {
+                        alert('Página publicada com sucesso na pasta do Pagani Custom!\n\nURL: ' + result.url);
+                        setViewingDraft(null);
+                        // Idealmente atualizariamos a lista chamando fetchOpportunities, mas o user já vai ver
+                      } else {
+                        alert('Erro ao publicar: ' + result.error);
+                        btn.innerText = '🚀 Aprovar e Enviar para o Pagani';
+                        btn.disabled = false;
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      btn.innerText = '🚀 Aprovar e Enviar para o Pagani';
+                      btn.disabled = false;
+                    }
+                  }}
+                  className="bg-[#00ff9d] text-gray-900 font-bold px-8 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)] transition-all">
+                  🚀 Aprovar e Enviar para o Pagani
+                </button>
+              )}
             </div>
           </div>
         </div>

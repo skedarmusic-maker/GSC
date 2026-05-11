@@ -55,8 +55,8 @@ export async function POST(req: Request) {
       5. Responda apenas com o texto final, sem comentários.
     `;
 
-    // 4. Chamar Gemini
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    // 4. Chamar Gemini (Usando Flash para maior velocidade e estabilidade)
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -65,7 +65,15 @@ export async function POST(req: Request) {
       })
     });
 
+
     const geminiData = await geminiRes.json();
+    
+    // Log para diagnóstico caso falhe
+    if (!geminiRes.ok || geminiData.error) {
+      console.error('❌ ERRO GEMINI generate-content:', JSON.stringify(geminiData));
+      return NextResponse.json({ error: `Erro do Gemini: ${geminiData.error?.message || 'desconhecido'}` }, { status: 500 });
+    }
+
     const aiContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Falha ao gerar conteúdo.";
 
     // 5. Salvar o rascunho no banco

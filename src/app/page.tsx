@@ -71,6 +71,8 @@ export default function Dashboard() {
   const [savingKB, setSavingKB] = useState(false);
   const [syncingDesign, setSyncingDesign] = useState(false);
   const [configBranded, setConfigBranded] = useState('');
+  const [configProjectFolder, setConfigProjectFolder] = useState('');
+  const [configStitchPrompt, setConfigStitchPrompt] = useState('');
   const [savingBranded, setSavingBranded] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
@@ -202,6 +204,31 @@ export default function Dashboard() {
     } catch (e) { console.error(e); } finally { setGeneratingContent(prev => ({ ...prev, [oppId]: false })); }
   };
 
+  const handleViewLayout = async (opp: any) => {
+    // Se já tem layout gerado no banco, só abre o modal com ele
+    if (opp.layout_draft) {
+      setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft });
+      return;
+    }
+    
+    // Se não, gera um novo agora via API
+    setGeneratingContent(prev => ({ ...prev, [opp.id]: true }));
+    try {
+      const res = await fetch('/api/ai/generate-layout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opportunityId: opp.id })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setSeoOpportunities(prev => prev.map(o => o.id === opp.id ? { ...o, status: 'layout_gerado', layout_draft: result.layout_draft } : o));
+        setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: result.layout_draft });
+      } else {
+        alert('Erro ao gerar layout: ' + result.error);
+      }
+    } catch (e) { console.error(e); } finally { setGeneratingContent(prev => ({ ...prev, [opp.id]: false })); }
+  };
+
   const handleAddKeyword = async () => {
     const mapsData = data?.maps || (selectedGbp ? {
       locationId: selectedGbp.id.replace('locations/', ''),
@@ -309,10 +336,20 @@ export default function Dashboard() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 id: selectedClient.id,
-                design_context: { ...selectedClient.design_context, branded_keywords: configBranded }
+                design_context: { ...selectedClient.design_context, branded_keywords: configBranded },
+                projectFolder: configProjectFolder,
+                stitchPrompt: configStitchPrompt
             })
         });
-        if (res.ok) alert('Filtro atualizado!');
+        if (res.ok) {
+          alert('Configurações de Design (Stitch) atualizadas!');
+          setSites(prev => prev.map(s => s.id === selectedClient.id ? { 
+            ...s, 
+            designContext: { ...s.designContext, branded_keywords: configBranded },
+            projectFolder: configProjectFolder,
+            stitchPrompt: configStitchPrompt
+          } : s));
+        }
     } catch(e) { console.error(e); } finally { setSavingBranded(false); }
   };
 
@@ -325,7 +362,16 @@ export default function Dashboard() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId: selectedClient.id, localPath: configLocalPath })
         });
-        if (res.ok) alert('Design sincronizado!');
+        const result = await res.json();
+        if (result.success) {
+          alert('Design sincronizado e Manual da Marca gerado!');
+          if (result.stitchPrompt) setConfigStitchPrompt(result.stitchPrompt);
+          // Opcional: Atualizar a pasta do projeto se a API retornou
+          const folderName = configLocalPath.split(/[\\/]/).pop() || '';
+          setConfigProjectFolder(folderName);
+        } else {
+          alert('Erro ao sincronizar: ' + result.error);
+        }
     } catch (e) { console.error(e); } finally { setSyncingDesign(false); }
   };
 
@@ -334,6 +380,9 @@ export default function Dashboard() {
     setSelectedClient(client);
     setConfigLocalPath(client.localPath || '');
     setConfigBusinessContext(client.businessContext || '');
+    setConfigBranded(client.designContext?.branded_keywords || '');
+    setConfigProjectFolder(client.projectFolder || '');
+    setConfigStitchPrompt(client.stitchPrompt || '');
     setData(null);
     if (client.type !== 'GBP_ONLY') {
        setActiveTab('seo-insights');
@@ -595,7 +644,7 @@ export default function Dashboard() {
                   setViewingDraft={setViewingDraft}
                   fetchOpportunities={fetchOpportunities}
                   handleApproveOpportunity={handleApproveOpportunity}
-                  handleViewLayout={() => {}}
+                  handleViewLayout={handleViewLayout}
                 />
               )}
               {activeTab === 'client-config' && (
@@ -603,6 +652,8 @@ export default function Dashboard() {
                   configLocalPath={configLocalPath}
                   configBusinessContext={configBusinessContext}
                   configBranded={configBranded}
+                  configProjectFolder={configProjectFolder}
+                  configStitchPrompt={configStitchPrompt}
                   savingConfig={savingConfig}
                   savingBranded={savingBranded}
                   syncingDesign={syncingDesign}
@@ -611,9 +662,12 @@ export default function Dashboard() {
                   savingKB={savingKB}
                   kbTitle={kbTitle}
                   kbContent={kbContent}
+                  selectedClient={selectedClient}
                   setConfigLocalPath={setConfigLocalPath}
                   setConfigBusinessContext={setConfigBusinessContext}
                   setConfigBranded={setConfigBranded}
+                  setConfigProjectFolder={setConfigProjectFolder}
+                  setConfigStitchPrompt={setConfigStitchPrompt}
                   setKbTitle={setKbTitle}
                   setKbContent={setKbContent}
                   handleSaveSettings={handleSaveSettings}
