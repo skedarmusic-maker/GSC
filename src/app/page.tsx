@@ -197,11 +197,20 @@ export default function Dashboard() {
         body: JSON.stringify({ opportunityId: oppId })
       });
       const result = await res.json();
-      if (result.success) {
+      if (result.success && result.draft && result.draft.length > 50) {
         setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'rascunho_gerado', content_draft: result.draft } : o));
         setViewingDraft({ id: oppId, draft: result.draft });
+      } else {
+        alert('Falha crítica: A IA não conseguiu gerar o texto. Verifique sua chave do Gemini ou o contexto do cliente.');
+        // Opcional: Voltar status para pendente para tentar de novo
+        setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'pendente' } : o));
       }
-    } catch (e) { console.error(e); } finally { setGeneratingContent(prev => ({ ...prev, [oppId]: false })); }
+    } catch (e) { 
+      console.error(e); 
+      alert('Erro de conexão ao gerar conteúdo.');
+    } finally { 
+      setGeneratingContent(prev => ({ ...prev, [oppId]: false })); 
+    }
   };
 
   const handleViewLayout = async (opp: any) => {

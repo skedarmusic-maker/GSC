@@ -116,10 +116,18 @@ export default function TabSEOOpportunities({
             </div>
             
             <div className="p-8 overflow-y-auto bg-[#0d1117]/50 flex-1 flex flex-col gap-6">
-              {!viewingDraft.layout_draft ? (
                 // Visão de Texto
-                <div className="text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
-                  {viewingDraft.draft}
+                <div className="flex-1 flex flex-col">
+                  {(!viewingDraft.draft || viewingDraft.draft.length < 50) ? (
+                    <div className="bg-red-500/10 border border-red-500/30 p-6 rounded-2xl text-center">
+                      <p className="text-red-400 font-bold mb-2">⚠️ O rascunho está vazio ou muito curto!</p>
+                      <p className="text-xs text-gray-400">Houve um erro na geração do texto pela IA. Tente sincronizar a fila novamente ou gerar de novo.</p>
+                    </div>
+                  ) : (
+                    <div className="text-gray-300 whitespace-pre-wrap font-serif text-lg leading-relaxed">
+                      {viewingDraft.draft}
+                    </div>
+                  )}
                 </div>
               ) : (
                 // Visão do Código do Layout
@@ -137,13 +145,14 @@ export default function TabSEOOpportunities({
               
               {!viewingDraft.layout_draft ? (
                 <button
+                  disabled={!viewingDraft.draft || viewingDraft.draft.length < 50}
                   onClick={(e) => {
                     const opp = seoOpportunities.find(o => o.id === viewingDraft.id);
                     // Troca texto do botão para loading
                     (e.target as HTMLButtonElement).innerText = '⏳ Gerando...';
                     handleViewLayout(opp);
                   }}
-                  className="bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2">
+                  className={`bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2 ${(!viewingDraft.draft || viewingDraft.draft.length < 50) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   🎨 Gerar Layout (Stitch)
                 </button>
               ) : (
