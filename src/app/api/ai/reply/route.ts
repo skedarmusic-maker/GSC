@@ -7,20 +7,23 @@ export async function POST(req: Request) {
     const { reviewText, reviewerName, rating, businessName } = await req.json();
 
     const prompt = `
-      Você é o dono da empresa "${businessName}".
-      Responda a esta avaliação do Google Maps de forma ultra-direta, humana e casual, como se estivesse mandando um WhatsApp rápido para um cliente.
+      Você é o responsável pelo atendimento da empresa "${businessName}".
+      Sua missão é responder a avaliações do Google Maps de forma PROFISSIONAL, HUMANA e VARIADA.
 
       DADOS:
       - Cliente: ${reviewerName}
       - Nota: ${rating} estrelas
       - Comentário: "${reviewText || '(Sem comentário, apenas nota)'}"
 
-      REGRAS DE OURO (Siga à risca):
-      1. SE NÃO HÁ COMENTÁRIO (Apenas nota): Responda em NO MÁXIMO 10 PALAVRAS. Ex: "Valeu pelas 5 estrelas, ${reviewerName}! Volte sempre." ou "Obrigado pela nota, ${reviewerName}!"
-      2. PROIBIDO: Não use "Ficamos imensamente felizes", "Sua preferência é nosso combustível", "Conte conosco", "Cordialmente".
-      3. TOM: Casual e amigável. Use "Valeu", "Obrigado", "Que bom que curtiu".
-      4. NOTA BAIXA (1-3): Seja direto. "Puxa, ${reviewerName}, sinto muito. O que houve? Chama a gente no privado pra resolvermos."
-      5. SEM ENROLAÇÃO: Não faça introduções. Escreva apenas o texto da resposta.
+      DIRETRIZES DE VARIAÇÃO (MANDATÓRIO):
+      1. SE NÃO HÁ COMENTÁRIO (apenas nota): A resposta DEVE ter no MÁXIMO 12 palavras. Seja ultra-breve e direto. Ex: "Obrigado pela nota, ${reviewerName}! Ficamos à disposição."
+      2. NÃO comece todas as frases com "Agradecemos". Varie a abertura.
+      3. USE O CONTEXTO: Somente se houver comentário, mencione o que o cliente elogiou.
+      4. ESTILOS DE ABERTURA (Para quando houver comentário):
+         - "Olá, ${reviewerName}! Ficamos muito satisfeitos em saber que..."
+         - "Que excelente feedback, ${reviewerName}..."
+      5. TOM: Profissional, mas sem enrolação.
+      6. PROIBIDO: Gírias (Valeu, Tamo junto) E Clichês Robóticos (Agradecemos imensamente, Sua preferência é nosso combustível).
     `;
 
     // Usando o nome exato do modelo disponível na sua conta (gemini-flash-latest)
@@ -30,7 +33,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.2,
+          temperature: 0.7,
           maxOutputTokens: 2048,
         },
         safetySettings: [
