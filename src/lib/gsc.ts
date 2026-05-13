@@ -54,11 +54,12 @@ export async function getDetailedInsights(siteUrl: string, daysOrStart: any, pos
   const commonBody = { siteUrl, startDate, endDate };
   const prevBody = { siteUrl, startDate: prevStartDate, endDate: prevEndDate };
 
-  const [currentTotals, prevTotals, keywords, pages] = await Promise.all([
+  const [currentTotals, prevTotals, keywords, pages, history] = await Promise.all([
     gsc.searchanalytics.query({ siteUrl, requestBody: { ...commonBody } }),
     gsc.searchanalytics.query({ siteUrl, requestBody: prevBody }),
     gsc.searchanalytics.query({ siteUrl, requestBody: { ...commonBody, dimensions: ['query'], rowLimit: 100 } }),
-    gsc.searchanalytics.query({ siteUrl, requestBody: { ...commonBody, dimensions: ['page'], rowLimit: 50 } })
+    gsc.searchanalytics.query({ siteUrl, requestBody: { ...commonBody, dimensions: ['page'], rowLimit: 50 } }),
+    gsc.searchanalytics.query({ siteUrl, requestBody: { ...commonBody, dimensions: ['date'], rowLimit: 365 } })
   ]);
 
   return {
@@ -66,6 +67,7 @@ export async function getDetailedInsights(siteUrl: string, daysOrStart: any, pos
     previous: prevTotals.data.rows?.[0] || { clicks: 0, impressions: 0, ctr: 0, position: 0 },
     keywords: keywords.data.rows || [],
     pages: pages.data.rows || [],
+    history: history.data.rows || [],
     period: { start: startDate, end: endDate }
   };
 }

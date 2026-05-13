@@ -620,8 +620,10 @@ export default function Dashboard() {
           <span className="text-sm font-bold text-white">{selectedClient?.name || selectedGbp?.name || 'Dashboard'}</span>
           {appMode === 'seo' && selectedClient && (
             <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
-              {[7, 28, 90].map(v => (
-                <button key={v} onClick={() => setDays(v)} className={`px-3 py-1 rounded text-[10px] font-bold ${days === v ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>{v}d</button>
+              {[7, 28, 90, 180, 365].map(v => (
+                <button key={v} onClick={() => setDays(v)} className={`px-3 py-1 rounded text-[10px] font-bold ${days === v ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>
+                  {v === 180 ? '6m' : v === 365 ? '12m' : `${v}d`}
+                </button>
               ))}
             </div>
           )}

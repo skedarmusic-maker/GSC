@@ -1,4 +1,5 @@
 'use client';
+import GSCChart from '@/components/GSCChart';
 
 interface Props {
   data: any;
@@ -10,6 +11,9 @@ export default function TabSEOInsights({ data, getStrategicInsights }: Props) {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Gráfico de Desempenho Histórico */}
+      <GSCChart history={data.history} />
+
       {/* KPIS GSC */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="glass-card rounded-xl p-8 text-center border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
