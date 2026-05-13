@@ -11,6 +11,7 @@ import TabGBPAudit from '@/components/tabs/TabGBPAudit';
 import TabGBPRank from '@/components/tabs/TabGBPRank';
 import TabGBPReviews from '@/components/tabs/TabGBPReviews';
 import TabGBPPosts from '@/components/tabs/TabGBPPosts';
+import TabHostinger from '@/components/tabs/TabHostinger';
 import TabClientConfig from '@/components/tabs/TabClientConfig';
 
 export default function Dashboard() {
@@ -630,12 +631,21 @@ export default function Dashboard() {
               <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
             </ul>
           )}
+          
+          {/* Botão Hostinger Global */}
+          <div className="pt-4 mt-4 border-t border-gray-800">
+            <button onClick={() => setActiveTab('hostinger')} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all ${activeTab === 'hostinger' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+              🟣 Hostinger
+            </button>
+          </div>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="h-[64px] border-b border-gray-800 bg-[#0d1117] flex items-center justify-between px-8">
-          <span className="text-sm font-bold text-white">{selectedClient?.name || selectedGbp?.name || 'Dashboard'}</span>
+          <span className="text-sm font-bold text-white">
+            {appMode === 'seo' ? (selectedClient?.name || 'Dashboard') : (selectedGbp?.name || 'Dashboard')}
+          </span>
           {appMode === 'seo' && selectedClient && (
             <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
               {[7, 28, 90, 180, 365].map(v => (
@@ -748,6 +758,13 @@ export default function Dashboard() {
                   handlePost={handlePost}
                 />
               )}
+            </div>
+          )}
+
+          {/* Renderização Global (Não depende de cliente selecionado) */}
+          {activeTab === 'hostinger' && (
+            <div className="max-w-6xl mx-auto">
+              <TabHostinger sites={sites} />
             </div>
           )}
         </main>

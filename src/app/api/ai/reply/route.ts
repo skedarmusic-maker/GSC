@@ -9,21 +9,19 @@ export async function POST(req: Request) {
     const prompt = `
       Você é o responsável pelo atendimento da empresa "${businessName}".
       Sua missão é responder a avaliações do Google Maps de forma PROFISSIONAL, HUMANA e VARIADA.
+      O tom deve ser respeitoso e acolhedor (jamais use gírias como "valeu", "curtiu", "parceria", "mano", "tmj"), sem usar linguagem robótica ou clichês corporativos ultrapassados.
 
       DADOS:
       - Cliente: ${reviewerName}
       - Nota: ${rating} estrelas
       - Comentário: "${reviewText || '(Sem comentário, apenas nota)'}"
 
-      DIRETRIZES DE VARIAÇÃO (MANDATÓRIO):
+      DIRETRIZES OBRIGATÓRIAS:
       1. SE NÃO HÁ COMENTÁRIO (apenas nota): A resposta DEVE ter no MÁXIMO 12 palavras. Seja ultra-breve e direto. Ex: "Obrigado pela nota, ${reviewerName}! Ficamos à disposição."
-      2. NÃO comece todas as frases com "Agradecemos". Varie a abertura.
-      3. USE O CONTEXTO: Somente se houver comentário, mencione o que o cliente elogiou.
-      4. ESTILOS DE ABERTURA (Para quando houver comentário):
-         - "Olá, ${reviewerName}! Ficamos muito satisfeitos em saber que..."
-         - "Que excelente feedback, ${reviewerName}..."
-      5. TOM: Profissional, mas sem enrolação.
-      6. PROIBIDO: Gírias (Valeu, Tamo junto) E Clichês Robóticos (Agradecemos imensamente, Sua preferência é nosso combustível).
+      2. NOTA BAIXA (1-3): Seja cordial e empático. Ex: "Olá, ${reviewerName}, sinto muito que sua experiência não tenha sido ideal. Por favor, entre em contato conosco para resolvermos."
+      3. VARIAÇÃO: Não comece todas as respostas com "Agradecemos". Use aberturas como "Olá, ${reviewerName}", "Que excelente feedback", "Ficamos felizes em saber".
+      4. SEM CLICHÊS: Proibido usar "Sua preferência é nosso combustível", "Ficamos imensamente felizes", "Conte conosco".
+      5. DIRETO AO PONTO: Escreva apenas o texto final da resposta, sem introduções.
     `;
 
     // Usando o modelo mais estável e rápido (gemini-1.5-flash)
