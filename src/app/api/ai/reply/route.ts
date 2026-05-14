@@ -26,15 +26,15 @@ export async function POST(req: Request) {
       6. PROIBIDO: Gírias (Valeu, Tamo junto) E Clichês Robóticos (Agradecemos imensamente, Sua preferência é nosso combustível).
     `;
 
-    // Usando o nome exato do modelo disponível na sua conta (gemini-flash-latest)
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    // Usando o modelo mais estável e rápido (gemini-1.5-flash)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 500, // Respostas de review não precisam de 2048 tokens
         },
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -48,15 +48,21 @@ export async function POST(req: Request) {
     const data = await response.json();
     
     if (response.status === 429) {
-      return NextResponse.json({ error: 'Limite de cota atingido. O Google está processando seu faturamento. Tente novamente em alguns minutos.' }, { status: 429 });
+      console.error('❌ LIMITE DE COTA GEMINI EXCEDIDO');
+      return NextResponse.json({ error: 'Limite de cota atingido. Tente novamente em alguns minutos.' }, { status: 429 });
     }
 
     if (data.error) {
-      console.error('Resposta de erro do Google Gemini:', data.error);
+      console.error('❌ ERRO GEMINI API:', JSON.stringify(data.error));
       return NextResponse.json({ error: data.error.message }, { status: 500 });
     }
 
-    const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao gerar resposta com IA.";
+    const aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!aiReply) {
+      console.error('❌ RESPOSTA VAZIA DO GEMINI:', JSON.stringify(data));
+      return NextResponse.json({ error: 'A IA não retornou uma resposta válida.' }, { status: 500 });
+    }
 
     return NextResponse.json({ reply: aiReply.trim() });
   } catch (error) {

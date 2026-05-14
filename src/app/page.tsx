@@ -471,8 +471,17 @@ export default function Dashboard() {
         })
       });
       const result = await res.json();
-      if (result.reply) setReplyText(prev => ({ ...prev, [review.name]: result.reply }));
-    } catch (e) { console.error(e); } finally { setGeneratingAI(prev => ({ ...prev, [review.name]: false })); }
+      if (result.reply) {
+        setReplyText(prev => ({ ...prev, [review.name]: result.reply }));
+      } else {
+        alert('Erro ao gerar resposta: ' + (result.error || 'A IA não retornou texto.'));
+      }
+    } catch (e) { 
+      console.error(e); 
+      alert('Falha na comunicação com a API de IA.');
+    } finally { 
+      setGeneratingAI(prev => ({ ...prev, [review.name]: false })); 
+    }
   };
 
   const handleReply = async (reviewName: string) => {
