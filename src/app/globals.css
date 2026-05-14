@@ -52,9 +52,17 @@ body {
   box-shadow: 0 0 8px #00ff9d;
 }
 
-.text-emerald-500 { color: #00ff9d !important; }
-.bg-\[\#34d399\] { background-color: #00ff9d !important; }
-.text-\[\#34d399\] { color: #00ff9d !important; }
+.text-emerald-500 {
+  color: #00ff9d !important;
+}
+
+.bg-\[\#34d399\] {
+  background-color: #00ff9d !important;
+}
+
+.text-\[\#34d399\] {
+  color: #00ff9d !important;
+}
 
 input[type='range'] {
   -webkit-appearance: none;
@@ -123,14 +131,17 @@ input[type='range']::-webkit-slider-thumb {
 .site-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
 }
 
 .site-card:hover {
   transform: translateY(-8px) scale(1.02);
   border-color: var(--accent-blue);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 20px rgba(0, 112, 243, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 112, 243, 0.2);
 }
 
 .site-icon {
@@ -144,7 +155,7 @@ input[type='range']::-webkit-slider-thumb {
   margin-bottom: 25px;
   font-weight: bold;
   font-size: 1.5rem;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
 .site-name {
@@ -176,16 +187,33 @@ input[type='range']::-webkit-slider-thumb {
 /* ANIMAÇÕES              */
 /* ====================== */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in {
   animation: fadeIn 0.4s ease forwards;
 }
+
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
+
 .animate-pulse {
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -252,6 +280,7 @@ input[type='range']::-webkit-slider-thumb {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
   nav[style*="borderBottom"]::-webkit-scrollbar {
     display: none;
   }
@@ -299,5 +328,67 @@ input[type='range']::-webkit-slider-thumb {
 
   div[style*="repeat(4, 1fr)"] h2 {
     font-size: 1.3rem !important;
+  }
+}
+
+/* ====================== */
+/* EXPORTAÇÃO PDF (PRINT) */
+/* ====================== */
+@media print {
+  body { 
+    background: #0d1117 !important; 
+    color: white !important; 
+    -webkit-print-color-adjust: exact; 
+    print-color-adjust: exact;
+  }
+  
+  /* Esconde TUDO que não for o relatório */
+  .print\:hidden, 
+  form, 
+  nav, 
+  aside, 
+  .sidebar, 
+  button,
+  header,
+  footer,
+  [class*="sidebar"],
+  [class*="Header"],
+  [class*="Navigation"] { 
+    display: none !important; 
+  }
+  
+  /* Garante que o conteúdo principal ocupe a tela toda */
+  main, .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .glass-card { 
+    border: 1px solid #30363d !important; 
+    background: #161b22 !important; 
+    break-inside: avoid; 
+    margin-bottom: 20px;
+  }
+  
+  #report-content { 
+    width: 100% !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    display: block !important; 
+  }
+
+  .grid {
+    display: block !important;
+  }
+
+  .grid > div {
+    width: 100% !important;
+    margin-bottom: 20px !important;
+  }
+
+  /* Forçar que o PDF mostre o nome da empresa em destaque */
+  h2, h3 {
+    color: #00ff9d !important;
   }
 }

@@ -13,6 +13,7 @@ import TabGBPReviews from '@/components/tabs/TabGBPReviews';
 import TabGBPPosts from '@/components/tabs/TabGBPPosts';
 import TabHostinger from '@/components/tabs/TabHostinger';
 import TabClientConfig from '@/components/tabs/TabClientConfig';
+import TabProspecting from '@/components/tabs/TabProspecting';
 
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
@@ -637,6 +638,9 @@ export default function Dashboard() {
             <button onClick={() => setActiveTab('hostinger')} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all ${activeTab === 'hostinger' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
               🟣 Hostinger
             </button>
+            <button onClick={() => setActiveTab('prospecting')} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'prospecting' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+              🔍 Prospecção
+            </button>
           </div>
         </div>
       </aside>
@@ -765,6 +769,11 @@ export default function Dashboard() {
           {activeTab === 'hostinger' && (
             <div className="max-w-6xl mx-auto">
               <TabHostinger sites={sites} />
+            </div>
+          )}
+          {activeTab === 'prospecting' && (
+            <div className="max-w-6xl mx-auto">
+              <TabProspecting />
             </div>
           )}
         </main>
