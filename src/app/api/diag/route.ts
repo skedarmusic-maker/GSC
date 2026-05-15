@@ -17,10 +17,13 @@ export async function GET() {
       .from('gbp_analyses')
       .select('*', { count: 'exact', head: true });
 
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const keySuffix = key.length > 5 ? `...${key.slice(-5)}` : 'INVALID';
+
     return NextResponse.json({
       status: 'ok',
       supabase_url: url || 'MISSING',
-      has_service_key: hasKey,
+      key_suffix: keySuffix,
       total_records: count || 0,
       error: error ? error.message : null,
       timestamp: new Date().toISOString()
