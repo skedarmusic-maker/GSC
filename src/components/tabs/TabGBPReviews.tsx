@@ -55,7 +55,7 @@ export default function TabGBPReviews({
                     value={replyText[review.name] || ''}
                     onChange={e => setReplyText({ ...replyText, [review.name]: e.target.value })}
                     placeholder="Escreva sua resposta..."
-                    className="w-full bg-[#161b22] border border-gray-800 text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] min-h-[100px] resize-none font-medium"
+                    className="w-full bg-[#161b22] border border-gray-800 text-gray-200 p-4 rounded-xl text-sm mb-4 focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] min-h-[130px] resize-y font-medium"
                   />
                   <div className="flex flex-col sm:flex-row gap-3 justify-end">
                     <button onClick={() => handleGenerateAI(review)} disabled={generatingAI[review.name]}

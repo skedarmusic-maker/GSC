@@ -86,9 +86,16 @@ export default function TabProspecting() {
     try {
       const res = await fetch('/api/prospecting/save');
       const data = await res.json();
-      setHistory(data.analyses || []);
-    } catch { /* silently fail */ }
-    finally { setLoadingHistory(false); }
+      const analyses = data.analyses || [];
+      setHistory(analyses);
+      if (analyses.length > 0) {
+        setShowHistory(true);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar histórico:', e);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   useEffect(() => { loadHistory(); }, []);
