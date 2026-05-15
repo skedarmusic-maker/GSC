@@ -3,16 +3,16 @@ import { getLocationPerformance } from '@/lib/business';
 
 export async function POST(request: Request) {
   try {
-    const { locationName, days } = await request.json();
+    const { locationName, days, startDate, endDate } = await request.json();
     
     if (!locationName) {
       return NextResponse.json({ error: 'locationName é obrigatório' }, { status: 400 });
     }
 
-    const perf = await getLocationPerformance(locationName, days || 28);
+    const perf = await getLocationPerformance(locationName, days, startDate, endDate);
     
     if (!perf) {
-      return NextResponse.json({ calls: 0, directions: 0, websiteClicks: 0 });
+      return NextResponse.json({ totals: { calls: 0, directions: 0, websiteClicks: 0 }, chartData: [] });
     }
 
     return NextResponse.json(perf);

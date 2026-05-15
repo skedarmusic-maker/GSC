@@ -65,55 +65,76 @@ export async function listLocations() {
   }
 }
 
-export async function getLocationPerformance(locationName: string, days: number) {
+export async function getLocationPerformance(locationName: string, days?: number, startDateStr?: string, endDateStr?: string) {
   try {
     const accessToken = await getAccessToken();
-
-    // A businessprofileperformance API usa APENAS 'locations/{id}'
-    // Remove o prefixo 'accounts/X/' se vier no formato completo
     const cleanLocationName = locationName.replace(/^accounts\/[^/]+\//, '');
 
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
+    let start: Date;
+    let end: Date;
+
+    if (startDateStr && endDateStr) {
+      start = new Date(startDateStr);
+      end = new Date(endDateStr);
+    } else {
+      end = new Date();
+      start = new Date();
+      start.setDate(end.getDate() - (days || 28));
+    }
 
     const metrics = [
-      'CALL_CLICKS',
-      'BUSINESS_DIRECTION_REQUESTS',
-      'WEBSITE_CLICKS'
+      { key: 'calls', google: 'CALL_CLICKS' },
+      { key: 'directions', google: 'BUSINESS_DIRECTION_REQUESTS' },
+      { key: 'websiteClicks', google: 'WEBSITE_CLICKS' }
     ];
 
-    const fetchSingleMetric = async (metric: string) => {
-      const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:getDailyMetricsTimeSeries?dailyMetric=${metric}&dailyRange.startDate.year=${startDate.getFullYear()}&dailyRange.startDate.month=${startDate.getMonth() + 1}&dailyRange.startDate.day=${startDate.getDate()}&dailyRange.endDate.year=${endDate.getFullYear()}&dailyRange.endDate.month=${endDate.getMonth() + 1}&dailyRange.endDate.day=${endDate.getDate()}`;
+    const timeSeriesData: { [key: string]: any[] } = {};
+    const totals: { [key: string]: number } = { calls: 0, directions: 0, websiteClicks: 0 };
+
+    const fetchMetric = async (metricObj: any) => {
+      const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:getDailyMetricsTimeSeries?dailyMetric=${metricObj.google}&dailyRange.startDate.year=${start.getFullYear()}&dailyRange.startDate.month=${start.getMonth() + 1}&dailyRange.startDate.day=${start.getDate()}&dailyRange.endDate.year=${end.getFullYear()}&dailyRange.endDate.month=${end.getMonth() + 1}&dailyRange.endDate.day=${end.getDate()}`;
 
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
         cache: 'no-store'
       });
 
-      // Verificar se a resposta é JSON antes de parsear
       const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || !contentType.includes('application/json')) {
-        const text = await res.text();
-        console.error(`Erro na API Maps performance [${metric}]:`, res.status, text.substring(0, 200));
-        return 0;
-      }
+      if (!res.ok || !contentType.includes('application/json')) return [];
 
       const data = await res.json();
-      let total = 0;
       if (data.timeSeries?.datedValues) {
-        data.timeSeries.datedValues.forEach((v: any) => {
-          total += parseInt(v.value || '0');
-        });
+        return data.timeSeries.datedValues.map((v: any) => ({
+          date: `${v.date.year}-${String(v.date.month).padStart(2, '0')}-${String(v.date.day).padStart(2, '0')}`,
+          value: parseInt(v.value || '0')
+        }));
       }
-      return total;
+      return [];
     };
 
-    const [calls, directions, websiteClicks] = await Promise.all(
-      metrics.map(m => fetchSingleMetric(m))
-    );
+    const results = await Promise.all(metrics.map(m => fetchMetric(m)));
 
-    return { calls, directions, websiteClicks };
+    // Consolidar dados para o gráfico (agrupar por data)
+    const chartDataMap: { [date: string]: any } = {};
+    
+    results.forEach((resArray, idx) => {
+      const metricKey = metrics[idx].key;
+      resArray.forEach((item: any) => {
+        if (!chartDataMap[item.date]) chartDataMap[item.date] = { date: item.date };
+        chartDataMap[item.date][metricKey] = item.value;
+        totals[metricKey] += item.value;
+      });
+    });
+
+    // Converter mapa para array ordenado para o Recharts
+    const chartData = Object.values(chartDataMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    return { 
+      totals, 
+      chartData,
+      startDate: start.toISOString(),
+      endDate: end.toISOString()
+    };
   } catch (error) {
     console.error('Falha no motor de Maps:', error);
     return null;

@@ -14,6 +14,7 @@ import TabGBPPosts from '@/components/tabs/TabGBPPosts';
 import TabHostinger from '@/components/tabs/TabHostinger';
 import TabClientConfig from '@/components/tabs/TabClientConfig';
 import TabProspecting from '@/components/tabs/TabProspecting';
+import MonthRangePicker from '@/components/MonthRangePicker';
 
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
@@ -63,6 +64,15 @@ export default function Dashboard() {
   const [days, setDays] = useState(28);
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [isCustom, setIsCustom] = useState(false);
+  
+  const handleGbpDateChange = (start: string, end: string) => {
+    setCustomRange({ start, end });
+    setIsCustom(true);
+    if (selectedGbp) {
+      handleSelectGbpProfile(selectedGbp, { start, end });
+    }
+  };
+  
   const [configLocalPath, setConfigLocalPath] = useState('');
   const [configBusinessContext, setConfigBusinessContext] = useState('');
   const [savingConfig, setSavingConfig] = useState(false);
@@ -91,7 +101,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (selectedClient) fetchData(selectedClient.gscUrl, days, selectedClient.gbpData);
-    if (selectedGbp) handleSelectGbpProfile(selectedGbp);
+    if (selectedGbp && !isCustom) handleSelectGbpProfile(selectedGbp);
   }, [days]);
 
   const fetchData = async (url: string, period: any, gbpFallback?: any) => {
@@ -113,7 +123,7 @@ export default function Dashboard() {
            title: gbpFallback.title,
            accountId: gbpFallback.accountId,
            locationId: gbpFallback.name.replace('locations/', ''),
-           metrics: { calls: 0, directions: 0, websiteClicks: 0 }
+           metrics: { totals: { calls: 0, directions: 0, websiteClicks: 0 }, chartData: [] }
          };
       }
       setData(d);
@@ -204,7 +214,6 @@ export default function Dashboard() {
         setViewingDraft({ id: oppId, draft: result.draft });
       } else {
         alert('Falha crítica: A IA não conseguiu gerar o texto. Verifique sua chave do Gemini ou o contexto do cliente.');
-        // Opcional: Voltar status para pendente para tentar de novo
         setSeoOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, status: 'pendente' } : o));
       }
     } catch (e) { 
@@ -216,13 +225,11 @@ export default function Dashboard() {
   };
 
   const handleViewLayout = async (opp: any) => {
-    // Se já tem layout gerado no banco, só abre o modal com ele
     if (opp.layout_draft) {
       setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft });
       return;
     }
     
-    // Se não, gera um novo agora via API
     setGeneratingContent(prev => ({ ...prev, [opp.id]: true }));
     try {
       const res = await fetch('/api/ai/generate-layout', {
@@ -377,7 +384,6 @@ export default function Dashboard() {
         if (result.success) {
           alert('Design sincronizado e Manual da Marca gerado!');
           if (result.stitchPrompt) setConfigStitchPrompt(result.stitchPrompt);
-          // Opcional: Atualizar a pasta do projeto se a API retornou
           const folderName = configLocalPath.split(/[\\/]/).pop() || '';
           setConfigProjectFolder(folderName);
         } else {
@@ -404,46 +410,44 @@ export default function Dashboard() {
     }
   };
 
-  const handleSelectGbpProfile = async (profile: any) => {
+  const handleSelectGbpProfile = async (profile: any, range?: { start: string, end: string }) => {
     if (!profile) return;
     
     setSelectedGbp(profile);
     setLoadingPerf(true);
     try {
-      // gbpData.id já vem no formato correto: "locations/XXXX" da rota /api/sites
-      // profile.id é o UUID do Supabase - NÃO usar para locationId
       const accountId = profile.gbpData?.accountId || profile.accountId;
       const rawLocationId = profile.gbpData?.id || profile.id;
       const locationId = rawLocationId?.replace('locations/', '').replace(/^accounts\/[^/]+\//, '');
-      
-      // A API exige: locations/{id}
       const fullLocationName = `locations/${locationId}`;
-
-      console.log('🗺️ Solicitando Performance para:', fullLocationName);
 
       const res = await fetch('/api/maps/performance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locationName: fullLocationName, days: days })
+        body: JSON.stringify({ 
+          locationName: fullLocationName, 
+          days: range ? undefined : days,
+          startDate: range?.start,
+          endDate: range?.end
+        })
       });
       
       const perfData = await res.json();
       
-      // Se a API retornar erro ou nulo, garantimos que não quebre a UI
       const safeMetrics = (perfData && !perfData.error) 
         ? perfData 
-        : { calls: 0, directions: 0, websiteClicks: 0 };
+        : { totals: { calls: 0, directions: 0, websiteClicks: 0 }, chartData: [] };
 
       const mapsData = {
         title: profile.name || profile.title,
         accountId,
         locationId,
-        metrics: safeMetrics
+        metrics: safeMetrics.totals,
+        chartData: safeMetrics.chartData
       };
       
       setGbpData(mapsData);
       
-      // Dispara buscas paralelas de outros dados
       if (accountId && locationId) {
         fetchLocalProfile(accountId, locationId);
         fetchAudit(accountId, locationId);
@@ -562,11 +566,9 @@ export default function Dashboard() {
   const gscSites = sites.filter((s: any) => s.type === 'GSC_ONLY' || s.type === 'HYBRID');
   const gbpProfiles = sites.filter((s: any) => s.gbpData || s.type === 'GBP_ONLY');
 
-  // RENDERIZAÇÃO
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
       
-      {/* HEADER MOBILE */}
       <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-[#0d1117] sticky top-0 z-50">
           <h1 className="text-lg font-black tracking-tighter" style={{ color: '#00ff9d' }}>GSC<span className="text-white">Strategy</span></h1>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
@@ -574,7 +576,6 @@ export default function Dashboard() {
           </button>
       </div>
 
-      {/* SIDEBAR */}
       <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex-col shrink-0 h-screen`}>
         <div className="p-5 border-b border-gray-800">
           <h1 className="text-2xl font-black tracking-tighter mb-6 hidden lg:block text-white">GSC<span className="text-[#00ff9d] ml-1">Strategy</span></h1>
@@ -633,7 +634,6 @@ export default function Dashboard() {
             </ul>
           )}
           
-          {/* Botão Hostinger Global */}
           <div className="pt-4 mt-4 border-t border-gray-800">
             <button onClick={() => setActiveTab('hostinger')} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all ${activeTab === 'hostinger' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
               🟣 Hostinger
@@ -650,6 +650,7 @@ export default function Dashboard() {
           <span className="text-sm font-bold text-white">
             {appMode === 'seo' ? (selectedClient?.name || 'Dashboard') : (selectedGbp?.name || 'Dashboard')}
           </span>
+          
           {appMode === 'seo' && selectedClient && (
             <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
               {[7, 28, 90, 180, 365].map(v => (
@@ -658,6 +659,14 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
+          )}
+
+          {appMode === 'gbp' && selectedGbp && (
+            <MonthRangePicker 
+              onRangeSelect={handleGbpDateChange}
+              initialStart={customRange.start}
+              initialEnd={customRange.end}
+            />
           )}
         </header>
 
@@ -765,7 +774,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Renderização Global (Não depende de cliente selecionado) */}
           {activeTab === 'hostinger' && (
             <div className="max-w-6xl mx-auto">
               <TabHostinger sites={sites} />
