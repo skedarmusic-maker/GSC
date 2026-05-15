@@ -87,6 +87,7 @@ export default function Dashboard() {
   const [configStitchPrompt, setConfigStitchPrompt] = useState('');
   const [savingBranded, setSavingBranded] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [manualDesignCode, setManualDesignCode] = useState('');
 
   useEffect(() => {
     async function fetchSites() {
@@ -388,6 +389,29 @@ export default function Dashboard() {
           setConfigProjectFolder(folderName);
         } else {
           alert('Erro ao sincronizar: ' + result.error);
+        }
+    } catch (e) { console.error(e); } finally { setSyncingDesign(false); }
+  };
+
+  const handleManualSync = async () => {
+    if (!selectedClient || !manualDesignCode) return;
+    setSyncingDesign(true);
+    try {
+        const res = await fetch('/api/sites/sync-design', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              clientId: selectedClient.id, 
+              manualCode: manualDesignCode 
+            })
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert('Design Manual Processado!');
+          if (result.stitchPrompt) setConfigStitchPrompt(result.stitchPrompt);
+          setManualDesignCode('');
+        } else {
+          alert('Erro ao processar: ' + result.error);
         }
     } catch (e) { console.error(e); } finally { setSyncingDesign(false); }
   };
@@ -718,6 +742,9 @@ export default function Dashboard() {
                   handleSyncDesign={handleSyncDesign}
                   handleAddKnowledge={handleAddKnowledge}
                   handleDeleteKnowledge={handleDeleteKnowledge}
+                  manualDesignCode={manualDesignCode}
+                  setManualDesignCode={setManualDesignCode}
+                  handleManualSync={handleManualSync}
                 />
               )}
             </div>

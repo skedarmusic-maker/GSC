@@ -12,19 +12,20 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
     try {
-        const { clientId, localPath } = await req.json();
+        const { clientId, localPath, manualCode } = await req.json();
 
-        if (!clientId || !localPath) {
-            return NextResponse.json({ error: 'Dados insuficientes' }, { status: 400 });
+        if (!clientId || (!localPath && !manualCode)) {
+            return NextResponse.json({ error: 'Dados insuficientes. Informe o caminho local ou cole o código manual.' }, { status: 400 });
         }
 
         // Normalizar o caminho para evitar erros de barra no Windows
-        const normalizedPath = path.normalize(localPath);
+        const normalizedPath = localPath ? path.normalize(localPath) : null;
 
         // 1. Tentar ler os arquivos de design do projeto
-        let designContext = "";
+        let designContext = manualCode || "";
         
-        // Possíveis locais do Tailwind
+        if (!designContext && normalizedPath) {
+          // Possíveis locais do Tailwind
         const tailwindVariants = [
           path.join(normalizedPath, 'tailwind.config.ts'),
           path.join(normalizedPath, 'tailwind.config.js'),
@@ -90,7 +91,7 @@ ${designContext.substring(0, 10000)}`;
             .from('clients')
             .update({ 
               stitch_prompt: stitchPrompt,
-              project_folder: path.basename(normalizedPath) 
+              project_folder: normalizedPath ? path.basename(normalizedPath) : (selectedClient?.project_folder || 'Manual')
             })
             .eq('id', clientId);
         

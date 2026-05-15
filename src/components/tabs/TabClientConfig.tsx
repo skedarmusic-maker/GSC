@@ -29,6 +29,9 @@ interface Props {
   handleSyncDesign: () => void;
   handleAddKnowledge: () => void;
   handleDeleteKnowledge: (id: string) => void;
+  manualDesignCode: string;
+  setManualDesignCode: (v: string) => void;
+  handleManualSync: () => void;
 }
 
 export default function TabClientConfig({
@@ -39,7 +42,8 @@ export default function TabClientConfig({
   setConfigLocalPath, setConfigBusinessContext, setConfigBranded, setConfigProjectFolder, setConfigStitchPrompt,
   setKbTitle, setKbContent,
   handleSaveSettings, handleSaveBranded, handleSyncDesign,
-  handleAddKnowledge, handleDeleteKnowledge
+  handleAddKnowledge, handleDeleteKnowledge,
+  manualDesignCode, setManualDesignCode, handleManualSync
 }: Props) {
   const [tagInput, setTagInput] = useState('');
 
@@ -112,10 +116,34 @@ export default function TabClientConfig({
               className="flex-1 bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff9d] transition-all" />
             <button onClick={handleSyncDesign} disabled={syncingDesign || !configLocalPath}
               className="bg-[#161b22] hover:bg-[#1c2128] border border-[#00ff9d]/30 text-[#00ff9d] px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0">
-              {syncingDesign ? '⌛ Sincronizando...' : '🎨 Sincronizar Design'}
+              {syncingDesign ? '⌛ Sincronizando...' : '🎨 Sincronizar Local'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 italic">Este caminho é usado pelo Antigravity para criar novas páginas e componentes diretamente na pasta do cliente.</p>
+          <p className="text-xs text-gray-500 italic">
+            <strong>Atenção:</strong> Sincronizar Local só funciona se você estiver acessando via localhost. Se estiver no deploy, use o campo abaixo para colar o código.
+          </p>
+        </div>
+
+        {/* COLAR MANUAL (Fallback para Deploy) */}
+        <div className="space-y-4 pt-4">
+          <div className="flex items-center justify-between">
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ou Cole o Código Manualmente (Tailwind/CSS)</label>
+            {manualDesignCode && (
+              <button 
+                onClick={handleManualSync}
+                disabled={syncingDesign}
+                className="text-[10px] bg-[#00ff9d]/10 text-[#00ff9d] border border-[#00ff9d]/30 px-3 py-1 rounded-lg font-bold hover:bg-[#00ff9d]/20 transition-all"
+              >
+                {syncingDesign ? '⌛ Processando...' : '🚀 Processar Código'}
+              </button>
+            )}
+          </div>
+          <textarea 
+            value={manualDesignCode}
+            onChange={(e) => setManualDesignCode(e.target.value)}
+            placeholder="Cole aqui o conteúdo do seu tailwind.config.js ou globals.css..."
+            className="w-full bg-[#0d1117]/50 border border-gray-800 rounded-xl px-4 py-3 text-gray-400 text-xs focus:outline-none focus:border-[#00ff9d] transition-all h-24 resize-none font-mono"
+          />
         </div>
 
         {/* STITCH DESIGN SYSTEM (Configurações da IA Geradora de Código) */}
