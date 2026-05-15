@@ -24,8 +24,8 @@ export async function POST(req: Request) {
       5. DIRETO AO PONTO: Escreva apenas o texto final da resposta, sem introduções.
     `;
 
-    // Usando o endpoint v1 estável e o modelo gemini-1.5-flash
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    // Usando gemini-2.5-flash (modelo mais recente disponível)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
