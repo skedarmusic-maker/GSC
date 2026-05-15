@@ -73,14 +73,26 @@ export default function TabClientConfig({
   const autoDetectBranded = () => {
     if (!selectedClient?.name) return;
     const stopWords = ['e', 'de', 'da', 'do', 'em', 'para', 'com', 'pet', 'shop', '-'];
+    
+    // Pega as tags existentes
+    const currentTags = [...tags];
+    
+    // Quebra o nome em partes e limpa
     const nameParts = selectedClient.name
       .toLowerCase()
       .split(/[\s&]+/)
       .filter((w: string) => w.length > 2 && !stopWords.includes(w));
 
-    nameParts.forEach((word: string) => addTag(word));
-    // Também adiciona o nome completo como um termo
-    addTag(selectedClient.name.toLowerCase());
+    // Adiciona o nome completo também
+    const candidates = [...nameParts, selectedClient.name.toLowerCase()];
+    
+    // Filtra apenas o que já não existe
+    const toAdd = candidates.filter(c => !currentTags.includes(c));
+    
+    if (toAdd.length > 0) {
+      const updated = [...currentTags, ...toAdd].join(', ');
+      setConfigBranded(updated);
+    }
   };
 
   return (

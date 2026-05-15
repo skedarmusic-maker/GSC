@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -16,37 +18,70 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Dados insuficientes' }, { status: 400 });
         }
 
+        // Normalizar o caminho para evitar erros de barra no Windows
+        const normalizedPath = path.normalize(localPath);
+
         // 1. Tentar ler os arquivos de design do projeto
         let designContext = "";
-        const tailwindPath = path.join(localPath, 'tailwind.config.ts');
-        const tailwindPathJs = path.join(localPath, 'tailwind.config.js');
-        const cssPath = path.join(localPath, 'src', 'app', 'globals.css');
-
-        if (fs.existsSync(tailwindPath)) designContext += fs.readFileSync(tailwindPath, 'utf8');
-        else if (fs.existsSync(tailwindPathJs)) designContext += fs.readFileSync(tailwindPathJs, 'utf8');
         
-        if (fs.existsSync(cssPath)) designContext += fs.readFileSync(cssPath, 'utf8');
+        // Possíveis locais do Tailwind
+        const tailwindVariants = [
+          path.join(normalizedPath, 'tailwind.config.ts'),
+          path.join(normalizedPath, 'tailwind.config.js'),
+          path.join(normalizedPath, 'tailwind.config.mjs'),
+          path.join(normalizedPath, 'tailwind.config.cjs')
+        ];
 
-        if (!designContext) {
-            return NextResponse.json({ error: 'Não foi possível encontrar arquivos de design (tailwind.config ou globals.css) na pasta especificada.' }, { status: 404 });
+        // Possíveis locais do CSS
+        const cssVariants = [
+          path.join(normalizedPath, 'src', 'app', 'globals.css'),
+          path.join(normalizedPath, 'src', 'globals.css'),
+          path.join(normalizedPath, 'globals.css'),
+          path.join(normalizedPath, 'src', 'index.css'),
+          path.join(normalizedPath, 'index.css')
+        ];
+
+        for (const p of tailwindVariants) {
+          if (fs.existsSync(p)) {
+            designContext += `\n--- TAILWIND CONFIG ---\n${fs.readFileSync(p, 'utf8')}`;
+            break;
+          }
+        }
+        
+        for (const p of cssVariants) {
+          if (fs.existsSync(p)) {
+            designContext += `\n--- GLOBALS CSS ---\n${fs.readFileSync(p, 'utf8')}`;
+            break;
+          }
         }
 
-        // 2. Pedir para a IA resumir o manual da marca (via fetch nativo — sem SDK)
+        if (!designContext) {
+            console.error('❌ Arquivos não encontrados em:', normalizedPath);
+            return NextResponse.json({ 
+              error: 'Não foi possível encontrar arquivos de design. Verifique se o caminho está correto e se você está rodando o sistema LOCALMENTE (localhost:3000).' 
+            }, { status: 404 });
+        }
+
+        // 2. Pedir para a IA resumir o manual da marca (via Gemini 2.5 Pro)
         const prompt = `Analise o seguinte código de configuração de design (Tailwind/CSS) e resuma as "Regras de Ouro" visuais para um desenvolvedor.
 FOCO EM: Cores principais (hexadecimais), estilo (brutalista, minimalista, etc), fontes e espaçamentos.
 Retorne apenas um parágrafo curto e direto que sirva de guia para gerar novas páginas idênticas a essa.
 
 CÓDIGO:
-${designContext.substring(0, 5000)}`;
+${designContext.substring(0, 10000)}`;
 
         const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({ 
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 4000 }
+            })
           }
         );
+        
         const geminiData = await geminiRes.json();
         const stitchPrompt = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Design sincronizado, mas não foi possível gerar resumo.';
 
@@ -55,7 +90,7 @@ ${designContext.substring(0, 5000)}`;
             .from('clients')
             .update({ 
               stitch_prompt: stitchPrompt,
-              project_folder: path.basename(localPath) 
+              project_folder: path.basename(normalizedPath) 
             })
             .eq('id', clientId);
         
@@ -69,4 +104,3 @@ ${designContext.substring(0, 5000)}`;
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
-
