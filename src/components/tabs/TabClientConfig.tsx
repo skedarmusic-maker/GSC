@@ -47,15 +47,15 @@ export default function TabClientConfig({
 }: Props) {
   const [tagInput, setTagInput] = useState('');
 
-  // Converte a string CSV em array de tags
+  // Converte a string CSV em array de tags, garantindo que sejam únicas
   const tags = configBranded
-    ? configBranded.split(',').map(s => s.trim()).filter(Boolean)
+    ? Array.from(new Set(configBranded.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)))
     : [];
 
   const addTag = (value: string) => {
     const newTag = value.trim().toLowerCase();
     if (!newTag || tags.includes(newTag)) return;
-    const updated = [...tags, newTag].join(', ');
+    const updated = Array.from(new Set([...tags, newTag])).join(', ');
     setConfigBranded(updated);
     setTagInput('');
   };
