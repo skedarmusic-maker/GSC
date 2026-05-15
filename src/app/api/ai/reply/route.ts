@@ -44,8 +44,7 @@ REGRAS:
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.85,
-            maxOutputTokens: 400,
-            thinkingConfig: { thinkingBudget: 0 }, // desativa reasoning p/ resposta direta
+            maxOutputTokens: 4000,
           },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
