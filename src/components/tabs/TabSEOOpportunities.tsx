@@ -136,12 +136,55 @@ export default function TabSEOOpportunities({
                   )}
                 </div>
               ) : (
-                // Visão do Código do Layout
+                // Visão do Preview Visual (Iframe Simulado/Renderizado)
                 <div className="flex-1 flex flex-col h-full">
-                  <p className="text-sm text-[#00ff9d] mb-4">✨ Layout gerado com sucesso! Inspecione o código abaixo:</p>
-                  <pre className="bg-[#050505] p-4 rounded-xl border border-gray-800 text-xs text-gray-400 overflow-x-auto overflow-y-auto max-h-[50vh]">
-                    <code>{viewingDraft.layout_draft}</code>
-                  </pre>
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-[#00ff9d]">✨ Preview Visual do Layout (Estilo Chaveiro Rafael):</p>
+                    <button 
+                      onClick={() => {
+                        const win = window.open('', '_blank');
+                        win?.document.write(`
+                          <html>
+                            <head>
+                              <script src="https://cdn.tailwindcss.com"></script>
+                              <style>body { background: #0d1117; color: white; font-family: sans-serif; }</style>
+                            </head>
+                            <body>
+                              ${viewingDraft.layout_draft.replace(/import.*from.*;/g, '').replace(/export default function Page\(\) \{/g, 'function Page() {').replace(/return \(/g, 'return (').replace(/export const metadata.*/g, '')}
+                              <div id="root"></div>
+                              <script>
+                                // Simplificação extrema para o preview funcionar sem React real no win.document
+                                document.body.innerHTML = \`${viewingDraft.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || 'Erro ao processar preview'}\`;
+                              </script>
+                            </body>
+                          </html>
+                        `);
+                      }}
+                      className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10 text-gray-400">
+                      Abrir em Nova Aba ↗
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 bg-white rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">
+                    <iframe 
+                      srcDoc={`
+                        <html>
+                          <head>
+                            <script src="https://cdn.tailwindcss.com"></script>
+                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+                            <style>
+                              body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+                              * { transition: all 0.2s ease; }
+                            </style>
+                          </head>
+                          <body>
+                            ${viewingDraft.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || 'Gerando preview...'}
+                          </body>
+                        </html>
+                      `}
+                      className="w-full h-full border-none"
+                    />
+                  </div>
                 </div>
               )}
             </div>
