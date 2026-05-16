@@ -87,6 +87,11 @@ export default function TabSEOOpportunities({
                       className="bg-[#161b22] border border-purple-500/50 text-purple-400 font-bold px-4 py-2 rounded-lg text-xs hover:bg-purple-500/10 transition-all">
                       👁️ Ver Rascunho
                     </button>
+                  ) : opp.status === 'layout_gerado' ? (
+                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft })}
+                      className="bg-[#161b22] border border-[#00ff9d]/50 text-[#00ff9d] font-bold px-4 py-2 rounded-lg text-xs hover:bg-[#00ff9d]/10 transition-all">
+                      ✨ Ver Layout Final
+                    </button>
                   ) : opp.status === 'publicada' ? (
                     <a href={opp.published_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-xs font-bold underline">
                       Ver Página ↗
@@ -116,6 +121,7 @@ export default function TabSEOOpportunities({
             </div>
             
             <div className="p-8 overflow-y-auto bg-[#0d1117]/50 flex-1 flex flex-col gap-6">
+              {!viewingDraft.layout_draft ? (
                 // Visão de Texto
                 <div className="flex-1 flex flex-col">
                   {(!viewingDraft.draft || viewingDraft.draft.length < 50) ? (
@@ -132,7 +138,7 @@ export default function TabSEOOpportunities({
               ) : (
                 // Visão do Código do Layout
                 <div className="flex-1 flex flex-col h-full">
-                  <p className="text-sm text-[#00ff9d] mb-4">✨ Layout gerado com sucesso no estilo Brutalista Pagani! Inspecione o código abaixo:</p>
+                  <p className="text-sm text-[#00ff9d] mb-4">✨ Layout gerado com sucesso! Inspecione o código abaixo:</p>
                   <pre className="bg-[#050505] p-4 rounded-xl border border-gray-800 text-xs text-gray-400 overflow-x-auto overflow-y-auto max-h-[50vh]">
                     <code>{viewingDraft.layout_draft}</code>
                   </pre>
@@ -170,22 +176,22 @@ export default function TabSEOOpportunities({
                       });
                       const result = await res.json();
                       if (result.success) {
-                        alert('Página publicada com sucesso na pasta do Pagani Custom!\n\nURL: ' + result.url);
+                        alert('Página publicada com sucesso!\n\nURL: ' + result.url);
                         setViewingDraft(null);
-                        // Idealmente atualizariamos a lista chamando fetchOpportunities, mas o user já vai ver
+                        fetchOpportunities(selectedClient.id);
                       } else {
                         alert('Erro ao publicar: ' + result.error);
-                        btn.innerText = '🚀 Aprovar e Enviar para o Pagani';
+                        btn.innerText = `🚀 Aprovar e Enviar para o ${selectedClient?.name || 'Projeto'}`;
                         btn.disabled = false;
                       }
                     } catch (err) {
                       console.error(err);
-                      btn.innerText = '🚀 Aprovar e Enviar para o Pagani';
+                      btn.innerText = `🚀 Aprovar e Enviar para o ${selectedClient?.name || 'Projeto'}`;
                       btn.disabled = false;
                     }
                   }}
                   className="bg-[#00ff9d] text-gray-900 font-bold px-8 py-2.5 rounded-xl text-sm shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)] transition-all">
-                  🚀 Aprovar e Enviar para o Pagani
+                  🚀 Aprovar e Enviar para o {selectedClient?.name || 'Projeto'}
                 </button>
               )}
             </div>
