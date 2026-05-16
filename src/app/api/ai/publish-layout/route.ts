@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     // 1. Puxar a oportunidade e a configuração do cliente
     const { data: opp, error: oppError } = await supabase
       .from('oportunidades_seo')
-      .select('*, clients(name, design_context)')
+      .select('*, clients(name, project_folder, gsc_url, design_context)')
       .eq('id', opportunityId)
       .single();
 
