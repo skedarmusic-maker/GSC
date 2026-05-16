@@ -140,29 +140,56 @@ export default function TabSEOOpportunities({
                 <div className="flex-1 flex flex-col h-full">
                   <div className="flex justify-between items-center mb-4">
                     <p className="text-sm text-[#00ff9d]">✨ Preview Visual do Layout (Estilo Chaveiro Rafael):</p>
-                    <button 
-                      onClick={() => {
-                        const win = window.open('', '_blank');
-                        win?.document.write(`
-                          <html>
-                            <head>
-                              <script src="https://cdn.tailwindcss.com"></script>
-                              <style>body { background: #0d1117; color: white; font-family: sans-serif; }</style>
-                            </head>
-                            <body>
-                              ${viewingDraft.layout_draft.replace(/import.*from.*;/g, '').replace(/export default function Page\(\) \{/g, 'function Page() {').replace(/return \(/g, 'return (').replace(/export const metadata.*/g, '')}
-                              <div id="root"></div>
-                              <script>
-                                // Simplificação extrema para o preview funcionar sem React real no win.document
-                                document.body.innerHTML = \`${viewingDraft.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || 'Erro ao processar preview'}\`;
-                              </script>
-                            </body>
-                          </html>
-                        `);
-                      }}
-                      className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10 text-gray-400">
-                      Abrir em Nova Aba ↗
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={async () => {
+                          const btn = document.getElementById('btn-preview-hostinger');
+                          if (btn) btn.innerText = 'Enviando...';
+                          try {
+                            const res = await fetch('/api/ai/publish-preview', {
+                              method: 'POST',
+                              body: JSON.stringify({ opportunityId: viewingDraft.id })
+                            });
+                            const data = await res.json();
+                            if (data.previewUrl) {
+                              window.open(data.previewUrl, '_blank');
+                            } else {
+                              alert('Erro ao gerar preview: ' + data.error);
+                            }
+                          } catch (e) {
+                            alert('Erro de conexão.');
+                          } finally {
+                            if (btn) btn.innerText = '🚀 Gerar Link de Preview (Hostinger)';
+                          }
+                        }}
+                        id="btn-preview-hostinger"
+                        className="text-[10px] bg-[#00ff9d] text-gray-900 px-3 py-1 rounded font-bold hover:bg-[#00cc7d] transition-colors">
+                        🚀 Gerar Link de Preview (Hostinger)
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const win = window.open('', '_blank');
+                          win?.document.write(`
+                            <html>
+                              <head>
+                                <script src="https://cdn.tailwindcss.com"></script>
+                                <style>body { background: #0d1117; color: white; font-family: sans-serif; }</style>
+                              </head>
+                              <body>
+                                ${viewingDraft.layout_draft.replace(/import.*from.*;/g, '').replace(/export default function Page\(\) \{/g, 'function Page() {').replace(/return \(/g, 'return (').replace(/export const metadata.*/g, '')}
+                                <div id="root"></div>
+                                <script>
+                                  // Simplificação extrema para o preview funcionar sem React real no win.document
+                                  document.body.innerHTML = \`${viewingDraft.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || 'Erro ao processar preview'}\`;
+                                </script>
+                              </body>
+                            </html>
+                          `);
+                        }}
+                        className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10 text-gray-400">
+                        Inspecionar Rápido ↗
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="flex-1 bg-white rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">

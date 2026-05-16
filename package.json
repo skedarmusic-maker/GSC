@@ -12,6 +12,7 @@
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.105.3",
     "@types/pg": "^8.20.0",
+    "basic-ftp": "^6.0.1",
     "dotenv": "^17.4.2",
     "google-ads-api": "^23.0.0",
     "google-auth-library": "^9.0.0",
