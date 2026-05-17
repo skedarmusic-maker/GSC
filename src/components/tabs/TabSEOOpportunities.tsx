@@ -160,12 +160,18 @@ export default function TabSEOOpportunities({
                           } catch (e) {
                             alert('Erro de conexão.');
                           } finally {
-                            if (btn) btn.innerText = '🚀 Gerar Link de Preview (Hostinger)';
+                            if (btn) {
+                              btn.innerText = selectedClient?.cms_type === 'nextjs' 
+                                ? '🚀 Gerar Preview (NextJS / Vercel)' 
+                                : '🚀 Gerar Link de Preview (Hostinger)';
+                            }
                           }
                         }}
                         id="btn-preview-hostinger"
                         className="text-[10px] bg-[#00ff9d] text-gray-900 px-3 py-1 rounded font-bold hover:bg-[#00cc7d] transition-colors">
-                        🚀 Gerar Link de Preview (Hostinger)
+                        {selectedClient?.cms_type === 'nextjs' 
+                          ? '🚀 Gerar Preview (NextJS / Vercel)' 
+                          : '🚀 Gerar Link de Preview (Hostinger)'}
                       </button>
                       <button 
                         onClick={() => {

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (!opp.layout_draft) return NextResponse.json({ success: false, error: 'Layout não gerado ainda' });
 
     const designContext = opp.clients?.design_context || {};
-    const deployType = designContext.deploy_type || 'ftp'; // Padrão é ftp
+    const deployType = opp.clients?.cms_type || designContext.deploy_type || 'ftp';
     
     const slug = opp.keyword.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const baseUrl = opp.clients?.gsc_url ? opp.clients.gsc_url.replace(/\/$/, '') : `https://${opp.clients?.name?.replace(/\s+/g, '').toLowerCase()}.com.br`;
@@ -32,9 +32,16 @@ export async function POST(request: Request) {
 
     // 2. Se for deploy via FTP (Hostinger / Servidor Compartilhado)
     if (deployType === 'ftp') {
-      const ftpHost = designContext.ftp_host || "147.93.14.87";
-      const ftpUser = designContext.ftp_user || "u786839041.chaveirorafael";
-      const ftpPass = designContext.ftp_pass || "1q2w3e4r@@@SK";
+      const ftpHost = designContext.ftp_host;
+      const ftpUser = designContext.ftp_user;
+      const ftpPass = designContext.ftp_pass;
+
+      if (!ftpHost || !ftpUser || !ftpPass) {
+        return NextResponse.json({ 
+          success: false, 
+          error: `As credenciais de FTP do cliente '${opp.clients?.name}' não estão configuradas. Por favor, cadastre as credenciais de FTP na aba de configurações do cliente.` 
+        }, { status: 400 });
+      }
 
       const bodyContent = opp.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || opp.layout_draft;
       

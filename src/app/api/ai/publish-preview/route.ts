@@ -29,12 +29,19 @@ export async function POST(req: Request) {
 
     // 2. Extrair o contexto de design e deploy do cliente
     const designContext = opp.clients?.design_context || {};
-    const deployType = designContext.deploy_type || 'ftp'; // Padrão é ftp
+    const deployType = opp.clients?.cms_type || designContext.deploy_type || 'ftp';
     
-    // Pegar credenciais dinâmicas do banco ou fallback para o Chaveiro Rafael caso vazio
-    const ftpHost = designContext.ftp_host || "147.93.14.87";
-    const ftpUser = designContext.ftp_user || "u786839041.chaveirorafael";
-    const ftpPass = designContext.ftp_pass || "1q2w3e4r@@@SK";
+    // Obter credenciais dinâmicas do banco
+    const ftpHost = designContext.ftp_host;
+    const ftpUser = designContext.ftp_user;
+    const ftpPass = designContext.ftp_pass;
+
+    // Se for do tipo FTP mas as credenciais dinâmicas estiverem vazias, bloqueia para não enviar para o cliente errado!
+    if (deployType === 'ftp' && (!ftpHost || !ftpUser || !ftpPass)) {
+      return NextResponse.json({ 
+        error: `As credenciais de FTP do cliente '${opp.clients?.name}' não estão configuradas. Por favor, cadastre as credenciais de FTP na aba de configurações do cliente.` 
+      }, { status: 400 });
+    }
 
     // 3. Preparar o HTML Estático para o Preview (Criação de Casca)
     // Extrai apenas o miolo do return se for código TSX/Next.js
