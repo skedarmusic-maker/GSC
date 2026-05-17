@@ -76,13 +76,8 @@ export async function POST(req: Request) {
         await client.ensureDir("public_html/preview");
         
         const fileName = `${slug}.html`;
-        const tempPath = path.join(process.cwd(), 'scratch', fileName);
-        
-        // Criar pasta scratch temporária local se não existir
-        const scratchDir = path.join(process.cwd(), 'scratch');
-        if (!fs.existsSync(scratchDir)) {
-          fs.mkdirSync(scratchDir, { recursive: true });
-        }
+        const os = require('os');
+        const tempPath = path.join(os.tmpdir(), fileName);
         
         fs.writeFileSync(tempPath, staticHtml, 'utf8');
         await client.uploadFrom(tempPath, fileName);

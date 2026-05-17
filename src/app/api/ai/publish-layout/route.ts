@@ -71,12 +71,8 @@ export async function POST(request: Request) {
         // 2A. Subir arquivo final na raiz como slug.html
         await client.cd("/");
         const fileName = `${slug}.html`;
-        const tempPath = path.join(process.cwd(), 'scratch', fileName);
-        
-        const scratchDir = path.join(process.cwd(), 'scratch');
-        if (!fs.existsSync(scratchDir)) {
-          fs.mkdirSync(scratchDir, { recursive: true });
-        }
+        const os = require('os');
+        const tempPath = path.join(os.tmpdir(), fileName);
 
         fs.writeFileSync(tempPath, staticHtml, 'utf8');
         await client.uploadFrom(tempPath, fileName);
@@ -90,7 +86,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME}\.html -f
 RewriteRule ^([^/]+)$ /$1.html [L]`;
 
-        const htaccessPath = path.join(process.cwd(), 'scratch', '.htaccess');
+        const htaccessPath = path.join(os.tmpdir(), '.htaccess');
         fs.writeFileSync(htaccessPath, htaccessContent, 'utf8');
         await client.uploadFrom(htaccessPath, ".htaccess");
         fs.unlinkSync(htaccessPath);
