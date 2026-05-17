@@ -195,7 +195,24 @@ export default function TabSEOOpportunities({
                   
                   <div className="flex-1 bg-[#0d1117] rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">
                     <iframe 
-                      src={viewingDraft.published_url || `https://chaveiro24hribeiraopreto.com.br/preview/chaveiro-rafael-v4-dark.html?t=${Date.now()}`}
+                      src={viewingDraft.published_url || undefined}
+                      srcDoc={!viewingDraft.published_url ? `
+                        <!DOCTYPE html>
+                        <html>
+                          <head>
+                            <meta charset="utf-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <script src="https://cdn.tailwindcss.com"></script>
+                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+                            <style>
+                              body { font-family: 'Inter', sans-serif; background-color: #0d1117; color: white; margin: 0; padding: 0; }
+                            </style>
+                          </head>
+                          <body>
+                            ${viewingDraft.layout_draft?.match(/return \(([\s\S]*)\);/)?.[1] || viewingDraft.layout_draft || '<div class="p-8 text-center text-gray-500">Aguardando geração do código de preview...</div>'}
+                          </body>
+                        </html>
+                      ` : undefined}
                       className="w-full h-full border-none bg-[#0d1117]"
                     />
                   </div>
