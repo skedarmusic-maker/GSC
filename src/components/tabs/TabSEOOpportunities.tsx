@@ -22,7 +22,7 @@ export default function TabSEOOpportunities({
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA</h2>
+          <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA <span className="text-[10px] bg-[#00ff9d]/20 text-[#00ff9d] px-2 py-1 rounded">V4.0 - STITCH OK</span></h2>
           <p className="text-gray-400 mt-1">Sugestões automáticas do n8n (Alto Volume, Baixo CTR) prontas para virar artigos e páginas.</p>
         </div>
         <button
@@ -194,21 +194,7 @@ export default function TabSEOOpportunities({
                   
                   <div className="flex-1 bg-white rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">
                     <iframe 
-                      srcDoc={`
-                        <html>
-                          <head>
-                            <script src="https://cdn.tailwindcss.com"></script>
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-                            <style>
-                              body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
-                              * { transition: all 0.2s ease; }
-                            </style>
-                          </head>
-                          <body>
-                            ${viewingDraft.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || 'Gerando preview...'}
-                          </body>
-                        </html>
-                      `}
+                      src={`https://chaveiro24hribeiraopreto.com.br/preview/chaveiro-rafael-v4-dark.html?t=${Date.now()}`}
                       className="w-full h-full border-none"
                     />
                   </div>

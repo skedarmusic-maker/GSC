@@ -1,16 +1,21 @@
-
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import * as ftp from 'basic-ftp';
 import path from 'path';
+import fs from 'fs';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(req: Request) {
   try {
     const { opportunityId } = await req.json();
 
-    // 1. Buscar dados da oportunidade e do cliente
+    // 1. Buscar dados da oportunidade e do cliente dono dela
     const { data: opp, error: oppError } = await supabase
-      .from('seo_opportunities')
+      .from('oportunidades_seo')
       .select('*, clients(*)')
       .eq('id', opportunityId)
       .single();
@@ -18,10 +23,21 @@ export async function POST(req: Request) {
     if (oppError || !opp) return NextResponse.json({ error: 'Oportunidade não encontrada' }, { status: 404 });
 
     const layoutCode = opp.layout_draft;
-    const slug = opp.keyword.toLowerCase().replace(/\s+/g, '-').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!layoutCode) return NextResponse.json({ error: 'Layout final ainda não gerado' }, { status: 400 });
+
+    const slug = opp.keyword.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    // 2. Extrair o contexto de design e deploy do cliente
+    const designContext = opp.clients?.design_context || {};
+    const deployType = designContext.deploy_type || 'ftp'; // Padrão é ftp
     
-    // 2. Preparar o HTML Estático para o Preview (Tailwind CDN)
-    // Extraímos apenas o que está dentro do return () do componente React
+    // Pegar credenciais dinâmicas do banco ou fallback para o Chaveiro Rafael caso vazio
+    const ftpHost = designContext.ftp_host || "147.93.14.87";
+    const ftpUser = designContext.ftp_user || "u786839041.chaveirorafael";
+    const ftpPass = designContext.ftp_pass || "1q2w3e4r@@@SK";
+
+    // 3. Preparar o HTML Estático para o Preview (Criação de Casca)
+    // Extrai apenas o miolo do return se for código TSX/Next.js
     const bodyContent = layoutCode.match(/return \(([\s\S]*)\);/)?.[1] || layoutCode;
     
     const staticHtml = `
@@ -32,67 +48,78 @@ export async function POST(req: Request) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>PREVIEW: ${opp.keyword}</title>
           <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
           <style>
               body { font-family: 'Inter', sans-serif; }
-              /* Reset de estilos para simular Next.js */
-              .motion-safe\\:animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-              @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
           </style>
       </head>
-      <body>
+      <body class="bg-black text-white font-sans antialiased">
           ${bodyContent}
       </body>
       </html>
     `;
 
-    // 3. Conectar ao FTP da Hostinger (Dados que pegamos do final_deploy.js)
-    const client = new ftp.Client();
-    client.ftp.verbose = false;
+    // 4. Se for deploy via FTP, faz a transmissão para o preview do servidor do cliente
+    if (deployType === 'ftp') {
+      const client = new ftp.Client();
+      client.ftp.verbose = false;
 
-    // TODO: No futuro, pegar do banco. Por agora, fixo para o Chaveiro Rafael como no Pagani.
-    try {
-      await client.access({
-        host: "147.93.14.87",
-        user: "u786839041.chaveirorafael",
-        password: "1q2w3e4r@@@SK",
-        secure: false
-      });
+      try {
+        await client.access({
+          host: ftpHost,
+          user: ftpUser,
+          password: ftpPass,
+          secure: false
+        });
 
-      // 4. Garantir pasta /preview e subir arquivo
-      await client.ensureDir("public_html/preview");
-      
-      const fileName = `${slug}.html`;
-      const tempPath = path.join(process.cwd(), 'scratch', fileName);
-      
-      // Criar arquivo temporário localmente para o upload
-      import fs from 'fs';
-      fs.writeFileSync(tempPath, staticHtml);
+        // Garante a subpasta /preview
+        await client.ensureDir("public_html/preview");
+        
+        const fileName = `${slug}.html`;
+        const tempPath = path.join(process.cwd(), 'scratch', fileName);
+        
+        // Criar pasta scratch temporária local se não existir
+        const scratchDir = path.join(process.cwd(), 'scratch');
+        if (!fs.existsSync(scratchDir)) {
+          fs.mkdirSync(scratchDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(tempPath, staticHtml, 'utf8');
+        await client.uploadFrom(tempPath, fileName);
+        
+        // Limpar arquivo local temporário
+        fs.unlinkSync(tempPath);
 
-      await client.uploadFrom(tempPath, fileName);
-      
-      // Limpar arquivo temporário
-      fs.unlinkSync(tempPath);
+        const baseUrl = opp.clients?.gsc_url ? opp.clients.gsc_url.replace(/\/$/, '') : `https://${opp.clients?.name?.replace(/\s+/g, '').toLowerCase()}.com.br`;
+        const previewUrl = `${baseUrl}/preview/${fileName}`;
 
-      const previewUrl = `https://chaveiro24hribeiraopreto.com.br/preview/${fileName}`;
+        // 5. Atualizar o status da oportunidade no banco
+        await supabase.from('oportunidades_seo').update({ 
+          published_url: previewUrl,
+          status: 'layout_gerado' 
+        }).eq('id', opportunityId);
 
-      // 5. Atualizar o status no banco (opcional, para controle)
-      await supabase.from('seo_opportunities').update({ 
+        return NextResponse.json({ success: true, previewUrl });
+
+      } catch (ftpError: any) {
+        console.error('Erro de FTP:', ftpError);
+        return NextResponse.json({ error: 'Falha ao conectar no FTP do Cliente: ' + ftpError.message }, { status: 500 });
+      } finally {
+        client.close();
+      }
+    } else {
+      // Caso o deploy do cliente seja em NextJS puro (sem FTP)
+      const previewUrl = `/preview/${slug}`;
+      await supabase.from('oportunidades_seo').update({ 
         published_url: previewUrl,
         status: 'layout_gerado' 
       }).eq('id', opportunityId);
 
       return NextResponse.json({ success: true, previewUrl });
-
-    } catch (ftpError: any) {
-      console.error('Erro de FTP:', ftpError);
-      return NextResponse.json({ error: 'Falha ao conectar no FTP da Hostinger: ' + ftpError.message }, { status: 500 });
-    } finally {
-      client.close();
     }
 
   } catch (err: any) {
-    console.error(err);
+    console.error('Erro na API de Preview:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
