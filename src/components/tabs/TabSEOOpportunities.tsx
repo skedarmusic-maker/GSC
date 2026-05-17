@@ -88,7 +88,7 @@ export default function TabSEOOpportunities({
                       👁️ Ver Rascunho
                     </button>
                   ) : opp.status === 'layout_gerado' ? (
-                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft })}
+                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft, published_url: opp.published_url })}
                       className="bg-[#161b22] border border-[#00ff9d]/50 text-[#00ff9d] font-bold px-4 py-2 rounded-lg text-xs hover:bg-[#00ff9d]/10 transition-all">
                       ✨ Ver Layout Final
                     </button>
@@ -139,7 +139,7 @@ export default function TabSEOOpportunities({
                 // Visão do Preview Visual (Iframe Simulado/Renderizado)
                 <div className="flex-1 flex flex-col h-full">
                   <div className="flex justify-between items-center mb-4">
-                    <p className="text-sm text-[#00ff9d]">✨ Preview Visual do Layout (Estilo Chaveiro Rafael):</p>
+                    <p className="text-sm text-[#00ff9d]">✨ Preview Visual do Layout (Estilo {selectedClient?.name || 'Cliente'}):</p>
                     <div className="flex gap-2">
                       <button 
                         onClick={async () => {
@@ -152,6 +152,7 @@ export default function TabSEOOpportunities({
                             });
                             const data = await res.json();
                             if (data.previewUrl) {
+                              setViewingDraft({ ...viewingDraft, published_url: data.previewUrl });
                               window.open(data.previewUrl, '_blank');
                             } else {
                               alert('Erro ao gerar preview: ' + data.error);
@@ -192,10 +193,10 @@ export default function TabSEOOpportunities({
                     </div>
                   </div>
                   
-                  <div className="flex-1 bg-white rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">
+                  <div className="flex-1 bg-[#0d1117] rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">
                     <iframe 
-                      src={`https://chaveiro24hribeiraopreto.com.br/preview/chaveiro-rafael-v4-dark.html?t=${Date.now()}`}
-                      className="w-full h-full border-none"
+                      src={viewingDraft.published_url || `https://chaveiro24hribeiraopreto.com.br/preview/chaveiro-rafael-v4-dark.html?t=${Date.now()}`}
+                      className="w-full h-full border-none bg-[#0d1117]"
                     />
                   </div>
                 </div>
