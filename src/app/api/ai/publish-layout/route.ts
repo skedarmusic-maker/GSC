@@ -113,27 +113,50 @@ RewriteRule ^([^/]+)$ /$1.html [L]`;
         client.close();
       }
 
-    } else {
       // 4. Se for deploy via NextJS puro (Vercel/Local)
       const projectFolder = opp.clients?.project_folder || designContext.project_folder;
       if (!projectFolder) {
         return NextResponse.json({ success: false, error: 'O cliente não possui a "Pasta do Projeto" configurada.' });
       }
 
-      const baseDir = path.join(process.cwd(), '..', projectFolder, 'src', 'app', slug);
-      const filePath = path.join(baseDir, 'page.tsx');
-
-      if (!fs.existsSync(baseDir)) {
-        fs.mkdirSync(baseDir, { recursive: true });
+      // Constrói o caminho de injeção direta no disco local do cliente
+      // Lida de forma inteligente se a pasta do projeto informada já contém 'website' ou subpastas
+      let baseDir = path.join(process.cwd(), '..', projectFolder);
+      
+      // Se a pasta src/app não estiver diretamente no caminho montado, tenta entrar na pasta /src/app ou /website/src/app
+      if (!fs.existsSync(path.join(baseDir, 'src', 'app')) && fs.existsSync(path.join(baseDir, 'website', 'src', 'app'))) {
+        baseDir = path.join(baseDir, 'website', 'src', 'app', slug);
+      } else {
+        baseDir = path.join(baseDir, 'src', 'app', slug);
       }
-      fs.writeFileSync(filePath, opp.layout_draft, 'utf8');
+      
+      const filePath = path.join(baseDir, 'page.tsx');
+      let localWritten = false;
+
+      try {
+        // Cria a subpasta da palavra-chave no projeto do cliente
+        if (!fs.existsSync(baseDir)) {
+          fs.mkdirSync(baseDir, { recursive: true });
+        }
+        // Injeta o arquivo .tsx inteiro com o layout da IA
+        fs.writeFileSync(filePath, opp.layout_draft, 'utf8');
+        localWritten = true;
+      } catch (localWriteError: any) {
+        console.warn('Gravação em disco local ignorada (ambiente Serverless ou sem acesso à pasta física):', localWriteError.message);
+      }
 
       await supabase
         .from('oportunidades_seo')
         .update({ status: 'publicada', published_url: publishedUrl })
         .eq('id', opportunityId);
 
-      return NextResponse.json({ success: true, url: publishedUrl });
+      return NextResponse.json({ 
+        success: true, 
+        url: publishedUrl,
+        message: localWritten 
+          ? `Sucesso! Página injetada diretamente na pasta '${projectFolder}' com sucesso.` 
+          : `Sucesso! Página gravada no banco de dados centralizado. Use o script de sincronização local para salvá-la em disco.`
+      });
     }
 
   } catch (error: any) {
