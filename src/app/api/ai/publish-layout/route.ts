@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import * as ftp from 'basic-ftp';
 import fs from 'fs';
 import path from 'path';
 
@@ -9,155 +8,116 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+/**
+ * Normaliza uma keyword para gerar um slug de URL limpo.
+ */
+function toSlug(keyword: string): string {
+  return keyword
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+/**
+ * Descobre o diretório base do app (src/app ou app) dentro de um projeto Next.js.
+ */
+function findAppDir(projectRoot: string): string | null {
+  const candidates = [
+    path.join(projectRoot, 'src', 'app'),
+    path.join(projectRoot, 'app'),
+    path.join(projectRoot, 'website', 'src', 'app'),
+    path.join(projectRoot, 'website', 'app'),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(dir)) return dir;
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     const { opportunityId } = await request.json();
-    
-    // 1. Puxar a oportunidade e a configuração do cliente
+
+    // 1. Buscar oportunidade + dados do cliente
     const { data: opp, error: oppError } = await supabase
       .from('oportunidades_seo')
       .select('*, clients(*)')
       .eq('id', opportunityId)
       .single();
 
-    if (oppError || !opp) return NextResponse.json({ success: false, error: 'Oportunidade não encontrada' });
-    if (!opp.layout_draft) return NextResponse.json({ success: false, error: 'Layout não gerado ainda' });
+    if (oppError || !opp) {
+      return NextResponse.json({ success: false, error: 'Oportunidade não encontrada' });
+    }
 
-    const designContext = opp.clients?.design_context || {};
-    const deployType = opp.clients?.cms_type || designContext.deploy_type || 'ftp';
-    
-    const slug = opp.keyword.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const baseUrl = opp.clients?.gsc_url ? opp.clients.gsc_url.replace(/\/$/, '') : `https://${opp.clients?.name?.replace(/\s+/g, '').toLowerCase()}.com.br`;
+    if (!opp.layout_draft) {
+      return NextResponse.json({ success: false, error: 'Layout não gerado ainda. Gere o layout primeiro.' });
+    }
+
+    const client = opp.clients;
+    const slug = toSlug(opp.keyword);
+    const localPath = client?.local_path || client?.localPath;
+    const baseUrl = client?.gsc_url
+      ? client.gsc_url.replace(/\/$/, '')
+      : `https://${(client?.name || 'cliente').replace(/\s+/g, '').toLowerCase()}.com.br`;
+
     const publishedUrl = `${baseUrl}/${slug}`;
 
-    // 2. Se for deploy via FTP (Hostinger / Servidor Compartilhado)
-    if (deployType === 'ftp') {
-      const ftpHost = designContext.ftp_host;
-      const ftpUser = designContext.ftp_user;
-      const ftpPass = designContext.ftp_pass;
+    // 2. Tentar injetar o arquivo no projeto local do cliente
+    let localWritten = false;
+    let localFilePath = '';
+    let writeError = '';
 
-      if (!ftpHost || !ftpUser || !ftpPass) {
-        return NextResponse.json({ 
-          success: false, 
-          error: `As credenciais de FTP do cliente '${opp.clients?.name}' não estão configuradas. Por favor, cadastre as credenciais de FTP na aba de configurações do cliente.` 
-        }, { status: 400 });
-      }
-
-      const bodyContent = opp.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || opp.layout_draft;
-      
-      const staticHtml = `
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${opp.keyword}</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-            <style>
-                body { font-family: 'Inter', sans-serif; }
-            </style>
-        </head>
-        <body class="bg-black text-white font-sans antialiased">
-            ${bodyContent}
-        </body>
-        </html>
-      `;
-
-      const client = new ftp.Client();
-      client.ftp.verbose = false;
-
+    if (localPath) {
       try {
-        await client.access({
-          host: ftpHost,
-          user: ftpUser,
-          password: ftpPass,
-          secure: false
-        });
+        const appDir = findAppDir(localPath);
+        if (appDir) {
+          const pageDir = path.join(appDir, slug);
+          const pageFile = path.join(pageDir, 'page.tsx');
 
-        // 2A. Subir arquivo final na raiz como slug.html
-        await client.cd("/");
-        const fileName = `${slug}.html`;
-        const os = require('os');
-        const tempPath = path.join(os.tmpdir(), fileName);
+          // Criar a pasta do slug se não existir
+          if (!fs.existsSync(pageDir)) {
+            fs.mkdirSync(pageDir, { recursive: true });
+          }
 
-        fs.writeFileSync(tempPath, staticHtml, 'utf8');
-        await client.uploadFrom(tempPath, fileName);
-        fs.unlinkSync(tempPath);
-
-        // 2B. Garantir ou atualizar o .htaccess para URL limpa
-        const htaccessContent = `RewriteEngine On
-RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^.]+)\.html\ HTTP [NC]
-RewriteRule ^([^.]+)\.html$ /$1 [R=301,L]
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME}\.html -f
-RewriteRule ^([^/]+)$ /$1.html [L]`;
-
-        const htaccessPath = path.join(os.tmpdir(), '.htaccess');
-        fs.writeFileSync(htaccessPath, htaccessContent, 'utf8');
-        await client.uploadFrom(htaccessPath, ".htaccess");
-        fs.unlinkSync(htaccessPath);
-
-        // 3. Atualizar no Supabase
-        await supabase
-          .from('oportunidades_seo')
-          .update({ status: 'publicada', published_url: publishedUrl })
-          .eq('id', opportunityId);
-
-        return NextResponse.json({ success: true, url: publishedUrl });
-
-      } catch (ftpError: any) {
-        console.error('Erro de FTP na Publicação:', ftpError);
-        return NextResponse.json({ success: false, error: 'Erro ao conectar no FTP na publicação: ' + ftpError.message });
-      } finally {
-        client.close();
-      }
-
-      // 4. Se for deploy via NextJS puro (Vercel/Local)
-      const projectFolder = opp.clients?.project_folder || designContext.project_folder;
-      if (!projectFolder) {
-        return NextResponse.json({ success: false, error: 'O cliente não possui a "Pasta do Projeto" configurada.' });
-      }
-
-      // Constrói o caminho de injeção direta no disco local do cliente
-      // Lida de forma inteligente se a pasta do projeto informada já contém 'website' ou subpastas
-      let baseDir = path.join(process.cwd(), '..', projectFolder);
-      
-      // Se a pasta src/app não estiver diretamente no caminho montado, tenta entrar na pasta /src/app ou /website/src/app
-      if (!fs.existsSync(path.join(baseDir, 'src', 'app')) && fs.existsSync(path.join(baseDir, 'website', 'src', 'app'))) {
-        baseDir = path.join(baseDir, 'website', 'src', 'app', slug);
-      } else {
-        baseDir = path.join(baseDir, 'src', 'app', slug);
-      }
-      
-      const filePath = path.join(baseDir, 'page.tsx');
-      let localWritten = false;
-
-      try {
-        // Cria a subpasta da palavra-chave no projeto do cliente
-        if (!fs.existsSync(baseDir)) {
-          fs.mkdirSync(baseDir, { recursive: true });
+          // Escrever o arquivo page.tsx gerado pela IA
+          fs.writeFileSync(pageFile, opp.layout_draft, 'utf8');
+          localWritten = true;
+          localFilePath = pageFile;
+        } else {
+          writeError = `Não foi possível encontrar a pasta src/app ou app dentro de "${localPath}".`;
         }
-        // Injeta o arquivo .tsx inteiro com o layout da IA
-        fs.writeFileSync(filePath, opp.layout_draft, 'utf8');
-        localWritten = true;
-      } catch (localWriteError: any) {
-        console.warn('Gravação em disco local ignorada (ambiente Serverless ou sem acesso à pasta física):', localWriteError.message);
+      } catch (fsError: any) {
+        // Em produção (Vercel serverless), o disco é read-only. Apenas registramos o aviso.
+        writeError = fsError.message;
+        console.warn('Gravação local ignorada (ambiente serverless):', fsError.message);
       }
-
-      await supabase
-        .from('oportunidades_seo')
-        .update({ status: 'publicada', published_url: publishedUrl })
-        .eq('id', opportunityId);
-
-      return NextResponse.json({ 
-        success: true, 
-        url: publishedUrl,
-        message: localWritten 
-          ? `Sucesso! Página injetada diretamente na pasta '${projectFolder}' com sucesso.` 
-          : `Sucesso! Página gravada no banco de dados centralizado. Use o script de sincronização local para salvá-la em disco.`
-      });
+    } else {
+      writeError = 'O caminho local do projeto (localPath) não está configurado para este cliente.';
     }
+
+    // 3. Atualizar status no Supabase
+    await supabase
+      .from('oportunidades_seo')
+      .update({
+        status: 'publicada',
+        published_url: publishedUrl
+      })
+      .eq('id', opportunityId);
+
+    // 4. Montar resposta com mensagem amigável
+    const message = localWritten
+      ? `✅ Página injetada com sucesso!\n\nArquivo criado em:\n${localFilePath}\n\nAgora basta fazer o commit e o deploy do projeto "${client?.name}".`
+      : `⚠️ O código foi salvo no banco de dados, mas não foi possível gravar no disco local.\n\nMotivo: ${writeError}\n\nSolução: Use o script de sincronização local (sync_sites.js) para injetar a página na pasta do projeto.`;
+
+    return NextResponse.json({
+      success: true,
+      url: publishedUrl,
+      localWritten,
+      localFilePath: localFilePath || null,
+      message
+    });
 
   } catch (error: any) {
     console.error('Erro na API publish-layout:', error);

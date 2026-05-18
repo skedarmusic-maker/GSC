@@ -22,7 +22,7 @@ export default function TabSEOOpportunities({
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA <span className="text-[10px] bg-[#00ff9d]/20 text-[#00ff9d] px-2 py-1 rounded">V4.0 - STITCH OK</span></h2>
+          <h2 className="text-2xl font-bold">🎯 Oportunidades Geradas pela IA <span className="text-[10px] bg-[#00ff9d]/20 text-[#00ff9d] px-2 py-1 rounded">V5.0 - LAYOUT REAL</span></h2>
           <p className="text-gray-400 mt-1">Sugestões automáticas do n8n (Alto Volume, Baixo CTR) prontas para virar artigos e páginas.</p>
         </div>
         <button
@@ -83,12 +83,12 @@ export default function TabSEOOpportunities({
                       🎨 Visualizar Layout
                     </button>
                   ) : opp.status === 'rascunho_gerado' ? (
-                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft })}
+                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft, keyword: opp.keyword })}
                       className="bg-[#161b22] border border-purple-500/50 text-purple-400 font-bold px-4 py-2 rounded-lg text-xs hover:bg-purple-500/10 transition-all">
                       👁️ Ver Rascunho
                     </button>
                   ) : opp.status === 'layout_gerado' ? (
-                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft, published_url: opp.published_url })}
+                    <button onClick={() => setViewingDraft({ id: opp.id, draft: opp.content_draft, layout_draft: opp.layout_draft, published_url: opp.published_url, keyword: opp.keyword })}
                       className="bg-[#161b22] border border-[#00ff9d]/50 text-[#00ff9d] font-bold px-4 py-2 rounded-lg text-xs hover:bg-[#00ff9d]/10 transition-all">
                       ✨ Ver Layout Final
                     </button>
@@ -113,16 +113,20 @@ export default function TabSEOOpportunities({
             <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
               <div>
                 <h3 className="text-xl font-bold text-white">
-                  {viewingDraft.layout_draft ? 'Layout do Stitch (Aprovação Final)' : 'Rascunho de Conteúdo IA'}
+                  {viewingDraft.layout_draft ? '🎨 Layout Gerado — Pronto para Aprovar' : '📝 Rascunho de Conteúdo IA'}
                 </h3>
-                <p className="text-xs text-gray-500 mt-1">Gerado pelo Gemini AI</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {viewingDraft.layout_draft
+                    ? `Palavra-chave: "${viewingDraft.keyword || ''}"`
+                    : 'Gerado pelo Gemini AI — revise antes de avançar'}
+                </p>
               </div>
               <button onClick={() => setViewingDraft(null)} className="p-2 text-gray-400 hover:text-white">✕</button>
             </div>
             
             <div className="p-8 overflow-y-auto bg-[#0d1117]/50 flex-1 flex flex-col gap-6">
               {!viewingDraft.layout_draft ? (
-                // Visão de Texto
+                // Visão de Texto (rascunho de copy)
                 <div className="flex-1 flex flex-col">
                   {(!viewingDraft.draft || viewingDraft.draft.length < 50) ? (
                     <div className="bg-red-500/10 border border-red-500/30 p-6 rounded-2xl text-center">
@@ -136,91 +140,38 @@ export default function TabSEOOpportunities({
                   )}
                 </div>
               ) : (
-                // Visão do Preview Visual (Iframe Simulado/Renderizado)
+                // Visão do código TSX gerado — com botão de preview nativo
                 <div className="flex-1 flex flex-col h-full">
                   <div className="flex justify-between items-center mb-4">
-                    <p className="text-sm text-[#00ff9d]">✨ Preview Visual do Layout (Estilo {selectedClient?.name || 'Cliente'}):</p>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={async () => {
-                          const btn = document.getElementById('btn-preview-hostinger');
-                          if (btn) btn.innerText = 'Enviando...';
-                          try {
-                            const res = await fetch('/api/ai/publish-preview', {
-                              method: 'POST',
-                              body: JSON.stringify({ opportunityId: viewingDraft.id })
-                            });
-                            const data = await res.json();
-                            if (data.previewUrl) {
-                              setViewingDraft({ ...viewingDraft, published_url: data.previewUrl });
-                              window.open(data.previewUrl, '_blank');
-                            } else {
-                              alert('Erro ao gerar preview: ' + data.error);
-                            }
-                          } catch (e) {
-                            alert('Erro de conexão.');
-                          } finally {
-                            if (btn) {
-                              btn.innerText = selectedClient?.cms_type === 'nextjs' 
-                                ? '🚀 Gerar Preview (NextJS / Vercel)' 
-                                : '🚀 Gerar Link de Preview (Hostinger)';
-                            }
-                          }
-                        }}
-                        id="btn-preview-hostinger"
-                        className="text-[10px] bg-[#00ff9d] text-gray-900 px-3 py-1 rounded font-bold hover:bg-[#00cc7d] transition-colors">
-                        {selectedClient?.cms_type === 'nextjs' 
-                          ? '🚀 Gerar Preview (NextJS / Vercel)' 
-                          : '🚀 Gerar Link de Preview (Hostinger)'}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const win = window.open('', '_blank');
-                          win?.document.write(`
-                            <html>
-                              <head>
-                                <script src="https://cdn.tailwindcss.com"></script>
-                                <style>body { background: #0d1117; color: white; font-family: sans-serif; }</style>
-                              </head>
-                              <body>
-                                ${viewingDraft.layout_draft.replace(/import.*from.*;/g, '').replace(/export default function Page\(\) \{/g, 'function Page() {').replace(/return \(/g, 'return (').replace(/export const metadata.*/g, '')}
-                                <div id="root"></div>
-                                <script>
-                                  // Simplificação extrema para o preview funcionar sem React real no win.document
-                                  document.body.innerHTML = \`${viewingDraft.layout_draft.match(/return \(([\s\S]*)\);/)?.[1] || 'Erro ao processar preview'}\`;
-                                </script>
-                              </body>
-                            </html>
-                          `);
-                        }}
-                        className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-white/10 text-gray-400">
-                        Inspecionar Rápido ↗
-                      </button>
-                    </div>
+                    <p className="text-sm text-[#00ff9d]">
+                      ✨ Código da Página Gerada para <strong>{selectedClient?.name || 'Cliente'}</strong>:
+                    </p>
+                    <button
+                      onClick={() => {
+                        const slug = viewingDraft.keyword
+                          ? viewingDraft.keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+                          : viewingDraft.id;
+                        window.open(`/preview/${slug}`, '_blank');
+                      }}
+                      className="text-[10px] bg-[#00ff9d] text-gray-900 px-4 py-2 rounded-lg font-bold hover:bg-[#00cc7d] transition-colors">
+                      🖥️ Abrir Preview da Página
+                    </button>
                   </div>
                   
-                  <div className="flex-1 bg-[#0d1117] rounded-xl overflow-hidden border-4 border-gray-800 shadow-inner min-h-[400px]">
-                    <iframe 
-                      src={viewingDraft.published_url || undefined}
-                      srcDoc={!viewingDraft.published_url ? `
-                        <!DOCTYPE html>
-                        <html>
-                          <head>
-                            <meta charset="utf-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <script src="https://cdn.tailwindcss.com"></script>
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-                            <style>
-                              body { font-family: 'Inter', sans-serif; background-color: #0d1117; color: white; margin: 0; padding: 0; }
-                            </style>
-                          </head>
-                          <body>
-                            ${viewingDraft.layout_draft?.match(/return \(([\s\S]*)\);/)?.[1] || viewingDraft.layout_draft || '<div class="p-8 text-center text-gray-500">Aguardando geração do código de preview...</div>'}
-                          </body>
-                        </html>
-                      ` : undefined}
-                      className="w-full h-full border-none bg-[#0d1117]"
-                    />
+                  <div className="flex-1 bg-[#0d1117] rounded-xl overflow-hidden border border-gray-700 min-h-[400px] flex flex-col">
+                    <div className="p-3 bg-[#161b22] border-b border-gray-700 flex items-center gap-2 shrink-0">
+                      <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                      <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                      <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                      <span className="text-xs text-gray-400 ml-2 font-mono">
+                        {viewingDraft.keyword
+                          ? viewingDraft.keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+                          : 'pagina'}/page.tsx
+                      </span>
+                    </div>
+                    <pre className="flex-1 p-4 text-xs text-green-400 font-mono overflow-auto whitespace-pre-wrap leading-relaxed">
+                      {viewingDraft.layout_draft || 'Aguardando geração do layout...'}
+                    </pre>
                   </div>
                 </div>
               )}
@@ -234,18 +185,17 @@ export default function TabSEOOpportunities({
                   disabled={!viewingDraft.draft || viewingDraft.draft.length < 50}
                   onClick={(e) => {
                     const opp = seoOpportunities.find(o => o.id === viewingDraft.id);
-                    // Troca texto do botão para loading
-                    (e.target as HTMLButtonElement).innerText = '⏳ Gerando...';
+                    (e.target as HTMLButtonElement).innerText = '⏳ Gerando Layout...';
                     handleViewLayout(opp);
                   }}
-                  className={`bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all flex items-center gap-2 ${(!viewingDraft.draft || viewingDraft.draft.length < 50) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  🎨 Gerar Layout (Stitch)
+                  className={`bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-2.5 rounded-xl text-sm border border-white/20 transition-all ${(!viewingDraft.draft || viewingDraft.draft.length < 50) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  🎨 Gerar Layout com Identidade do Site
                 </button>
               ) : (
                 <button
                   onClick={async (e) => {
                     const btn = e.target as HTMLButtonElement;
-                    btn.innerText = '🚀 Enviando...';
+                    btn.innerText = '🚀 Enviando para o Projeto...';
                     btn.disabled = true;
                     
                     try {
@@ -256,7 +206,7 @@ export default function TabSEOOpportunities({
                       });
                       const result = await res.json();
                       if (result.success) {
-                        alert('Página publicada com sucesso!\n\nURL: ' + result.url);
+                        alert(result.message || `✅ Página enviada com sucesso!\n\nURL: ${result.url}`);
                         setViewingDraft(null);
                         fetchOpportunities(selectedClient.id);
                       } else {
