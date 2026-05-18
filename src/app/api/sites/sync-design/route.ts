@@ -23,6 +23,7 @@ export async function POST(req: Request) {
 
     // 1. Tentar ler os arquivos de design do projeto
     let designContext = manualCode || "";
+    let layoutContent = "";
 
     if (!designContext && normalizedPath) {
       // Possíveis locais do Tailwind
@@ -42,6 +43,13 @@ export async function POST(req: Request) {
         path.join(normalizedPath, 'index.css')
       ];
 
+      const layoutVariants = [
+        path.join(normalizedPath, 'src', 'app', 'layout.tsx'),
+        path.join(normalizedPath, 'app', 'layout.tsx'),
+        path.join(normalizedPath, 'website', 'src', 'app', 'layout.tsx'),
+        path.join(normalizedPath, 'website', 'app', 'layout.tsx')
+      ];
+
       for (const p of tailwindVariants) {
         if (fs.existsSync(p)) {
           designContext += `\n--- TAILWIND CONFIG ---\n${fs.readFileSync(p, 'utf8')}`;
@@ -56,10 +64,17 @@ export async function POST(req: Request) {
         }
       }
 
-      if (!designContext) {
+      for (const p of layoutVariants) {
+        if (fs.existsSync(p)) {
+          layoutContent = fs.readFileSync(p, 'utf8');
+          break;
+        }
+      }
+
+      if (!designContext && !layoutContent) {
         console.error('❌ Arquivos não encontrados em:', normalizedPath);
         return NextResponse.json({
-          error: 'Não foi possível encontrar arquivos de design. Verifique se o caminho está correto e se você está rodando o sistema LOCALMENTE (localhost:3000).'
+          error: 'Não foi possível encontrar arquivos de design ou layout. Verifique se o caminho está correto e se você está rodando o sistema LOCALMENTE (localhost:3000).'
         }, { status: 404 });
       }
     }
@@ -92,7 +107,11 @@ ${designContext.substring(0, 10000)}`;
       .from('clients')
       .update({
         stitch_prompt: stitchPrompt,
-        project_folder: normalizedPath ? path.basename(normalizedPath) : 'Manual'
+        project_folder: normalizedPath ? path.basename(normalizedPath) : 'Manual',
+        design_context: {
+          layout: layoutContent,
+          designTokens: designContext
+        }
       })
       .eq('id', clientId);
 

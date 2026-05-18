@@ -51,12 +51,14 @@ export async function POST(request: Request) {
     const stitchPrompt = client?.stitch_prompt || client?.design_context?.stitch_prompt || '';
     const businessContext = client?.business_context || '';
 
-    // 2. Ler arquivos reais do projeto do cliente no disco local
-    let layoutCode = '';
-    let designTokens = '';
-    let hasLocalFiles = false;
+    // 2. Obter código do layout e design
+    // 2A. Primeiro tenta usar os dados salvos no banco (ideal para quando estiver rodando na Vercel)
+    let layoutCode = client?.design_context?.layout || '';
+    let designTokens = client?.design_context?.designTokens || '';
+    let hasLocalFiles = !!layoutCode;
 
-    if (localPath && fs.existsSync(localPath)) {
+    // 2B. Se o banco estiver vazio, tenta ler os arquivos reais do projeto (se rodando em localhost:3000)
+    if (!hasLocalFiles && localPath && fs.existsSync(localPath)) {
       // Tentar ler o layout.tsx (raiz do design, contém Header e Footer reais)
       const layoutContent = tryReadFile([
         path.join(localPath, 'src', 'app', 'layout.tsx'),
