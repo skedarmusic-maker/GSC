@@ -300,7 +300,7 @@ export default function Dashboard() {
     if (!selectedClient) return;
     setSavingConfig(true);
     try {
-      const res = await fetch('/api/sites/sync-design', {
+      const res = await fetch('/api/sites', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
