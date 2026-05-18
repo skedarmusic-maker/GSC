@@ -177,7 +177,7 @@ export default function TabProspecting() {
     <div className="space-y-6 pb-20">
 
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between print:hidden">
         <div>
           <h2 className="text-3xl font-black text-white tracking-tighter">
             🔍 Prospecção <span className="text-[#00ff9d]">GBP Check</span>
@@ -210,7 +210,7 @@ export default function TabProspecting() {
       )}
 
       {/* Search Bar */}
-      <form onSubmit={handleSearch} className="flex gap-3">
+      <form onSubmit={handleSearch} className="flex gap-3 print:hidden">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
           <input
@@ -246,19 +246,14 @@ export default function TabProspecting() {
         <div className="space-y-6" id="report-content">
 
           {/* Print Header */}
-          <div className="hidden print:flex justify-between items-center mb-8 border-b border-gray-800 pb-6">
+          <div className="hidden print:flex justify-between items-center mb-8 border-b border-gray-800/50 pb-6">
             <div className="flex items-center gap-4">
-              {report.thumbnail && (
-                <img src={report.thumbnail} alt="Logo" className="w-16 h-16 rounded-xl object-cover border border-gray-700" />
-              )}
-              <div>
-                <h1 className="text-2xl font-black text-white italic leading-none">GSC<span className="text-[#00ff9d]">STRATEGY</span></h1>
-                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-1">Auditoria de Presença Digital</p>
-              </div>
+              <h1 className="text-3xl font-black text-white italic leading-none">
+                GSC<span className="text-[#00ff9d]">STRATEGY</span>
+              </h1>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500 uppercase font-bold tracking-widest">Análise de Perfil GBP</p>
-              <p className="text-sm text-white font-bold">{new Date().toLocaleDateString('pt-BR')}</p>
+              <p className="text-sm text-gray-400 font-bold">{new Date().toLocaleDateString('pt-BR')}</p>
             </div>
           </div>
 
@@ -296,7 +291,7 @@ export default function TabProspecting() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Score */}
-            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden print:break-inside-avoid">
                {/* Background Glow */}
                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#00ff9d]/5 blur-[60px] pointer-events-none" />
               
@@ -309,7 +304,7 @@ export default function TabProspecting() {
             </div>
 
             {/* Dados Rápidos */}
-            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 flex flex-col justify-between gap-4">
+            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 flex flex-col justify-between gap-4 print:break-inside-avoid">
               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest border-b border-gray-800 pb-3">Status do Perfil</h3>
               <div className="space-y-5">
                 <div className="flex items-center gap-4">
@@ -343,7 +338,7 @@ export default function TabProspecting() {
             </div>
 
             {/* Oportunidades */}
-            <div className="bg-gradient-to-br from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/20 rounded-2xl p-6 flex flex-col gap-4">
+            <div className="bg-gradient-to-br from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/20 rounded-2xl p-6 flex flex-col gap-4 print:break-inside-avoid">
               <h3 className="text-[#00ff9d] font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                 <TrendingUp size={16}/> Oportunidades de Venda
               </h3>
@@ -369,98 +364,142 @@ export default function TabProspecting() {
             </div>
           </div>
 
-          {/* Ranking Concorrentes (Estilo Market Share) */}
-          {(report.competitors || []).length > 0 && (
-            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-8">
+          {/* Ranking Concorrentes (Unificado e Ordenado) */}
+          {report && (
+            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 print:break-inside-avoid">
+              <div className="flex items-center justify-between mb-6 border-b border-gray-800/50 pb-4">
                 <div>
-                  <h3 className="text-white font-black text-sm uppercase tracking-widest">Market Share de Autoridade</h3>
-                  <p className="text-gray-500 text-[10px] uppercase font-bold mt-1">Comparativo de Prova Social (Avaliações)</p>
-                </div>
-                <div className="text-right">
-                   <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">Total do Nicho</p>
-                   <p className="text-white font-black text-lg leading-none">{report.reviews + report.competitors.reduce((acc:number, c:any)=>acc+(c.reviews||0), 0)}</p>
+                  <h3 className="text-white font-black text-sm uppercase tracking-widest">Ranking de Avaliações</h3>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold mt-1">Posicionamento de Prova Social Local</p>
                 </div>
               </div>
               
-              <div className="space-y-6">
-                {/* O PROSPECT (VOCÊ) */}
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                       <div className="w-8 h-8 rounded-lg bg-[#00ff9d] flex items-center justify-center font-black text-black text-xs">V</div>
-                       <p className="text-white font-black text-sm">{report.name} <span className="text-[#00ff9d] text-[10px] ml-2">(VOCÊ)</span></p>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-white font-black text-sm leading-none">{report.reviews}</p>
-                       <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">Avaliações</p>
-                    </div>
-                  </div>
-                  <div className="h-4 w-full bg-black/40 rounded-full overflow-hidden border border-gray-800">
-                    <div className="h-full bg-[#00ff9d] rounded-full shadow-[0_0_15px_rgba(0,255,157,0.5)] transition-all duration-1000"
-                      style={{ width: `${Math.max((report.reviews / maxReviews) * 100, 2)}%` }} />
-                  </div>
-                </div>
-
-                {/* CONCORRENTES */}
-                <div className="pt-4 border-t border-gray-800/50 space-y-5">
-                  {(report.competitors || []).map((c: any, i: number) => {
-                    const gap = c.reviews - report.reviews;
-                    const isAhead = gap > 0;
-                    return (
-                      <div key={i}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center font-black text-gray-500 text-xs">#{i+1}</div>
-                             <p className="text-gray-400 font-bold text-sm">{c.name}</p>
+              <div className="space-y-5">
+                {[
+                  { name: report.name, reviews: Number(report.reviews) || 0, isClient: true },
+                  ...(report.competitors || []).map((c: any) => ({ name: c.name, reviews: Number(c.reviews) || 0, isClient: false }))
+                ].sort((a, b) => b.reviews - a.reviews).map((profile, index, arr) => {
+                  const maxListReviews = arr[0]?.reviews || 1;
+                  const barWidth = Math.max((profile.reviews / maxListReviews) * 100, 1.5);
+                  
+                  return (
+                    <div key={index} className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${profile.isClient ? 'bg-[#00ff9d] text-black shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'bg-gray-800 text-gray-400'}`}>
+                            {index + 1}º
                           </div>
-                          <div className="flex items-center gap-4 text-right">
-                             {gap !== 0 && (
-                                <div className="text-right">
-                                   <p className={`text-[10px] font-black uppercase ${isAhead ? 'text-red-400' : 'text-[#00ff9d]'}`}>
-                                      {isAhead ? `${gap} à frente` : `${Math.abs(gap)} atrás`}
-                                   </p>
-                                   <p className="text-[9px] text-gray-600 font-bold uppercase">GAP Digital</p>
-                                </div>
-                             )}
-                             <div className="w-12">
-                                <p className="text-gray-300 font-black text-sm leading-none">{c.reviews}</p>
-                                <p className="text-[9px] text-gray-600 font-bold uppercase mt-1">Total</p>
-                             </div>
-                          </div>
+                          <p className={`font-bold text-sm truncate max-w-[200px] md:max-w-[400px] ${profile.isClient ? 'text-[#00ff9d]' : 'text-gray-300'}`}>
+                            {profile.name} {profile.isClient && <span className="text-[10px] uppercase tracking-wider ml-1 opacity-80">(Você)</span>}
+                          </p>
                         </div>
-                        <div className="h-2 w-full bg-gray-900 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-600/50 rounded-full transition-all duration-1000"
-                            style={{ width: `${Math.max((c.reviews / maxReviews) * 100, 2)}%` }} />
+                        <div className="text-right">
+                          <p className={`font-black text-sm leading-none ${profile.isClient ? 'text-[#00ff9d]' : 'text-white'}`}>{profile.reviews}</p>
+                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">Avaliações</p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-gray-800">
+                        <div className={`h-full rounded-full transition-all duration-1000 ${profile.isClient ? 'bg-[#00ff9d]' : 'bg-[#007aff]/80'}`}
+                          style={{ width: `${barWidth}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Análise Detalhada */}
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6">
-            <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-6 border-b border-gray-800 pb-3">Checklist de Saúde Digital</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {(report.metrics || []).map((m: any, i: number) => (
-                <div key={i} className={`p-4 rounded-xl border flex items-center gap-3 ${
-                  m.status === 'bom' ? 'bg-[#00ff9d]/5 border-[#00ff9d]/20' :
-                  m.status === 'razoável' ? 'bg-yellow-500/5 border-yellow-500/20' :
-                  'bg-red-500/5 border-red-500/20'}`}>
-                  <div className={`p-2 rounded-lg shrink-0 ${m.status === 'bom' ? 'bg-[#00ff9d]/10' : m.status === 'razoável' ? 'bg-yellow-500/10' : 'bg-red-500/10'}`}>
-                    {m.status === 'bom' ? <CheckCircle size={16} className="text-[#00ff9d]"/>
-                      : m.status === 'razoável' ? <AlertTriangle size={16} className="text-yellow-500"/>
-                      : <XCircle size={16} className="text-red-500"/>}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[9px] text-gray-500 uppercase tracking-wider font-black truncate">{m.label}</p>
-                    <p className="text-white text-[11px] font-bold mt-0.5 truncate">{m.value}</p>
-                  </div>
+          {/* Mapa de Localização (Simples iframe) */}
+          <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 mt-6 break-inside-avoid">
+             <div className="flex items-center justify-between mb-6 border-b border-gray-800/50 pb-4">
+                <div>
+                  <h3 className="text-white font-black text-sm uppercase tracking-widest">Mapa de Localização</h3>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold mt-1">Região de Busca Local</p>
                 </div>
-              ))}
+             </div>
+             <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-800 relative bg-[#0d1117] flex items-center justify-center">
+               <iframe 
+                 width="100%" 
+                 height="100%" 
+                 style={{ border: 0 }}
+                 loading="lazy" 
+                 allowFullScreen 
+                 src={`https://maps.google.com/maps?q=${encodeURIComponent(report.name + ' ' + (report.address || ''))}&t=m&z=14&output=embed&iwloc=near`}
+               ></iframe>
+             </div>
+          </div>
+
+          {/* Análise Detalhada */}
+          <div className="pt-8">
+            <h3 className="text-gray-400 font-bold text-xs uppercase tracking-widest border-b border-gray-800 pb-3 mb-6">Detalhamento dos Fatores de Ranqueamento</h3>
+            
+            <div className="flex flex-col gap-6">
+              {(report.metrics || []).map((m: any, i: number) => {
+                const isGood = m.status === 'bom';
+                const isWarning = m.status === 'razoável';
+                const isBad = m.status === 'fraco';
+                
+                const descriptions: Record<string, string> = {
+                  'Nota Média': 'A nota média e a frequência de avaliações são o principal fator de decisão para clientes locais e influenciam fortemente o algoritmo do Google. Notas baixas resultam em perda drástica de novos clientes e piora no posicionamento orgânico.',
+                  'Avaliações - Quantidade': 'Analisa se possui uma quantidade mínima de validação social. Ter poucas avaliações afasta clientes que buscam segurança antes de comprar. Uma meta primária saudável é ultrapassar 50 avaliações para dominar a credibilidade na região.',
+                  'Avaliações - Amostragem de Respostas': 'Os clientes investiram tempo avaliando sua empresa. Ignorar comentários mostra descaso e afeta negativamente o algoritmo do Google, que prioriza perfis engajados. Avaliações sem resposta deixam dinheiro na mesa e prejudicam o SEO Local.',
+                  'Website': 'O Google prioriza negócios com sites próprios estruturados (SEO). Utilizar redes sociais (Instagram/Facebook) ou árvores de links (Linktree) como website principal prejudica severamente sua autoridade e credibilidade nas buscas locais.',
+                  'Telefone': 'A ausência ou erro no número de contato impede ações rápidas de clientes (como o botão "clique para ligar"), resultando em perda imediata de vendas diárias e piora na experiência geral do usuário.',
+                  'Horário de Funcionamento': 'Perfis sem horário atualizado geram enorme frustração em clientes que podem visitar o local fechado. O Google penaliza diretamente o ranqueamento de empresas com informações operacionais inconsistentes.',
+                  'Fotos / Mídia': 'Fotos de alta qualidade atraem até 35% mais cliques no site e 42% mais rotas de direção. Perfis sem fotos atualizadas pelo proprietário passam a forte impressão de um negócio inativo, fechado ou amador.',
+                  'Categoria / Segmento': 'A escolha exata das categorias define se você aparecerá para os termos de busca com intenção de compra na sua região. Categorias genéricas ou incorretas anulam quase todo o seu potencial de alcance no Google Maps.',
+                  'Descrição da Empresa': 'A descrição é uma oportunidade essencial de contar o que torna o negócio único, além de ser um espaço vital para inserir palavras-chave. Perfis sem descrição rica perdem enorme relevância no ranqueamento orgânico local.'
+                };
+                const desc = descriptions[m.label] || 'Análise paramétrica baseada nos fatores de ranqueamento oficial do Google Business Profile.';
+
+                return (
+                  <div key={i} className="bg-[#161b22] border border-gray-800 rounded-2xl p-6 print:break-inside-avoid">
+                    <div className="flex flex-col md:flex-row items-start gap-5">
+                      <div className={`p-4 rounded-xl shrink-0 ${isGood ? 'bg-[#00ff9d]/10' : isWarning ? 'bg-yellow-500/10' : 'bg-red-500/10'}`}>
+                        {isGood ? <CheckCircle size={28} className="text-[#00ff9d]"/>
+                          : isWarning ? <AlertTriangle size={28} className="text-yellow-500"/>
+                          : <XCircle size={28} className="text-red-500"/>}
+                      </div>
+                      
+                      <div className="flex-1 w-full">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
+                           <h4 className="text-white font-black text-lg flex items-center gap-2">
+                              {m.label}
+                           </h4>
+                        </div>
+                        
+                        <p className="text-gray-400 text-sm leading-relaxed mb-5 pr-4">
+                           {desc}
+                        </p>
+                        
+                        <div className="bg-[#0d1117] border border-gray-800 rounded-lg p-3 inline-block mb-6">
+                           <p className="text-gray-300 text-xs font-bold uppercase tracking-wider">
+                              Diagnóstico: <span className={`ml-1 ${isGood ? 'text-[#00ff9d]' : isWarning ? 'text-yellow-500' : 'text-red-500'}`}>{m.value}</span>
+                           </p>
+                        </div>
+                        
+                        {/* Progress Bar (Fraco/Razoável/Bom) */}
+                        <div className="w-full max-w-md relative">
+                           {/* Arrow indicator */}
+                           <div className="absolute -top-3 w-3 h-3 bg-gray-400 rotate-45 z-10 transition-all duration-1000" 
+                                style={{ left: isBad ? '16%' : isWarning ? '50%' : '84%', marginLeft: '-6px' }} />
+                                
+                           <div className="flex h-2.5 rounded-full overflow-hidden w-full bg-gray-900 border border-gray-800">
+                              <div className="w-1/3 h-full bg-red-500/80" />
+                              <div className="w-1/3 h-full bg-yellow-400/80" />
+                              <div className="w-1/3 h-full bg-[#00ff9d]/80" />
+                           </div>
+                           <div className="flex justify-between w-full mt-2 text-[9px] font-black uppercase tracking-widest text-gray-500">
+                              <span className="w-1/3 text-center">Fraco</span>
+                              <span className="w-1/3 text-center">Razoável</span>
+                              <span className="w-1/3 text-center">Bom</span>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

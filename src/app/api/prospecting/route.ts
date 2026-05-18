@@ -194,6 +194,21 @@ export async function POST(req: Request) {
     const webInfo = classifyWebsite(n.website);
     const score = calcScore(n);
 
+    // Extração de novos dados disponíveis gratuitamente via SerpApi
+    const description = rawPlace?.description || rawPlace?.snippet || rawPlace?.about || '';
+    const descLength = description.length;
+    
+    // Amostragem de reviews para ver taxa de resposta
+    const rawReviewsList = rawPlace?.reviews || rawPlace?.user_reviews?.reviews || [];
+    const sampleSize = rawReviewsList.length;
+    let unansweredCount = 0;
+    
+    if (sampleSize > 0) {
+      rawReviewsList.forEach((r: any) => {
+         if (!r.response && !r.owner_answer) unansweredCount++;
+      });
+    }
+
     const metrics = [
       {
         label: 'Nota Média',
@@ -202,6 +217,24 @@ export async function POST(req: Request) {
           ? `${n.rating} ⭐ — ${n.reviews} avaliações`
           : 'Sem avaliações cadastradas',
         icon: 'star',
+      },
+      {
+        label: 'Avaliações - Quantidade',
+        status: n.reviews >= 50 ? 'bom' : n.reviews >= 10 ? 'razoável' : 'fraco',
+        value: n.reviews > 0 ? `${n.reviews} avaliações no total` : 'Nenhuma avaliação recebida',
+        icon: 'star',
+      },
+      {
+        label: 'Avaliações - Amostragem de Respostas',
+        status: sampleSize === 0 ? 'razoável' : (unansweredCount === 0 ? 'bom' : unansweredCount < sampleSize ? 'razoável' : 'fraco'),
+        value: sampleSize > 0 ? `Das ${sampleSize} mais recentes, ${unansweredCount} estão sem resposta` : 'Nenhuma avaliação recente para amostra',
+        icon: 'star',
+      },
+      {
+        label: 'Descrição da Empresa',
+        status: descLength >= 50 ? 'bom' : descLength > 0 ? 'razoável' : 'fraco',
+        value: descLength > 0 ? `Possui descrição (${descLength} caracteres)` : 'Nenhuma descrição encontrada',
+        icon: 'tag',
       },
       {
         label: webInfo.label,
