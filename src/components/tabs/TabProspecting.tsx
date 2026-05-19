@@ -338,7 +338,7 @@ export default function TabProspecting() {
             </div>
 
             {/* Oportunidades */}
-            <div className="bg-gradient-to-br from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/20 rounded-2xl p-6 flex flex-col gap-4 print:break-inside-avoid">
+            <div className="bg-gradient-to-br from-[#00ff9d]/10 to-transparent border border-[#00ff9d]/20 rounded-2xl p-6 flex flex-col gap-4 print:hidden">
               <h3 className="text-[#00ff9d] font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
                 <TrendingUp size={16}/> Oportunidades de Venda
               </h3>
@@ -448,7 +448,10 @@ export default function TabProspecting() {
                   'Horário de Funcionamento': 'Perfis sem horário atualizado geram enorme frustração em clientes que podem visitar o local fechado. O Google penaliza diretamente o ranqueamento de empresas com informações operacionais inconsistentes.',
                   'Fotos / Mídia': 'Fotos de alta qualidade atraem até 35% mais cliques no site e 42% mais rotas de direção. Perfis sem fotos atualizadas pelo proprietário passam a forte impressão de um negócio inativo, fechado ou amador.',
                   'Categoria / Segmento': 'A escolha exata das categorias define se você aparecerá para os termos de busca com intenção de compra na sua região. Categorias genéricas ou incorretas anulam quase todo o seu potencial de alcance no Google Maps.',
-                  'Descrição da Empresa': 'A descrição é uma oportunidade essencial de contar o que torna o negócio único, além de ser um espaço vital para inserir palavras-chave. Perfis sem descrição rica perdem enorme relevância no ranqueamento orgânico local.'
+                  'Descrição da Empresa': 'A descrição é uma oportunidade essencial de contar o que torna o negócio único, além de ser um espaço vital para inserir palavras-chave. Perfis sem descrição rica perdem enorme relevância no ranqueamento orgânico local.',
+                  'Quantidade Total de Mídia': 'Fotos e mídias publicadas pelo proprietário revelam o compromisso ativo com o negócio e aumentam a atratividade do perfil. Perfis sem imagens novas ou com pouquíssimas fotos passam a forte impressão de estarem abandonados ou inativos.',
+                  'Ficha Verificada': 'Fichas que não são reivindicadas ou verificadas correm sério risco de sofrerem alterações de terceiros mal-intencionados ou de serem bloqueadas repentinamente pelo Google. A verificação oficial garante o controle absoluto sobre o perfil comercial.',
+                  'Perguntas e Respostas (Q&A)': 'O campo de Perguntas e Respostas é uma seção pública do perfil onde qualquer pessoa pode fazer perguntas sobre a empresa. Deixar dúvidas sem resposta profissional confunde potenciais clientes e afeta negativamente a imagem do negócio, além de desperdiçar um canal de atração direta.'
                 };
                 const desc = descriptions[m.label] || 'Análise paramétrica baseada nos fatores de ranqueamento oficial do Google Business Profile.';
 

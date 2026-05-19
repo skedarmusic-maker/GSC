@@ -61,11 +61,11 @@ function calcScore(n: ReturnType<typeof normalize>): number {
   return Math.min(score, 100);
 }
 
-// Normaliza campos inconsistentes entre engines da SerpApi
+// Normaliza campos inconsistentes entre engines da SerpApi e Apify
 function normalize(place: any) {
   // Reviews pode vir como número ou string com vírgula (ex: "1,2k")
   let reviews = 0;
-  const rawReviews = place.reviews || place.user_ratings_total || place.review_count || 0;
+  const rawReviews = place.reviewsCount || place.reviews || place.user_ratings_total || place.review_count || 0;
   if (typeof rawReviews === 'string') {
     const clean = rawReviews.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
     reviews = Math.round(parseFloat(clean) || 0);
@@ -75,19 +75,22 @@ function normalize(place: any) {
   }
 
   // Telefone pode vir em vários campos
-  const phone = place.phone || place.phone_number || place.international_phone_number ||
+  const phone = place.phone || place.phoneUnformatted || place.phone_number || place.international_phone_number ||
     place.formatted_phone_number || place.contact?.phone || '';
+
+  // Horário
+  const hours = place.hours || place.openingHours || place.operating_hours || place.opening_hours || place.working_hours || null;
 
   return {
     title: place.title || place.name || '',
-    address: place.address || place.formatted_address || place.location || '',
-    rating: Number(place.rating) || 0,
+    address: place.address || place.full_address || place.formatted_address || place.locationName || '',
+    rating: Number(place.totalScore || place.rating) || 0,
     reviews,
-    website: place.website || place.links?.website || place.url || '',
+    website: place.website || place.site || place.links?.website || place.url || '',
     phone,
-    type: place.type || place.types?.[0] || place.category || '',
-    thumbnail: place.thumbnail || place.photos?.[0]?.url || place.image || '',
-    hours: place.hours || place.operating_hours || place.opening_hours || null,
+    type: place.categoryName || place.type || place.category || place.types?.[0] || '',
+    thumbnail: place.imageUrl || place.thumbnail || place.photo || place.logo || place.photos?.[0]?.url || place.image || '',
+    hours,
   };
 }
 
@@ -138,47 +141,79 @@ export async function POST(req: Request) {
 
     console.log('🔍 Buscando:', businessName, locationContext ? 'com foco geográfico' : '');
 
-    // ── PASSO 2: Google Maps engine ──────────────────────────────────────────
+    // ── PASSO 2: Obter dados (Apify com fallback para SerpApi) ─────────────────
     let rawPlace: any = null;
     let rawResults: any[] = [];
+    const apifyToken = process.env.APIFY_TOKEN;
 
-    // O parâmetro 'll' força a busca a acontecer naquela coordenada específica
-    const mapsUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(businessName)}${locationContext}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
-    const mapsRes = await fetch(mapsUrl);
-    const mapsData = await mapsRes.json();
-
-    console.log('📦 Maps result count:', mapsData.local_results?.length ?? 0);
-
-    if (mapsData.local_results?.length > 0) {
-      rawPlace = mapsData.local_results[0];
-      rawResults = mapsData.local_results;
-    }
-
-    // ── PASSO 3: Fallback – busca o place_id para pegar detalhes extras ───────
-    if (rawPlace?.place_id) {
-      console.log('🔎 Buscando detalhes via place_id:', rawPlace.place_id);
+    if (apifyToken) {
+      console.log('🚀 Usando Apify para busca profunda...');
       try {
-        const detailUrl = `https://serpapi.com/search.json?engine=google_maps&type=place&place_id=${rawPlace.place_id}&api_key=${apiKey}&hl=pt`;
-        const detailRes = await fetch(detailUrl);
-        const detailData = await detailRes.json();
-        if (detailData.place_results) {
-          // Faz merge dos dados, priorizando detalhes mais completos
-          rawPlace = { ...rawPlace, ...detailData.place_results };
-          console.log('✅ Detalhes do place mesclados');
+        const apifyUrl = `https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token=${apifyToken}`;
+        const apifyRes = await fetch(apifyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            searchStringsArray: [businessName],
+            maxCrawledPlacesPerSearch: 6,
+            language: 'pt-BR'
+          })
+        });
+        
+        if (apifyRes.ok) {
+          const items = await apifyRes.json();
+          if (items.length > 0) {
+            rawPlace = items[0];
+            rawResults = items;
+            console.log('✅ Dados obtidos via Apify!');
+          }
+        } else {
+          console.error('❌ Resposta inválida do Apify:', apifyRes.status);
         }
-      } catch (e) {
-        console.log('⚠️ Falha ao buscar detalhes do place, usando dados básicos');
+      } catch (err) {
+        console.error('❌ Falha ao buscar no Apify, usando fallback da SerpApi...', err);
       }
     }
 
-    // ── PASSO 4: Fallback – Google Search genérico ────────────────────────────
     if (!rawPlace) {
-      console.log('⚠️ Tentando Google Search genérico...');
-      const searchUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(businessName)}&api_key=${apiKey}&hl=pt&gl=br`;
-      const searchRes = await fetch(searchUrl);
-      const searchData = await searchRes.json();
-      rawPlace = searchData.knowledge_graph || searchData.local_results?.[0] || null;
-      rawResults = searchData.local_results || [];
+      console.log('🔍 Executando busca de fallback via SerpApi...');
+      // O parâmetro 'll' força a busca a acontecer naquela coordenada específica
+      const mapsUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(businessName)}${locationContext}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
+      const mapsRes = await fetch(mapsUrl);
+      const mapsData = await mapsRes.json();
+
+      console.log('📦 Maps result count:', mapsData.local_results?.length ?? 0);
+
+      if (mapsData.local_results?.length > 0) {
+        rawPlace = mapsData.local_results[0];
+        rawResults = mapsData.local_results;
+      }
+
+      // Fallback place_id
+      if (rawPlace?.place_id) {
+        console.log('🔎 Buscando detalhes via place_id:', rawPlace.place_id);
+        try {
+          const detailUrl = `https://serpapi.com/search.json?engine=google_maps&type=place&place_id=${rawPlace.place_id}&api_key=${apiKey}&hl=pt`;
+          const detailRes = await fetch(detailUrl);
+          const detailData = await detailRes.json();
+          if (detailData.place_results) {
+            rawPlace = { ...rawPlace, ...detailData.place_results };
+            console.log('✅ Detalhes do place mesclados');
+          }
+        } catch (e) {
+          console.log('⚠️ Falha ao buscar detalhes do place, usando dados básicos');
+        }
+      }
+
+      // Fallback Google Search
+      if (!rawPlace) {
+        console.log('⚠️ Tentando Google Search genérico...');
+        const searchUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(businessName)}&api_key=${apiKey}&hl=pt&gl=br`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        rawPlace = searchData.knowledge_graph || searchData.local_results?.[0] || null;
+        rawResults = searchData.local_results || [];
+      }
     }
 
     if (!rawPlace) {
@@ -269,6 +304,39 @@ export async function POST(req: Request) {
       },
     ];
 
+    // Se for Apify e possuir dados ricos, adiciona métricas premium automaticamente
+    const isApify = !!apifyToken && rawPlace.imagesCount !== undefined;
+    if (isApify) {
+      metrics.push({
+        label: 'Quantidade Total de Mídia',
+        status: rawPlace.imagesCount >= 30 ? 'bom' : rawPlace.imagesCount >= 10 ? 'razoável' : 'fraco',
+        value: `${rawPlace.imagesCount} fotos no perfil`,
+        icon: 'camera',
+      });
+      const verified = !rawPlace.claimThisBusiness;
+      metrics.push({
+        label: 'Ficha Verificada',
+        status: verified ? 'bom' : 'fraco',
+        value: verified ? 'Verificada pelo Google ✓' : 'Ficha não reivindicada / Não verificada ⚠️',
+        icon: 'check',
+      });
+      // Extrai e checa Q&A (Perguntas e Respostas)
+      const qaList = rawPlace.questionsAndAnswers || [];
+      const qaCount = qaList.length;
+      let unansweredQA = 0;
+      if (qaCount > 0) {
+        qaList.forEach((q: any) => {
+          if (!q.answer) unansweredQA++;
+        });
+      }
+      metrics.push({
+        label: 'Perguntas e Respostas (Q&A)',
+        status: qaCount === 0 ? 'razoável' : (unansweredQA === 0 ? 'bom' : 'fraco'),
+        value: qaCount > 0 ? `${qaCount} perguntas (${unansweredQA} sem resposta)` : 'Nenhuma pergunta registrada no perfil',
+        icon: 'message-square',
+      });
+    }
+
     // Gera oportunidades dinamicamente
     const opportunities: string[] = [];
     if (!n.phone) opportunities.push('Adicionar telefone ao perfil');
@@ -282,8 +350,8 @@ export async function POST(req: Request) {
 
     const competitors = rawResults.slice(1, 6).map((c: any) => ({
       name: c.title || c.name || '',
-      rating: Number(c.rating) || 0,
-      reviews: Number(c.reviews) || 0,
+      rating: Number(c.totalScore || c.rating) || 0,
+      reviews: Number(c.reviewsCount || c.reviews) || 0,
     }));
 
     return NextResponse.json({
@@ -301,6 +369,10 @@ export async function POST(req: Request) {
       metrics,
       competitors,
       opportunities,
+      // Dados geográficos extras
+      latitude: rawPlace.location?.lat || null,
+      longitude: rawPlace.location?.lng || null,
+      isApify,
     });
 
   } catch (error: any) {
