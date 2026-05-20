@@ -585,11 +585,14 @@ export default function Dashboard() {
     } catch (error) { console.error(error); } finally { setUploadingImage(false); }
   };
 
+  const [generatingAIPost, setGeneratingAIPost] = useState(false);
+
   const handleButtonTypeChange = (val: string) => {
     setButtonType(val);
     
-    if (val === 'LEARN_MORE' && selectedClient?.name) {
-      const clientName = selectedClient.name.toLowerCase();
+    const rawName = gbpData?.title || selectedClient?.name;
+    if (val === 'LEARN_MORE' && rawName) {
+      const clientName = rawName.toLowerCase();
       let wpp = '';
       
       if (clientName.includes('amor & patas')) wpp = 'https://wa.me/5534997622017';
@@ -601,6 +604,32 @@ export default function Dashboard() {
       if (wpp) {
         setButtonUrl(wpp);
       }
+    }
+  };
+
+  const handleGenerateAIPost = async (topic: string) => {
+    if (!topic || !gbpData) return;
+    setGeneratingAIPost(true);
+    try {
+      const res = await fetch('/api/ai/generate-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic,
+          businessName: gbpData.title,
+        })
+      });
+      const result = await res.json();
+      if (result.postText) {
+        setPostText(result.postText);
+      } else {
+        alert('Erro ao gerar postagem: ' + (result.error || 'A IA não retornou texto.'));
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Falha na comunicação com a API de IA.');
+    } finally {
+      setGeneratingAIPost(false);
     }
   };
 
@@ -619,6 +648,7 @@ export default function Dashboard() {
           status: 'pending'
         }]);
         alert('Agendado!');
+        fetchScheduledPosts(gbpData.locationId);
       } else {
         await fetch('/api/posts', {
           method: 'POST',
@@ -633,6 +663,18 @@ export default function Dashboard() {
       }
       setPostText(''); setImageUrl(''); setScheduledDate('');
     } catch(e) { console.error(e); }
+  };
+
+  const handleDeleteScheduledPost = async (id: string) => {
+    if (!confirm('Deseja realmente cancelar este agendamento?')) return;
+    try {
+      await supabase.from('scheduled_posts').delete().eq('id', id);
+      setScheduledPosts(prev => prev.filter((p: any) => p.id !== id));
+      alert('Agendamento cancelado!');
+    } catch(e) {
+      console.error(e);
+      alert('Erro ao cancelar agendamento.');
+    }
   };
 
   const getStrategicInsights = () => {
@@ -662,7 +704,7 @@ export default function Dashboard() {
       </div>
 
       <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex-col shrink-0 h-screen`}>
-        <div className="p-5 border-b border-gray-800">
+        <div className="p-5 pt-20 lg:pt-5 border-b border-gray-800">
           <h1 className="text-2xl font-black tracking-tighter mb-6 hidden lg:block text-white">GSC<span className="text-[#00ff9d] ml-1">Strategy</span></h1>
           <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
             <button onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
@@ -678,13 +720,17 @@ export default function Dashboard() {
                 const client = gscSites.find((c:any) => c.id === e.target.value);
                 if (client) handleSelectClient(client);
                 else { setSelectedClient(null); setData(null); }
+                setShowMobileMenu(false);
               }}
               className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
               <option value="">Selecionar GSC...</option>
               {gscSites.map((c:any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           ) : (
-            <select value={selectedGbp?.id || ''} onChange={(e) => handleSelectGbpProfile(gbpProfiles.find((p:any) => p.id === e.target.value))}
+            <select value={selectedGbp?.id || ''} onChange={(e) => {
+                handleSelectGbpProfile(gbpProfiles.find((p:any) => p.id === e.target.value));
+                setShowMobileMenu(false);
+              }}
               className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
               <option value="">Selecionar Maps...</option>
               {gbpProfiles.map((p:any) => (<option key={p.id} value={p.id}>{p.name}</option>))}
@@ -695,19 +741,19 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto p-4">
           {appMode === 'seo' && selectedClient && (
             <ul className="space-y-1 text-sm">
-              <li><button onClick={() => setActiveTab('seo-insights')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-insights' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>✨ Insights IA</button></li>
-              <li><button onClick={() => setActiveTab('seo-keywords')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-keywords' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📊 Palavras-chave</button></li>
-              <li><button onClick={() => setActiveTab('seo-pages')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-pages' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📄 Top Páginas</button></li>
-              <li><button onClick={() => setActiveTab('seo-opportunities')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-opportunities' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🎯 Oportunidades</button></li>
-              <li><button onClick={() => setActiveTab('client-config')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'client-config' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>⚙️ Configurações</button></li>
+              <li><button onClick={() => { setActiveTab('seo-insights'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-insights' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>✨ Insights IA</button></li>
+              <li><button onClick={() => { setActiveTab('seo-keywords'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-keywords' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📊 Palavras-chave</button></li>
+              <li><button onClick={() => { setActiveTab('seo-pages'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-pages' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📄 Top Páginas</button></li>
+              <li><button onClick={() => { setActiveTab('seo-opportunities'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'seo-opportunities' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🎯 Oportunidades</button></li>
+              <li><button onClick={() => { setActiveTab('client-config'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'client-config' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>⚙️ Configurações</button></li>
             </ul>
           )}
           {appMode === 'gbp' && selectedGbp && (
             <ul className="space-y-1 text-sm">
-              <li><button onClick={() => setActiveTab('gbp-dashboard')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🏪 Resumo Local</button></li>
-              <li><button onClick={() => setActiveTab('gbp-audit')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🛡️ Auditoria</button></li>
-              <li><button onClick={() => setActiveTab('gbp-rank')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Rank Tracker</button></li>
-              <li><button onClick={() => setActiveTab('gbp-reviews')} className={`w-full text-left px-3 py-2 rounded-md flex items-center justify-between ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>
+              <li><button onClick={() => { setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🏪 Resumo Local</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-audit'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🛡️ Auditoria</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-rank'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Rank Tracker</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-reviews'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md flex items-center justify-between ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>
                 <span>⭐ Avaliações</span>
                 {localReviews.filter((r: any) => !r.reviewReply).length > 0 && (
                   <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
@@ -715,16 +761,16 @@ export default function Dashboard() {
                   </span>
                 )}
               </button></li>
-              <li><button onClick={() => setActiveTab('gbp-posts')} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-posts'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
             </ul>
           )}
           
           {/* Botão Hostinger Global */}
           <div className="pt-4 mt-4 border-t border-gray-800">
-            <button onClick={() => setActiveTab('hostinger')} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all ${activeTab === 'hostinger' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+            <button onClick={() => { setActiveTab('hostinger'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all ${activeTab === 'hostinger' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
               🟣 Hostinger
             </button>
-            <button onClick={() => setActiveTab('prospecting')} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'prospecting' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+            <button onClick={() => { setActiveTab('prospecting'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'prospecting' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
               🔍 Prospecção
             </button>
           </div>
@@ -852,6 +898,9 @@ export default function Dashboard() {
                   buttonType={buttonType}
                   buttonUrl={buttonUrl}
                   scheduledDate={scheduledDate}
+                  generatingAIPost={generatingAIPost}
+                  gbpTitle={gbpData?.title}
+                  scheduledPosts={scheduledPosts}
                   setPostText={setPostText}
                   setImageUrl={setImageUrl}
                   setButtonType={handleButtonTypeChange}
@@ -859,6 +908,8 @@ export default function Dashboard() {
                   setScheduledDate={setScheduledDate}
                   handleImageUpload={handleImageUpload}
                   handlePost={handlePost}
+                  handleGenerateAIPost={handleGenerateAIPost}
+                  handleDeleteScheduledPost={handleDeleteScheduledPost}
                 />
               )}
             </div>
