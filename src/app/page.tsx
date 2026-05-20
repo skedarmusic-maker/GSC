@@ -748,14 +748,14 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
       
-      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-[#0d1117] sticky top-0 z-50">
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-[#0d1117] sticky top-0 z-50 print:hidden">
           <h1 className="text-lg font-black tracking-tighter" style={{ color: '#00ff9d' }}>GSC<span className="text-white">Strategy</span></h1>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
               {showMobileMenu ? '✕' : '☰'}
           </button>
       </div>
 
-      <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex-col shrink-0 h-screen`}>
+      <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex-col shrink-0 h-screen print:hidden`}>
         <div className="p-5 pt-20 lg:pt-5 border-b border-gray-800">
           <h1 className="text-2xl font-black tracking-tighter mb-6 hidden lg:block text-white">GSC<span className="text-[#00ff9d] ml-1">Strategy</span></h1>
           <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
@@ -829,8 +829,8 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="h-[64px] border-b border-gray-800 bg-[#0d1117] flex items-center justify-between px-8">
+      <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible">
+        <header className="h-[64px] border-b border-gray-800 bg-[#0d1117] flex items-center justify-between px-8 print:hidden">
           <span className="text-sm font-bold text-white">
             {appMode === 'seo' ? (selectedClient?.name || 'Dashboard') : (selectedGbp?.name || 'Dashboard')}
           </span>
@@ -855,7 +855,7 @@ export default function Dashboard() {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible print:bg-[#0d1117]">
           {appMode === 'seo' && selectedClient && (
             <div className="max-w-6xl mx-auto">
               {activeTab === 'seo-insights' && <TabSEOInsights data={data} getStrategicInsights={getStrategicInsights} />}
