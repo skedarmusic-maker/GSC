@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [buttonUrl, setButtonUrl] = useState(''); 
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   
   const [auditData, setAuditData] = useState<any>(null);
   const [loadingAudit, setLoadingAudit] = useState(false);
@@ -467,6 +468,15 @@ export default function Dashboard() {
     setConfigProjectFolder(client.projectFolder || '');
     setConfigStitchPrompt(client.stitchPrompt || '');
     setData(null);
+    
+    // Limpar campos de postagem ao trocar de cliente
+    setPostText('');
+    setImageUrl('');
+    setButtonType('NONE');
+    setButtonUrl('');
+    setScheduledDate('');
+    setEditingPostId(null);
+
     if (client.type !== 'GBP_ONLY') {
        setActiveTab('seo-insights');
        fetchData(client.gscUrl, days, client.gbpData);
@@ -481,6 +491,15 @@ export default function Dashboard() {
     
     setSelectedGbp(profile);
     setLoadingPerf(true);
+
+    // Limpar campos de postagem ao trocar de perfil GBP
+    setPostText('');
+    setImageUrl('');
+    setButtonType('NONE');
+    setButtonUrl('');
+    setScheduledDate('');
+    setEditingPostId(null);
+
     try {
       const accountId = profile.gbpData?.accountId || profile.accountId;
       const rawLocationId = profile.gbpData?.id || profile.id;
@@ -636,7 +655,19 @@ export default function Dashboard() {
   const handlePost = async () => {
     if (!postText || !gbpData) return;
     try {
-      if (scheduledDate) {
+      if (editingPostId) {
+        await supabase.from('scheduled_posts').update({
+          scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : new Date().toISOString(),
+          content: postText,
+          image_url: imageUrl,
+          button_type: buttonType,
+          button_url: buttonUrl,
+          status: 'pending'
+        }).eq('id', editingPostId);
+        alert('Agendamento atualizado!');
+        setEditingPostId(null);
+        fetchScheduledPosts(gbpData.locationId);
+      } else if (scheduledDate) {
         await supabase.from('scheduled_posts').insert([{
           scheduled_for: new Date(scheduledDate).toISOString(),
           content: postText,
@@ -661,8 +692,25 @@ export default function Dashboard() {
         });
         alert('Publicado!');
       }
-      setPostText(''); setImageUrl(''); setScheduledDate('');
+      setPostText(''); setImageUrl(''); setScheduledDate(''); setButtonType('NONE'); setButtonUrl('');
+      setEditingPostId(null);
     } catch(e) { console.error(e); }
+  };
+
+  const handleEditScheduledPost = (post: any) => {
+    setPostText(post.content || '');
+    setImageUrl(post.image_url || '');
+    setButtonType(post.button_type || 'NONE');
+    setButtonUrl(post.button_url || '');
+    if (post.scheduled_for) {
+      const d = new Date(post.scheduled_for);
+      const offset = d.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(d.getTime() - offset)).toISOString().slice(0, 16);
+      setScheduledDate(localISOTime);
+    } else {
+      setScheduledDate('');
+    }
+    setEditingPostId(post.id);
   };
 
   const handleDeleteScheduledPost = async (id: string) => {
@@ -670,6 +718,10 @@ export default function Dashboard() {
     try {
       await supabase.from('scheduled_posts').delete().eq('id', id);
       setScheduledPosts(prev => prev.filter((p: any) => p.id !== id));
+      if (editingPostId === id) {
+        setPostText(''); setImageUrl(''); setScheduledDate(''); setButtonType('NONE'); setButtonUrl('');
+        setEditingPostId(null);
+      }
       alert('Agendamento cancelado!');
     } catch(e) {
       console.error(e);
@@ -901,6 +953,7 @@ export default function Dashboard() {
                   generatingAIPost={generatingAIPost}
                   gbpTitle={gbpData?.title}
                   scheduledPosts={scheduledPosts}
+                  editingPostId={editingPostId}
                   setPostText={setPostText}
                   setImageUrl={setImageUrl}
                   setButtonType={handleButtonTypeChange}
@@ -910,6 +963,15 @@ export default function Dashboard() {
                   handlePost={handlePost}
                   handleGenerateAIPost={handleGenerateAIPost}
                   handleDeleteScheduledPost={handleDeleteScheduledPost}
+                  handleEditScheduledPost={handleEditScheduledPost}
+                  cancelEdit={() => {
+                    setPostText('');
+                    setImageUrl('');
+                    setButtonType('NONE');
+                    setButtonUrl('');
+                    setScheduledDate('');
+                    setEditingPostId(null);
+                  }}
                 />
               )}
             </div>

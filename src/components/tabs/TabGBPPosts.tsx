@@ -21,13 +21,17 @@ interface Props {
   handleGenerateAIPost?: (topic: string) => void;
   scheduledPosts?: any[];
   handleDeleteScheduledPost?: (id: string) => void;
+  editingPostId?: string | null;
+  handleEditScheduledPost?: (post: any) => void;
+  cancelEdit?: () => void;
 }
 
 export default function TabGBPPosts({
   postText, imageUrl, uploadingImage, buttonType, buttonUrl, scheduledDate,
-  generatingAIPost, gbpTitle, scheduledPosts,
+  generatingAIPost, gbpTitle, scheduledPosts, editingPostId,
   setPostText, setImageUrl, setButtonType, setButtonUrl, setScheduledDate,
-  handleImageUpload, handlePost, handleGenerateAIPost, handleDeleteScheduledPost
+  handleImageUpload, handlePost, handleGenerateAIPost, handleDeleteScheduledPost,
+  handleEditScheduledPost, cancelEdit
 }: Props) {
   const [aiPrompt, setAiPrompt] = useState('');
 
@@ -53,6 +57,21 @@ export default function TabGBPPosts({
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00ff9d] to-transparent opacity-50"></div>
         <div className="space-y-8 relative z-10">
           
+          {editingPostId && (
+            <div className="bg-[#ffbb00]/10 border border-[#ffbb00]/30 rounded-xl p-4 flex items-center justify-between animate-pulse">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📝</span>
+                <span className="text-xs font-bold text-[#ffbb00]">Editando agendamento ativo...</span>
+              </div>
+              <button 
+                onClick={cancelEdit}
+                className="text-[10px] text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 px-2.5 py-1.5 rounded-lg transition-colors font-bold uppercase tracking-wider"
+              >
+                Cancelar Edição
+              </button>
+            </div>
+          )}
+
           {/* Gerador de IA Section */}
           <div className="bg-[#11161d] rounded-xl p-6 border border-gray-800 shadow-inner">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
@@ -154,8 +173,8 @@ export default function TabGBPPosts({
               className="w-full md:w-64 bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00ff9d] font-medium cursor-pointer" />
           </div>
           <button onClick={handlePost} disabled={!postText}
-            className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (scheduledDate ? 'bg-[#ffbb00] text-gray-900 hover:bg-yellow-400 shadow-[0_0_15px_rgba(255,187,0,0.3)]' : 'bg-[#00ff9d] text-gray-900 shadow-[0_0_15px_rgba(0,255,157,0.3)]') : 'bg-[#161b22] text-gray-500 cursor-not-allowed shadow-none'}`}>
-            {scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
+            className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-sm transition-all shadow-lg ${postText ? (editingPostId ? 'bg-[#ffbb00] text-gray-900 hover:bg-yellow-400 shadow-[0_0_15px_rgba(255,187,0,0.3)]' : scheduledDate ? 'bg-[#ffbb00] text-gray-900 hover:bg-yellow-400 shadow-[0_0_15px_rgba(255,187,0,0.3)]' : 'bg-[#00ff9d] text-gray-900 shadow-[0_0_15px_rgba(0,255,157,0.3)]') : 'bg-[#161b22] text-gray-500 cursor-not-allowed shadow-none'}`}>
+            {editingPostId ? '💾 Salvar Alterações no Banco' : scheduledDate ? '🕒 Agendar no Banco de Dados' : '🚀 Publicar Imediatamente'}
           </button>
         </div>
       </div>
@@ -184,12 +203,20 @@ export default function TabGBPPosts({
                   <div className="text-[10px] text-gray-500 font-bold uppercase">
                     CTA: {post.button_type === 'NONE' ? 'Nenhum' : post.button_type}
                   </div>
-                  <button 
-                    onClick={() => handleDeleteScheduledPost && handleDeleteScheduledPost(post.id)}
-                    className="text-xs text-red-500 hover:text-red-400 font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20"
-                  >
-                    Cancelar Agendamento
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleEditScheduledPost && handleEditScheduledPost(post)}
+                      className="text-xs text-[#ffbb00] hover:text-[#ffbb00]/80 font-bold px-3 py-1.5 bg-[#ffbb00]/10 hover:bg-[#ffbb00]/20 rounded-lg transition-colors border border-[#ffbb00]/20"
+                    >
+                      Editar
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteScheduledPost && handleDeleteScheduledPost(post.id)}
+                      className="text-xs text-red-500 hover:text-red-400 font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/20"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
