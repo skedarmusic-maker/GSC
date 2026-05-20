@@ -387,6 +387,31 @@ export default function Dashboard() {
           if (result.stitchPrompt) setConfigStitchPrompt(result.stitchPrompt);
           const folderName = configLocalPath.split(/[\\/]/).pop() || '';
           setConfigProjectFolder(folderName);
+          
+          setSites(prev => prev.map(s => s.id === selectedClient.id ? { 
+            ...s, 
+            stitchPrompt: result.stitchPrompt,
+            projectFolder: folderName,
+            localPath: configLocalPath,
+            designContext: {
+              ...s.designContext,
+              layout: "Sincronizado",
+              designTokens: "Sincronizado",
+              homePage: "Sincronizado"
+            }
+          } : s));
+          setSelectedClient(prev => prev ? {
+            ...prev,
+            stitchPrompt: result.stitchPrompt,
+            projectFolder: folderName,
+            localPath: configLocalPath,
+            designContext: {
+              ...prev.designContext,
+              layout: "Sincronizado",
+              designTokens: "Sincronizado",
+              homePage: "Sincronizado"
+            }
+          } : null);
         } else {
           alert('Erro ao sincronizar: ' + result.error);
         }
@@ -410,6 +435,23 @@ export default function Dashboard() {
           alert('Design Manual Processado!');
           if (result.stitchPrompt) setConfigStitchPrompt(result.stitchPrompt);
           setManualDesignCode('');
+          
+          setSites(prev => prev.map(s => s.id === selectedClient.id ? { 
+            ...s, 
+            stitchPrompt: result.stitchPrompt,
+            designContext: {
+              ...s.designContext,
+              designTokens: manualDesignCode
+            }
+          } : s));
+          setSelectedClient(prev => prev ? {
+            ...prev,
+            stitchPrompt: result.stitchPrompt,
+            designContext: {
+              ...prev.designContext,
+              designTokens: manualDesignCode
+            }
+          } : null);
         } else {
           alert('Erro ao processar: ' + result.error);
         }
@@ -541,6 +583,25 @@ export default function Dashboard() {
       const { data } = supabase.storage.from('post_image').getPublicUrl(filePath);
       setImageUrl(data.publicUrl);
     } catch (error) { console.error(error); } finally { setUploadingImage(false); }
+  };
+
+  const handleButtonTypeChange = (val: string) => {
+    setButtonType(val);
+    
+    if (val === 'LEARN_MORE' && selectedClient?.name) {
+      const clientName = selectedClient.name.toLowerCase();
+      let wpp = '';
+      
+      if (clientName.includes('amor & patas')) wpp = 'https://wa.me/5534997622017';
+      else if (clientName.includes('chaveiro urgente')) wpp = 'https://wa.me/5516993499652';
+      else if (clientName.includes('pagani')) wpp = 'https://wa.me/554832495596';
+      else if (clientName.includes('simone')) wpp = 'https://wa.me/5511992299294';
+      else if (clientName.includes('soft english')) wpp = 'https://wa.me/5511958694687';
+      
+      if (wpp) {
+        setButtonUrl(wpp);
+      }
+    }
   };
 
   const handlePost = async () => {
@@ -793,7 +854,7 @@ export default function Dashboard() {
                   scheduledDate={scheduledDate}
                   setPostText={setPostText}
                   setImageUrl={setImageUrl}
-                  setButtonType={setButtonType}
+                  setButtonType={handleButtonTypeChange}
                   setButtonUrl={setButtonUrl}
                   setScheduledDate={setScheduledDate}
                   handleImageUpload={handleImageUpload}

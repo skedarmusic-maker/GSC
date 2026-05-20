@@ -25,6 +25,8 @@ export default function PreviewPage() {
   const params = useParams();
   const slug = params.slug as string;
   const [layoutHtml, setLayoutHtml] = useState<string | null>(null);
+  const [cssContent, setCssContent] = useState<string>('');
+  const [tailwindConfig, setTailwindConfig] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,7 @@ export default function PreviewPage() {
       try {
         const { data: opps, error: fetchError } = await supabase
           .from('oportunidades_seo')
-          .select('*');
+          .select('*, clients(*)');
 
         if (fetchError) throw fetchError;
 
@@ -59,7 +61,49 @@ export default function PreviewPage() {
           if (curlyMatch) cleanHtml = curlyMatch[1];
         }
 
-        // 2. COMPILADOR INTELIGENTE DE TSX PARA HTML ESTÁTICO:
+        // 2. Extrair tokens de design e CSS do cliente
+        let extractedCss = '';
+        let tailwindColors: any = {
+          background: 'var(--background)',
+          foreground: 'var(--foreground)',
+          card: 'var(--card)',
+          border: 'var(--border)',
+          primary: 'var(--primary)',
+        };
+
+        if (matchedOpp.clients?.design_context?.designTokens) {
+          const tokens = matchedOpp.clients.design_context.designTokens;
+          
+          // Extrair GLOBALS CSS
+          const cssMatch = tokens.match(/--- GLOBALS CSS ---([\s\S]*?)(?:---|$)/);
+          if (cssMatch) {
+            extractedCss = cssMatch[1].trim();
+          } else if (!tokens.includes('---')) {
+            extractedCss = tokens;
+          }
+
+          // Extrair cores do Tailwind Config
+          const colorsMatch = tokens.match(/colors:\s*\{([\s\S]*?)\}/);
+          if (colorsMatch) {
+            try {
+              const colorsText = colorsMatch[1];
+              const colorLines = colorsText.split('\n');
+              colorLines.forEach((line: string) => {
+                const parts = line.match(/['"]?([a-zA-Z0-9_-]+)['"]?\s*:\s*['"]?([^'"]+)['"]?/);
+                if (parts && parts[1] && parts[2]) {
+                  tailwindColors[parts[1]] = parts[2];
+                }
+              });
+            } catch (e) {
+              console.error('Erro ao processar cores:', e);
+            }
+          }
+        }
+
+        setCssContent(extractedCss);
+        setTailwindConfig(`tailwind.config = { theme: { extend: { colors: ${JSON.stringify(tailwindColors)} } } };`);
+
+        // 3. COMPILADOR INTELIGENTE DE TSX PARA HTML ESTÁTICO:
         
         // A. Remover todos os comentários multilistas e de React {/* ... */}
         cleanHtml = cleanHtml.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
@@ -86,25 +130,55 @@ export default function PreviewPage() {
         // F. Compilador de Ícones: Traduzir tags Lucide auto-fechadas (como <Phone className="..." />) para SVGs
         Object.keys(iconSvgMap).forEach(iconName => {
           const svgString = iconSvgMap[iconName];
-          // Procura tags auto-fechadas: <IconName className="..." />
           const regexStr = `<${iconName}\\s+className="([^"]*)"\\s*\\/>`;
           const regex = new RegExp(regexStr, 'gi');
           
           cleanHtml = cleanHtml.replace(regex, (match, classes) => {
-            // Injeta o SVG substituindo o class padrão pelo class contido no componente
             return svgString.replace('class="lucide', `class="${classes} lucide`);
           });
         });
 
         // Caso haja chaves de estilo inline {style={{...}}}
         cleanHtml = cleanHtml.replace(/style=\{\{\s*([\s\S]*?)\s*\}\}/g, (match, styleBody) => {
-          // Converte estilo camelCase para Kebab-case
           const styleCss = styleBody
             .replace(/([A-Z])/g, '-$1').toLowerCase()
             .replace(/["']/g, '')
             .replace(/,/g, ';');
           return `style="${styleCss}"`;
         });
+
+        // G. Mock de Componentes: Injetar Navbar/Footer simulando a identidade real do cliente se referenciados
+        const clientName = matchedOpp.clients?.name || 'Cliente';
+        const currentYear = new Date().getFullYear().toString();
+
+        const mockHeader = `
+          <header class="w-full bg-[#080808]/80 backdrop-blur-md border-b border-white/10 px-8 py-4 flex items-center justify-between sticky top-0 z-50">
+            <div class="flex items-center gap-2">
+              <span class="text-[var(--primary,#00ff9d)] text-lg font-black tracking-tighter uppercase">${clientName}</span>
+            </div>
+            <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-400">
+              <a href="#" class="hover:text-white transition-colors">Início</a>
+              <a href="#" class="hover:text-white transition-colors">Serviços</a>
+              <a href="#" class="hover:text-white transition-colors">Sobre</a>
+              <a href="#" class="hover:text-white transition-colors">Contato</a>
+            </nav>
+            <button class="bg-[var(--primary,#00ff9d)] text-black font-bold px-4 py-2 rounded-lg text-xs hover:opacity-90 transition-all">
+              Falar com Consultor
+            </button>
+          </header>
+        `;
+
+        const mockFooter = `
+          <footer class="w-full bg-[#080808] border-t border-white/10 px-8 py-12 mt-12">
+            <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+              <span class="text-[var(--primary,#00ff9d)] text-lg font-black tracking-tighter uppercase">${clientName}</span>
+              <p class="text-xs text-gray-500 font-medium">© ${currentYear} ${clientName}. Todos os direitos reservados.</p>
+            </div>
+          </footer>
+        `;
+
+        cleanHtml = cleanHtml.replace(/<Navbar\s*\/?>|<Navbar>[\s\S]*?<\/Navbar>|<Header\s*\/?>|<Header>[\s\S]*?<\/Header>/gi, mockHeader);
+        cleanHtml = cleanHtml.replace(/<Footer\s*\/?>|<Footer>[\s\S]*?<\/Footer>/gi, mockFooter);
 
         setLayoutHtml(cleanHtml);
       } catch (err: any) {
@@ -140,9 +214,12 @@ export default function PreviewPage() {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      {cssContent && <style dangerouslySetInnerHTML={{ __html: cssContent }} />}
+      {tailwindConfig && <script dangerouslySetInnerHTML={{ __html: tailwindConfig }} />}
       <script src="https://cdn.tailwindcss.com" async></script>
       <div 
-        className="min-h-screen w-full bg-black text-white font-sans antialiased"
+        className="min-h-screen w-full font-sans antialiased"
+        style={{ backgroundColor: 'var(--background, #000000)', color: 'var(--foreground, #ffffff)' }}
         dangerouslySetInnerHTML={{ __html: layoutHtml || '' }} 
       />
     </>

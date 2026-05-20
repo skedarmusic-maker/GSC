@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     // 1. Tentar ler os arquivos de design do projeto
     let designContext = manualCode || "";
     let layoutContent = "";
+    let homeContent = "";
 
     if (!designContext && normalizedPath) {
       // Possíveis locais do Tailwind
@@ -31,7 +32,11 @@ export async function POST(req: Request) {
         path.join(normalizedPath, 'tailwind.config.ts'),
         path.join(normalizedPath, 'tailwind.config.js'),
         path.join(normalizedPath, 'tailwind.config.mjs'),
-        path.join(normalizedPath, 'tailwind.config.cjs')
+        path.join(normalizedPath, 'tailwind.config.cjs'),
+        path.join(normalizedPath, 'website', 'tailwind.config.ts'),
+        path.join(normalizedPath, 'website', 'tailwind.config.js'),
+        path.join(normalizedPath, 'website', 'tailwind.config.mjs'),
+        path.join(normalizedPath, 'website', 'tailwind.config.cjs')
       ];
 
       // Possíveis locais do CSS
@@ -40,7 +45,12 @@ export async function POST(req: Request) {
         path.join(normalizedPath, 'src', 'globals.css'),
         path.join(normalizedPath, 'globals.css'),
         path.join(normalizedPath, 'src', 'index.css'),
-        path.join(normalizedPath, 'index.css')
+        path.join(normalizedPath, 'index.css'),
+        path.join(normalizedPath, 'website', 'src', 'app', 'globals.css'),
+        path.join(normalizedPath, 'website', 'src', 'globals.css'),
+        path.join(normalizedPath, 'website', 'globals.css'),
+        path.join(normalizedPath, 'website', 'src', 'index.css'),
+        path.join(normalizedPath, 'website', 'index.css')
       ];
 
       const layoutVariants = [
@@ -48,6 +58,13 @@ export async function POST(req: Request) {
         path.join(normalizedPath, 'app', 'layout.tsx'),
         path.join(normalizedPath, 'website', 'src', 'app', 'layout.tsx'),
         path.join(normalizedPath, 'website', 'app', 'layout.tsx')
+      ];
+
+      const homePageVariants = [
+        path.join(normalizedPath, 'src', 'app', 'page.tsx'),
+        path.join(normalizedPath, 'app', 'page.tsx'),
+        path.join(normalizedPath, 'website', 'src', 'app', 'page.tsx'),
+        path.join(normalizedPath, 'website', 'app', 'page.tsx')
       ];
 
       for (const p of tailwindVariants) {
@@ -71,10 +88,17 @@ export async function POST(req: Request) {
         }
       }
 
-      if (!designContext && !layoutContent) {
+      for (const p of homePageVariants) {
+        if (fs.existsSync(p)) {
+          homeContent = fs.readFileSync(p, 'utf8');
+          break;
+        }
+      }
+
+      if (!designContext && !layoutContent && !homeContent) {
         console.error('❌ Arquivos não encontrados em:', normalizedPath);
         return NextResponse.json({
-          error: 'Não foi possível encontrar arquivos de design ou layout. Verifique se o caminho está correto e se você está rodando o sistema LOCALMENTE (localhost:3000).'
+          error: 'Não foi possível encontrar arquivos de design, layout ou página inicial. Verifique se o caminho está correto e se você está rodando o sistema LOCALMENTE (localhost:3000).'
         }, { status: 404 });
       }
     }
@@ -110,7 +134,8 @@ ${designContext.substring(0, 10000)}`;
         project_folder: normalizedPath ? path.basename(normalizedPath) : 'Manual',
         design_context: {
           layout: layoutContent,
-          designTokens: designContext
+          designTokens: designContext,
+          homePage: homeContent
         }
       })
       .eq('id', clientId);

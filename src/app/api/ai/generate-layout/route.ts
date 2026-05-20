@@ -50,12 +50,12 @@ export async function POST(request: Request) {
     const localPath = client?.local_path || client?.localPath;
     const stitchPrompt = client?.stitch_prompt || client?.design_context?.stitch_prompt || '';
     const businessContext = client?.business_context || '';
-
     // 2. Obter código do layout e design
     // 2A. Primeiro tenta usar os dados salvos no banco (ideal para quando estiver rodando na Vercel)
     let layoutCode = client?.design_context?.layout || '';
     let designTokens = client?.design_context?.designTokens || '';
-    let hasLocalFiles = !!layoutCode;
+    let homeCode = client?.design_context?.homePage || '';
+    let hasLocalFiles = !!layoutCode || !!homeCode;
 
     // 2B. Se o banco estiver vazio, tenta ler os arquivos reais do projeto (se rodando em localhost:3000)
     if (!hasLocalFiles && localPath && fs.existsSync(localPath)) {
@@ -72,11 +72,26 @@ export async function POST(request: Request) {
         hasLocalFiles = true;
       }
 
+      // Tentar ler a page.tsx da Home para ver se Navbar/Footer estão importados nela
+      const homeContent = tryReadFile([
+        path.join(localPath, 'src', 'app', 'page.tsx'),
+        path.join(localPath, 'app', 'page.tsx'),
+        path.join(localPath, 'website', 'src', 'app', 'page.tsx'),
+        path.join(localPath, 'website', 'app', 'page.tsx'),
+      ], 8000);
+
+      if (homeContent) {
+        homeCode = homeContent;
+        hasLocalFiles = true;
+      }
+
       // Tentar ler globals.css para variáveis de cor e fonte
       const globalsCss = tryReadFile([
         path.join(localPath, 'src', 'app', 'globals.css'),
         path.join(localPath, 'app', 'globals.css'),
         path.join(localPath, 'website', 'src', 'app', 'globals.css'),
+        path.join(localPath, 'website', 'src', 'globals.css'),
+        path.join(localPath, 'website', 'globals.css'),
       ], 3000);
 
       // Tentar ler tailwind.config para tokens de design
@@ -93,18 +108,31 @@ export async function POST(request: Request) {
     // 3. Montar o prompt contextualizado para o Gemini
     const layoutSection = hasLocalFiles
       ? `
-CÓDIGO DO LAYOUT ATUAL DO SITE (layout.tsx REAL do projeto):
+${layoutCode ? `CÓDIGO DO LAYOUT ATUAL DO SITE (layout.tsx REAL do projeto):
 \`\`\`tsx
 ${layoutCode}
 \`\`\`
+` : ''}
+
+${homeCode ? `CÓDIGO DA PÁGINA INICIAL DO SITE (page.tsx REAL do projeto):
+\`\`\`tsx
+${homeCode}
+\`\`\`
+` : ''}
 
 ⚠️ REGRA CRÍTICA DE IDENTIDADE VISUAL:
-Analise o código layout.tsx acima com atenção máxima.
-- Identifique EXATAMENTE quais componentes de Header/Navbar e Footer o site usa (ex: <Header />, <Navbar />, <Footer />, etc.)
-- Copie os imports exatos desses componentes para a nova página.
+Analise o código layout.tsx e o código page.tsx acima com atenção máxima.
+- Identifique EXATAMENTE quais componentes de Header/Navbar e Footer o site usa (ex: import { Navbar } from "@/components/Navbar", import { Footer } from "@/components/Footer", etc.)
+- Os componentes de Header e Footer do site podem estar no layout.tsx ou diretamente na page.tsx da Home. 
+- Copie os imports exatos desses componentes de Navbar, Header e Footer para a nova página.
 - A nova página DEVE usar os mesmos componentes de Header e Footer que já existem no projeto.
 - NÃO invente, NÃO crie novos headers ou footers, NÃO modifique o logo.
 - O usuário vai comparar a nova página com o site original, então Header e Footer devem ser IDÊNTICOS.
+
+⚠️ ALERTA CONTRA DUPLICAÇÃO DE CONTEÚDO DA HOME:
+- NÃO CLONE ou duplique as seções internas de corpo da página inicial (como a lista de serviços da Home, depoimentos da Home, etc.).
+- A page.tsx da Home serve APENAS para você entender a paleta de cores (Tailwind), o espaçamento dos contêineres, as classes de tipografia e os imports de Navbar/Footer.
+- Você DEVE descartar as seções de conteúdo do corpo da Home e criar um layout de conteúdo corporativo TOTALMENTE NOVO e focado na palavra-chave "${opp.keyword}".
 `
       : `
 ⚠️ ATENÇÃO: O caminho local do projeto não foi encontrado ou não foi configurado.
@@ -141,7 +169,7 @@ Sua tarefa é criar uma nova página (page.tsx) para o site do cliente "${client
 
 PALAVRA-CHAVE FOCO DA PÁGINA: "${opp.keyword}"
 
-TEXTO/COPY DA PÁGINA (USE ESTE CONTEÚDO NA ÍNTEGRA, esta é a razão da página existir):
+TEXTO/COPY DA PÁGINA (USE ESTE CONTEÚDO NA ÍNTEGRA, esta é a razão de ser da página):
 ---
 ${opp.content_draft}
 ---
@@ -156,9 +184,9 @@ REGRAS OBRIGATÓRIAS DE DESENVOLVIMENTO:
 3. Exporte a função como: export default function Page() { ... }
 4. Inclua metadados SEO: export const metadata = { title: "...", description: "..." } usando a palavra-chave "${opp.keyword}" no título e na descrição.
 5. Use Tailwind CSS para toda estilização.
-6. ${hasLocalFiles ? 'OBRIGATÓRIO: Importe e renderize o Header/Navbar e Footer do projeto exatamente como estão no layout.tsx acima.' : 'Crie um header e footer seguindo o manual da marca.'}
-7. O conteúdo principal deve incluir FIELMENTE o texto fornecido na seção "TEXTO/COPY DA PÁGINA".
-8. Estruture o conteúdo visualmente em: (1) Hero com o título da palavra-chave, (2) Seções do conteúdo, (3) CTA final de contato ou serviço.
+6. ${hasLocalFiles ? 'OBRIGATÓRIO: Importe e renderize o Header/Navbar e Footer do projeto exatamente como estão no layout.tsx ou page.tsx acima.' : 'Crie um header e footer seguindo o manual da marca.'}
+7. O corpo principal da página DEVE incluir de forma INTEGRAL e FIEL o texto fornecido em "TEXTO/COPY DA PÁGINA". Não resuma, não encurte e não invente substitutos.
+8. Diagramação Premium: Organize o texto da cópia fornecida em seções bem espaçadas e limpas: (1) Hero impactante com a palavra-chave, (2) Seções de leitura/artigo com títulos chamativos, listas estéticas, blocos com ícones SVG nativos/Lucide e cartões com fundo sutil para destacar ideias, (3) Seção final de FAQ/Dúvidas Frequentes se houver no texto, (4) CTA (Chamada para Ação) final ligada a um botão de contato.
 9. NÃO use imagens externas. Use fundos coloridos com Tailwind ou SVGs inline simples se necessário.
 10. O código deve compilar sem erros em um projeto Next.js 14 com Tailwind CSS.`;
 
