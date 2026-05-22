@@ -52,14 +52,30 @@ export default function PreviewPage() {
         let rawCode = matchedOpp.layout_draft;
 
         // 1. Extrair cirurgicamente apenas o bloco de conteúdo interno do return principal
-        const returnMatch = rawCode.match(/return \(([\s\S]*)\);/);
-        let cleanHtml = returnMatch ? returnMatch[1] : rawCode;
+        let cleanHtml = rawCode;
+        
+        // Tenta encontrar a declaração do componente principal exportado
+        const mainComp = rawCode.match(/export\s+default\s+function\s+\w+\s*\([^)]*\)\s*\{([\s\S]+)/);
+        let searchBlock = mainComp ? mainComp[1] : rawCode;
 
-        // Se por acaso o match falhar por não ter parênteses no return, tenta extrair pelo return {}
-        if (!returnMatch) {
-          const curlyMatch = rawCode.match(/return \{([\s\S]*)\};/);
-          if (curlyMatch) cleanHtml = curlyMatch[1];
+        // Procura a palavra return seguida de parêntese (que costuma ser o render principal)
+        // Pegaremos do último 'return (' até o final para evitar pegar returns de early returns
+        const returns = [...searchBlock.matchAll(/return\s*\(/g)];
+        if (returns.length > 0) {
+          const lastReturn = returns[returns.length - 1];
+          const startIndex = lastReturn.index! + lastReturn[0].length;
+          // Pega tudo a partir dali e remove o fechamento final `); }`
+          let content = searchBlock.substring(startIndex);
+          content = content.replace(/\);?\s*\}?\s*$/m, '');
+          cleanHtml = content;
+        } else {
+          // Se não usou return (, tenta return genérico
+          const fb = searchBlock.match(/return\s+([\s\S]+?)(?:;|\})\s*$/);
+          if (fb) cleanHtml = fb[1];
         }
+
+        // Remove resquícios de componentes auxiliares que possam ter ficado no final do arquivo
+        cleanHtml = cleanHtml.replace(/\}\s*(?:export\s+)?(?:const|function)\s+\w+[\s\S]*/, '');
 
         // 2. Extrair tokens de design e CSS do cliente
         let extractedCss = '';

@@ -158,7 +158,7 @@ export default function TabSEOOpportunities({
                     </button>
                   </div>
                   
-                  <div className="flex-1 bg-[#0d1117] rounded-xl overflow-hidden border border-gray-700 min-h-[400px] flex flex-col">
+                  <div className="flex-1 bg-[#0d1117] rounded-xl overflow-hidden border border-gray-700 min-h-[400px] flex flex-col relative">
                     <div className="p-3 bg-[#161b22] border-b border-gray-700 flex items-center gap-2 shrink-0">
                       <span className="w-3 h-3 rounded-full bg-red-500"></span>
                       <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
@@ -169,9 +169,17 @@ export default function TabSEOOpportunities({
                           : 'pagina'}/page.tsx
                       </span>
                     </div>
-                    <pre className="flex-1 p-4 text-xs text-green-400 font-mono overflow-auto whitespace-pre-wrap leading-relaxed">
-                      {viewingDraft.layout_draft || 'Aguardando geração do layout...'}
-                    </pre>
+                    {viewingDraft.layout_draft ? (
+                      <iframe 
+                        src={`/preview/${viewingDraft.keyword ? viewingDraft.keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : viewingDraft.id}`}
+                        className="flex-1 w-full bg-white h-full border-none"
+                        title="Preview do Layout"
+                      />
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center p-8 text-center text-gray-500 text-sm">
+                        Aguardando geração do layout...
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
