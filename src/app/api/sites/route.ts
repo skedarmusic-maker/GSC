@@ -90,7 +90,7 @@ export async function GET() {
     const formattedList = dbClients?.map(client => ({
       id: client.id, 
       name: client.name,
-      type: client.gsc_url && client.gbp_location_id ? 'HYBRID' : client.gbp_location_id ? 'GBP_ONLY' : 'GSC_ONLY',
+      type: client.gsc_url && client.gbp_location_id ? 'HYBRID' : client.gbp_location_id ? 'GBP_ONLY' : client.gsc_url ? 'GSC_ONLY' : 'PROSPECT',
       gscUrl: client.gsc_url,
       gbpData: client.gbp_location_id ? {
         id: `locations/${client.gbp_location_id}`,
@@ -236,7 +236,7 @@ Retorne estritamente um objeto JSON válido, sem cercas de markdown (\`\`\`json 
     const formatted = {
       id: client.id, 
       name: client.name,
-      type: 'GBP_ONLY',
+      type: 'PROSPECT',
       gscUrl: null,
       gbpData: null,
       localPath: null,

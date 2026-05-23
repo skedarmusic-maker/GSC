@@ -745,8 +745,8 @@ export default function Dashboard() {
     if (activeTab === 'seo-opportunities' && selectedClient?.id) fetchOpportunities(selectedClient.id);
   }, [activeTab, selectedClient]);
 
-  const gscSites = sites.filter((s: any) => s.type === 'GSC_ONLY' || s.type === 'HYBRID');
-  const gbpProfiles = sites.filter((s: any) => s.gbpData || s.type === 'GBP_ONLY');
+  const gscSites = sites.filter((s: any) => !!s.gscUrl && s.type !== 'PROSPECT');
+  const gbpProfiles = sites.filter((s: any) => !!s.gbpData && s.type !== 'PROSPECT');
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
