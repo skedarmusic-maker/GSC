@@ -14,7 +14,9 @@ Você sabia que o perfil no Google da sua empresa pode estar te fazendo perder c
 
 Eu faço otimização de perfis no Google e ofereço um relatório gratuito mostrando como sua empresa aparece hoje e o que pode ser melhorado para atrair mais clientes da sua região.
 
-Quer que eu envie um relatório igual ao modelo da foto acima? É rápido e sem compromisso. Só responder aqui com um “quero” 👍`;
+Aqui esta um relatório previo de como esta a saude da sua empresa no google e uma analise de ranking que mostra a sua posição em comparação com seus concorrentes.
+
+pode conferir o PDF e fico a disposição para conversar e te ajudar a conseguir mais clientes e não perder dinheiro para seus concocrrentes. 👍`;
 
 const getFormattedFocusMsg = (businessName: string) => {
   return FOCUS_DEFAULT_MSG.replace('[NOME_EMPRESA]', (businessName || '').toUpperCase());
@@ -114,8 +116,6 @@ export default function TabProspecting() {
   const [importedLeads, setImportedLeads] = useState<Record<string, boolean>>({});
 
   // Novos estados para a experiência de conversão HSL
-  const [activeZapPopup, setActiveZapPopup] = useState<string | null>(null);
-  const [activeCopyPopup, setActiveCopyPopup] = useState<string | null>(null);
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
   const [isBlurMode, setIsBlurMode] = useState(false);
   const [loadingDiagnostico, setLoadingDiagnostico] = useState<Record<string, boolean>>({});
@@ -223,9 +223,21 @@ export default function TabProspecting() {
     }
   };
 
-  const handleGenerateDemandReport = async (lead: any) => {
+  const handleGenerateDemandReport = async (lead: any, autoBlur = false) => {
     setLoadingDiagnostico(prev => ({ ...prev, [lead.id]: true }));
     setError(null);
+
+    // Concorrentes do batch sempre disponíveis como fallback confiável
+    const batchCompetitors = leads
+      .filter((l) => l.name.toLowerCase() !== lead.name.toLowerCase())
+      .map((l) => ({
+        name: l.name,
+        rating: Number(l.rating) || 0,
+        reviews: Number(l.reviews) || 0,
+      }))
+      .sort((a, b) => b.reviews - a.reviews)
+      .slice(0, 5);
+
     try {
       const searchQuery = lead.address ? `${lead.name}, ${lead.address}` : lead.name;
       const res = await fetch('/api/prospecting', {
@@ -237,61 +249,56 @@ export default function TabProspecting() {
       if (!res.ok || data.error) {
         throw new Error(data.error || 'Erro ao gerar o diagnóstico.');
       }
-      
-      // Armazena as mensagens de IA geradas sob demanda no estado local do lote
+
+      // Salva mensagens de IA sob demanda para uso em WhatsApp/Copiar
       if (data.aiRecommendation) {
         setAiRecs((prev: any) => ({
           ...prev,
-          whatsappMessages: {
-            ...prev.whatsappMessages,
-            [lead.name]: data.aiRecommendation
-          }
+          whatsappMessages: { ...prev.whatsappMessages, [lead.name]: data.aiRecommendation }
         }));
       }
 
-      // Mapeia concorrentes a partir do lote como fallback secundário caso a API individual não retorne concorrentes
-      const batchCompetitors = leads
-        .filter((l) => l.name.toLowerCase() !== lead.name.toLowerCase())
-        .map((l) => ({
-          name: l.name,
-          rating: Number(l.rating) || 0,
-          reviews: Number(l.reviews) || 0,
-        }))
-        .sort((a, b) => b.reviews - a.reviews)
-        .slice(0, 5);
-
-      // Preenche o estado global do relatório para visualização detalhada e download imediato
-      setReport({
-        name: data.name,
-        address: data.address,
-        score: data.score,
-        rating: data.rating,
-        reviews: data.reviews,
-        website: data.website,
-        websiteStatus: data.websiteStatus,
-        phone: data.phone,
-        category: data.category,
-        thumbnail: data.thumbnail,
-        opportunities: data.opportunities,
-        metrics: data.metrics || [],
-        competitors: data.competitors && data.competitors.length > 0 ? data.competitors : (batchCompetitors.length > 0 ? batchCompetitors : []),
-        aiRecommendation: data.aiRecommendation
+      // ─── FONTE DE VERDADE: dados do batch são invioláveis ─────────────────────
+      // A API individual pode retornar outro estabelecimento homônimo.
+      // Usamos APENAS métricas extras + aiRecommendation da API — nunca nome/score/website/phone.
+      const fixedMetrics = (data.metrics || []).map((m: any) => {
+        // Corrige a métrica de Website para sempre refletir o lead real
+        if (m.label === 'Website') {
+          const ws = lead.websiteStatus;
+          return {
+            ...m,
+            status: ws,
+            value: ws === 'bom' ? 'Site próprio ✓'
+                 : lead.website ? `Rede social como site ⚠️`
+                 : 'Não encontrado',
+            detail: lead.website || '',
+          };
+        }
+        return m;
       });
 
-      // Alterna para a aba individual para exibir o diagnóstico rico
+      setReport({
+        ...lead,                                          // dados confiáveis do batch
+        opportunities: data.opportunities || lead.opportunities,
+        metrics: fixedMetrics,
+        competitors: data.competitors?.length > 0 ? data.competitors : batchCompetitors,
+        aiRecommendation: data.aiRecommendation,
+      });
+
+      setIsBlurMode(autoBlur);
       setActiveSubTab('individual');
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (err: any) {
-      alert('Erro ao gerar diagnóstico detalhado: ' + err.message + '\nCarregando versão simplificada local...');
-      // Fallback para carregamento rápido local simplificado se a API falhar
-      handleLoadLeadToReport(lead);
+      // Fallback silencioso: usa dados locais do batch (100% confiável)
+      handleLoadLeadToReport(lead, batchCompetitors);
+      setIsBlurMode(autoBlur);
     } finally {
       setLoadingDiagnostico(prev => ({ ...prev, [lead.id]: false }));
     }
   };
 
-  const handleLoadLeadToReport = (lead: any) => {
+  const handleLoadLeadToReport = (lead: any, preComputedCompetitors?: any[]) => {
     // Mapeamento dinâmico local de métricas para visualização detalhada e download imediato de PDF
     const metrics = [
       {
@@ -306,8 +313,8 @@ export default function TabProspecting() {
       },
       {
         label: 'Website',
-        status: lead.websiteStatus === 'bom' ? 'bom' : 'fraco',
-        value: lead.websiteStatus === 'bom' ? 'Site próprio ✓' : lead.websiteStatus === 'razoável' ? 'Rede social ⚠️' : 'Sem website'
+        status: lead.websiteStatus === 'bom' ? 'bom' : lead.websiteStatus === 'razoável' ? 'razoável' : 'fraco',
+        value: lead.websiteStatus === 'bom' ? 'Site próprio ✓' : lead.website ? 'Rede social ⚠️' : 'Sem website'
       },
       {
         label: 'Telefone',
@@ -331,8 +338,8 @@ export default function TabProspecting() {
       }
     ];
 
-    // Identificar concorrentes a partir da lista de leads atual da busca em lote
-    const batchCompetitors = leads
+    // Usa concorrentes pré-computados ou calcula a partir do lote atual
+    const competitors = preComputedCompetitors ?? leads
       .filter((l) => l.name.toLowerCase() !== lead.name.toLowerCase())
       .map((l) => ({
         name: l.name,
@@ -343,19 +350,9 @@ export default function TabProspecting() {
       .slice(0, 5);
 
     setReport({
-      name: lead.name,
-      address: lead.address,
-      score: lead.score,
-      rating: lead.rating,
-      reviews: lead.reviews,
-      website: lead.website,
-      websiteStatus: lead.websiteStatus,
-      phone: lead.phone,
-      category: lead.category,
-      thumbnail: lead.thumbnail,
-      opportunities: lead.opportunities,
+      ...lead,
       metrics,
-      competitors: batchCompetitors.length > 0 ? batchCompetitors : (lead.competitors || [])
+      competitors: competitors.length > 0 ? competitors : (lead.competitors || [])
     });
 
     setActiveSubTab('individual');
@@ -662,163 +659,38 @@ export default function TabProspecting() {
                             <div className="flex gap-2">
                               {/* Auditar completo */}
                               <button
-                                onClick={() => handleGenerateDemandReport(matchedLead)}
+                                onClick={() => handleGenerateDemandReport(matchedLead, false)}
                                 disabled={loadingDiagnostico[matchedLead.id]}
                                 title="Fazer auditoria completa"
-                                className="flex-1 bg-[#00ff9d] hover:bg-[#02e08a] disabled:opacity-50 text-black p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all shadow-[0_0_10px_rgba(0,255,157,0.2)]"
+                                className="flex-1 bg-[#161b22] border border-gray-800 hover:border-gray-700 text-white disabled:opacity-50 p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all"
                               >
                                 {loadingDiagnostico[matchedLead.id] ? (
-                                  <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                 ) : (
                                   <Eye size={12} />
                                 )}
-                                {loadingDiagnostico[matchedLead.id] ? 'Analisando...' : '🔍 Gerar Diagnóstico'}
+                                {loadingDiagnostico[matchedLead.id] ? 'Analisando...' : 'Diagnóstico'}
                               </button>
 
-                              {/* WhatsApp / Comercial */}
-                              {matchedLead.phone ? (
-                                <div className="relative">
-                                  <button
-                                    onClick={() => setActiveZapPopup(activeZapPopup === matchedLead.id ? null : matchedLead.id)}
-                                    title="Escolher abordagem no WhatsApp"
-                                    className="bg-green-500 hover:bg-green-600 text-black p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all"
-                                  >
-                                    <MessageSquare size={12} />
-                                    Vender
-                                  </button>
-
-                                  {activeZapPopup === matchedLead.id && (
-                                    <div className="absolute right-0 bottom-full mb-2 bg-[#0d1117] border border-gray-800 rounded-xl p-2.5 shadow-2xl z-50 min-w-[220px] flex flex-col gap-1.5 text-left">
-                                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider px-2 py-1 border-b border-gray-800 mb-1 flex items-center justify-between">
-                                        <span>Abordagem WhatsApp</span>
-                                        <button onClick={() => setActiveZapPopup(null)} className="text-gray-400 hover:text-white">✕</button>
-                                      </div>
-                                      
-                                      {/* 1. Modelo Focus (Sempre disponível) */}
-                                      <a
-                                        href={getWhatsAppLink(matchedLead.phone, getFormattedFocusMsg(matchedLead.name))}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={() => setActiveZapPopup(null)}
-                                        className="flex items-center gap-2 px-2.5 py-2 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 rounded-lg text-xs font-bold text-white transition-all"
-                                      >
-                                        <span className="text-[#00ff9d]">✨</span> Modelo Padrão Focus
-                                      </a>
-
-                                      {/* Divisor */}
-                                      <div className="border-t border-gray-800/80 my-0.5" />
-
-                                      {/* 2. Rápida (IA) e 3. Impacto (IA) */}
-                                      {whatsappMsg ? (
-                                        <>
-                                          <a
-                                            href={getWhatsAppLink(matchedLead.phone, typeof whatsappMsg === 'object' ? whatsappMsg.quick : whatsappMsg)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={() => setActiveZapPopup(null)}
-                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition-all"
-                                          >
-                                            <span className="text-blue-400">💬</span> Abordagem Rápida (IA)
-                                          </a>
-                                          <a
-                                            href={getWhatsAppLink(matchedLead.phone, typeof whatsappMsg === 'object' ? whatsappMsg.impact : whatsappMsg)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={() => setActiveZapPopup(null)}
-                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-[#00ff9d]/10 rounded-lg text-xs font-bold text-[#00ff9d] hover:bg-[#00ff9d]/20 transition-all"
-                                          >
-                                            <span className="text-yellow-500">📊</span> Abordagem Impacto (IA)
-                                          </a>
-                                        </>
-                                      ) : (
-                                        <div className="px-2 py-1.5 text-[10px] text-gray-500 italic leading-snug">
-                                          🔒 Gere o diagnóstico primeiro para liberar as abordagens personalizadas de IA.
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="relative">
-                                  <button
-                                    onClick={() => setActiveCopyPopup(activeCopyPopup === matchedLead.id ? null : matchedLead.id)}
-                                    title="Opções de Cópia da Mensagem Comercial"
-                                    className={`p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all ${
-                                      activeCopyPopup === matchedLead.id || copiedLeadId === matchedLead.id
-                                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                        : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white'
-                                    }`}
-                                  >
-                                    {copiedLeadId === matchedLead.id ? <Check size={12} /> : <Clipboard size={12} />}
-                                    {copiedLeadId === matchedLead.id ? 'Copiado!' : 'Copiar'}
-                                  </button>
-
-                                  {activeCopyPopup === matchedLead.id && (
-                                    <div className="absolute right-0 bottom-full mb-2 bg-[#0d1117] border border-gray-800 rounded-xl p-2.5 shadow-2xl z-50 min-w-[220px] flex flex-col gap-1.5 text-left">
-                                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider px-2 py-1 border-b border-gray-800 mb-1 flex items-center justify-between">
-                                        <span>Copiar Abordagem</span>
-                                        <button onClick={() => setActiveCopyPopup(null)} className="text-gray-400 hover:text-white">✕</button>
-                                      </div>
-
-                                      {/* 1. Modelo Focus */}
-                                      <button
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(getFormattedFocusMsg(matchedLead.name));
-                                          setCopiedLeadId(matchedLead.id);
-                                          setActiveCopyPopup(null);
-                                          setTimeout(() => setCopiedLeadId(null), 3000);
-                                        }}
-                                        className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-white transition-all text-left bg-blue-500/10 border border-blue-500/20 w-full"
-                                      >
-                                        <span className="text-blue-400">✨</span> Modelo Padrão Focus
-                                      </button>
-
-                                      {/* Divisor */}
-                                      <div className="border-t border-gray-800/80 my-0.5" />
-
-                                      {/* 2. Rápida (IA) e 3. Impacto (IA) */}
-                                      {whatsappMsg ? (
-                                        <>
-                                          <button
-                                            onClick={() => {
-                                              const text = typeof whatsappMsg === 'object' ? whatsappMsg.quick : whatsappMsg;
-                                              navigator.clipboard.writeText(text);
-                                              setCopiedLeadId(matchedLead.id);
-                                              setActiveCopyPopup(null);
-                                              setTimeout(() => setCopiedLeadId(null), 3000);
-                                            }}
-                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition-all text-left w-full"
-                                          >
-                                            <span className="text-green-400">💬</span> Copiar Rápida (IA)
-                                          </button>
-                                          <button
-                                            onClick={() => {
-                                              const text = typeof whatsappMsg === 'object' ? whatsappMsg.impact : whatsappMsg;
-                                              navigator.clipboard.writeText(text);
-                                              setCopiedLeadId(matchedLead.id);
-                                              setActiveCopyPopup(null);
-                                              setTimeout(() => setCopiedLeadId(null), 3000);
-                                            }}
-                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-yellow-500 hover:bg-white/5 transition-all text-left w-full"
-                                          >
-                                            <span className="text-yellow-500">📊</span> Copiar Impacto (IA)
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <div className="px-2 py-1.5 text-[10px] text-gray-500 italic leading-snug">
-                                          🔒 Gere o diagnóstico primeiro para liberar as abordagens personalizadas de IA.
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                              {/* Vender (Blur) */}
+                              <button
+                                onClick={() => handleGenerateDemandReport(matchedLead, true)}
+                                disabled={loadingDiagnostico[matchedLead.id]}
+                                className="flex-1 bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 text-green-400 font-black p-2 rounded-lg text-[10px] uppercase flex items-center justify-center gap-1 transition-all"
+                              >
+                                {loadingDiagnostico[matchedLead.id] ? (
+                                  <div className="w-3.5 h-3.5 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <MessageSquare size={12} />
+                                )}
+                                {loadingDiagnostico[matchedLead.id] ? 'Carregando...' : 'Vender (Blur)'}
+                              </button>
 
                               {/* Importar */}
                               <button
                                 onClick={() => handleImportClient(matchedLead)}
                                 disabled={importedLeads[matchedLead.id] || importingLeadId === matchedLead.id}
-                                className={`p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all ${
+                                className={`p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all shrink-0 ${
                                   importedLeads[matchedLead.id]
                                     ? 'bg-[#00ff9d]/20 text-[#00ff9d] border border-[#00ff9d]/30'
                                     : 'bg-[#00ff9d] hover:bg-[#02e08a] text-black disabled:opacity-50'
@@ -945,156 +817,33 @@ export default function TabProspecting() {
                             {/* Ações de Linha */}
                             <td className="py-4 px-6">
                               <div className="flex items-center justify-center gap-2">
-                                {/* Lupa: Auditar e gerar PDF */}
+                                {/* Lupa: Auditar completo */}
                                 <button
-                                  onClick={() => handleGenerateDemandReport(lead)}
+                                  onClick={() => handleGenerateDemandReport(lead, false)}
                                   disabled={loadingDiagnostico[lead.id]}
-                                  title="🔍 Gerar Diagnóstico completo"
+                                  title="Fazer auditoria completa"
                                   className="p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all hover:scale-105 flex items-center justify-center gap-1 disabled:opacity-50"
                                 >
                                   {loadingDiagnostico[lead.id] ? (
-                                    <div className="w-3.5 h-3.5 border-2 border-[#00ff9d] border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                   ) : (
                                     <Eye size={14} />
                                   )}
                                 </button>
 
-                                {/* WhatsApp: Vender com roteiro */}
-                                {lead.phone ? (
-                                  <div className="relative">
-                                    <button
-                                      onClick={() => setActiveZapPopup(activeZapPopup === lead.id ? null : lead.id)}
-                                      title="Escolher abordagem no WhatsApp"
-                                      className="p-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 transition-all hover:scale-105"
-                                    >
-                                      <MessageSquare size={14} />
-                                    </button>
-
-                                    {activeZapPopup === lead.id && (
-                                      <div className="absolute right-0 bottom-full mb-2 bg-[#0d1117] border border-gray-800 rounded-xl p-2.5 shadow-2xl z-50 min-w-[220px] flex flex-col gap-1.5 text-left">
-                                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider px-2 py-1 border-b border-gray-800 mb-1 flex items-center justify-between">
-                                          <span>Abordagem WhatsApp</span>
-                                          <button onClick={() => setActiveZapPopup(null)} className="text-gray-400 hover:text-white">✕</button>
-                                        </div>
-                                        
-                                        {/* 1. Modelo Focus (Sempre disponível) */}
-                                        <a
-                                          href={getWhatsAppLink(lead.phone, getFormattedFocusMsg(lead.name))}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={() => setActiveZapPopup(null)}
-                                          className="flex items-center gap-2 px-2.5 py-2 bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 rounded-lg text-xs font-bold text-white transition-all"
-                                        >
-                                          <span className="text-[#00ff9d]">✨</span> Modelo Padrão Focus
-                                        </a>
-
-                                        {/* Divisor */}
-                                        <div className="border-t border-gray-800/80 my-0.5" />
-
-                                        {/* 2. Rápida (IA) e 3. Impacto (IA) */}
-                                        {whatsappMsg ? (
-                                          <>
-                                            <a
-                                              href={getWhatsAppLink(lead.phone, typeof whatsappMsg === 'object' ? whatsappMsg.quick : whatsappMsg)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              onClick={() => setActiveZapPopup(null)}
-                                              className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition-all"
-                                            >
-                                              <span className="text-blue-400">💬</span> Abordagem Rápida (IA)
-                                            </a>
-                                            <a
-                                              href={getWhatsAppLink(lead.phone, typeof whatsappMsg === 'object' ? whatsappMsg.impact : whatsappMsg)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              onClick={() => setActiveZapPopup(null)}
-                                              className="flex items-center gap-2 px-2.5 py-2 hover:bg-[#00ff9d]/10 rounded-lg text-xs font-bold text-[#00ff9d] hover:bg-[#00ff9d]/20 transition-all"
-                                            >
-                                              <span className="text-yellow-500">📊</span> Abordagem Impacto (IA)
-                                            </a>
-                                          </>
-                                        ) : (
-                                          <div className="px-2 py-1.5 text-[10px] text-gray-500 italic leading-snug">
-                                            🔒 Gere o diagnóstico primeiro para liberar as abordagens personalizadas de IA.
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="relative">
-                                    <button
-                                      onClick={() => setActiveCopyPopup(activeCopyPopup === lead.id ? null : lead.id)}
-                                      title="Opções de Cópia da Mensagem Comercial"
-                                      className={`p-2 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase transition-all hover:scale-105 ${
-                                        activeCopyPopup === lead.id || copiedLeadId === lead.id
-                                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                          : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white'
-                                      }`}
-                                    >
-                                      {copiedLeadId === lead.id ? <Check size={14} /> : <Clipboard size={14} />}
-                                    </button>
-
-                                    {activeCopyPopup === lead.id && (
-                                      <div className="absolute right-0 bottom-full mb-2 bg-[#0d1117] border border-gray-800 rounded-xl p-2.5 shadow-2xl z-50 min-w-[220px] flex flex-col gap-1.5 text-left">
-                                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider px-2 py-1 border-b border-gray-800 mb-1 flex items-center justify-between">
-                                          <span>Copiar Abordagem</span>
-                                          <button onClick={() => setActiveCopyPopup(null)} className="text-gray-400 hover:text-white">✕</button>
-                                        </div>
-
-                                        {/* 1. Modelo Focus */}
-                                        <button
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(getFormattedFocusMsg(lead.name));
-                                            setCopiedLeadId(lead.id);
-                                            setActiveCopyPopup(null);
-                                            setTimeout(() => setCopiedLeadId(null), 3000);
-                                          }}
-                                          className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-white transition-all text-left bg-blue-500/10 border border-blue-500/20 w-full"
-                                        >
-                                          <span className="text-blue-400">✨</span> Modelo Padrão Focus
-                                        </button>
-
-                                        {/* Divisor */}
-                                        <div className="border-t border-gray-800/80 my-0.5" />
-
-                                        {/* 2. Rápida (IA) e 3. Impacto (IA) */}
-                                        {whatsappMsg ? (
-                                          <>
-                                            <button
-                                              onClick={() => {
-                                                const text = typeof whatsappMsg === 'object' ? whatsappMsg.quick : whatsappMsg;
-                                                navigator.clipboard.writeText(text);
-                                                setCopiedLeadId(lead.id);
-                                                setActiveCopyPopup(null);
-                                                setTimeout(() => setCopiedLeadId(null), 3000);
-                                              }}
-                                              className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition-all text-left w-full"
-                                            >
-                                              <span className="text-green-400">💬</span> Copiar Rápida (IA)
-                                            </button>
-                                            <button
-                                              onClick={() => {
-                                                const text = typeof whatsappMsg === 'object' ? whatsappMsg.impact : whatsappMsg;
-                                                navigator.clipboard.writeText(text);
-                                                setCopiedLeadId(lead.id);
-                                                setActiveCopyPopup(null);
-                                                setTimeout(() => setCopiedLeadId(null), 3000);
-                                              }}
-                                              className="flex items-center gap-2 px-2.5 py-2 hover:bg-white/5 rounded-lg text-xs font-bold text-yellow-500 hover:bg-white/5 transition-all text-left w-full"
-                                            >
-                                              <span className="text-yellow-500">📊</span> Copiar Impacto (IA)
-                                            </button>
-                                          </>
-                                        ) : (
-                                          <div className="px-2 py-1.5 text-[10px] text-gray-500 italic leading-snug">
-                                            🔒 Gere o diagnóstico primeiro para liberar as abordagens personalizadas de IA.
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                {/* Vender (Blur) */}
+                                <button
+                                  onClick={() => handleGenerateDemandReport(lead, true)}
+                                  disabled={loadingDiagnostico[lead.id]}
+                                  title="Vender com relatório em modo Blur"
+                                  className="p-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 transition-all hover:scale-105 flex items-center justify-center gap-1 disabled:opacity-50"
+                                >
+                                  {loadingDiagnostico[lead.id] ? (
+                                    <div className="w-3.5 h-3.5 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <MessageSquare size={14} />
+                                  )}
+                                </button>
 
                                 {/* Plus: Importar Cliente no Supabase */}
                                 <button
@@ -1247,6 +996,42 @@ export default function TabProspecting() {
                   </button>
                 </div>
               </div>
+
+              {/* Card de Abordagem Comercial Inteligente Pro Max */}
+              {isBlurMode && (
+                <div className="bg-gradient-to-r from-red-500/15 via-orange-500/10 to-transparent border border-red-500/30 rounded-2xl p-5 print:hidden flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fadeIn">
+                  <div className="space-y-1">
+                    <h4 className="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                      🔒 Relatório em Modo Pré-Venda (Blur)
+                    </h4>
+                    <p className="text-gray-400 text-xs uppercase font-bold leading-relaxed">
+                      O diagnóstico técnico detalhado está borrado. Envie a abordagem comercial padrão com a análise de ranking!
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full md:w-auto">
+                    {report.phone ? (
+                      <a
+                        href={getWhatsAppLink(report.phone, getFormattedFocusMsg(report.name))}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-black px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:scale-105 w-full sm:w-auto"
+                      >
+                        <MessageSquare size={14} /> Enviar Abordagem (Whats)
+                      </a>
+                    ) : null}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(getFormattedFocusMsg(report.name));
+                        setSavedMsg('✅ Abordagem comercial copiada com sucesso!');
+                        setTimeout(() => setSavedMsg(''), 3000);
+                      }}
+                      className="flex items-center justify-center gap-2 bg-[#00ff9d] hover:bg-[#02e08a] text-black px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:scale-105 w-full sm:w-auto"
+                    >
+                      <Clipboard size={14} /> Copiar Mensagem de Venda
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Feedback de salvo */}
               {savedMsg && (
