@@ -348,11 +348,49 @@ export async function POST(req: Request) {
     if (!n.thumbnail) opportunities.push('Adicionar fotos profissionais ao perfil');
     if (score < 60) opportunities.push('Otimização completa do perfil GBP');
 
-    const competitors = rawResults.slice(1, 6).map((c: any) => ({
+    let competitors = rawResults.slice(1, 6).map((c: any) => ({
       name: c.title || c.name || '',
       rating: Number(c.totalScore || c.rating) || 0,
       reviews: Number(c.reviewsCount || c.reviews) || 0,
     }));
+
+    // Se a busca individual retornou apenas 1 resultado (sem concorrentes), fazemos uma busca rápida de concorrência local
+    if (competitors.length === 0 && n.type) {
+      console.log('🔎 Buscando concorrentes locais complementares para o ranking...');
+      try {
+        let locationQuery = '';
+        if (n.address) {
+          const parts = n.address.split('-');
+          if (parts.length > 1) {
+            // Pega o bairro/cidade que costuma vir após o primeiro hífen
+            locationQuery = parts[1].split(',')[0].trim();
+          } else {
+            locationQuery = n.address.split(',')[1]?.trim() || '';
+          }
+        }
+        
+        const searchQuery = `${n.type} em ${locationQuery || 'Santos SP'}`;
+        console.log(`🚀 Busca de concorrência complementar: "${searchQuery}"`);
+        
+        const compUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(searchQuery)}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
+        const compRes = await fetch(compUrl);
+        const compData = await compRes.json();
+        
+        if (compData.local_results?.length > 0) {
+          competitors = compData.local_results
+            .filter((c: any) => (c.title || c.name || '').toLowerCase() !== n.title.toLowerCase())
+            .slice(0, 5)
+            .map((c: any) => ({
+              name: c.title || c.name || '',
+              rating: Number(c.totalScore || c.rating) || 0,
+              reviews: Number(c.reviewsCount || c.reviews) || 0,
+            }));
+          console.log(`✅ ${competitors.length} concorrentes complementares encontrados!`);
+        }
+      } catch (err) {
+        console.error('❌ Falha ao buscar concorrentes complementares:', err);
+      }
+    }
 
     let aiRecommendation = null;
     if (process.env.GEMINI_API_KEY) {

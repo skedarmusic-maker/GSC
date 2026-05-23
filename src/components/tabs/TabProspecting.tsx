@@ -248,6 +248,17 @@ export default function TabProspecting() {
         }));
       }
 
+      // Mapeia concorrentes a partir do lote como fallback secundário caso a API individual não retorne concorrentes
+      const batchCompetitors = leads
+        .filter((l) => l.name.toLowerCase() !== lead.name.toLowerCase())
+        .map((l) => ({
+          name: l.name,
+          rating: Number(l.rating) || 0,
+          reviews: Number(l.reviews) || 0,
+        }))
+        .sort((a, b) => b.reviews - a.reviews)
+        .slice(0, 5);
+
       // Preenche o estado global do relatório para visualização detalhada e download imediato
       setReport({
         name: data.name,
@@ -262,7 +273,7 @@ export default function TabProspecting() {
         thumbnail: data.thumbnail,
         opportunities: data.opportunities,
         metrics: data.metrics || [],
-        competitors: data.competitors || [],
+        competitors: data.competitors && data.competitors.length > 0 ? data.competitors : (batchCompetitors.length > 0 ? batchCompetitors : []),
         aiRecommendation: data.aiRecommendation
       });
 
@@ -371,8 +382,10 @@ export default function TabProspecting() {
     setIsBlurMode(true);
     setTimeout(() => {
       window.print();
-      setIsBlurMode(false);
-    }, 150);
+      setTimeout(() => {
+        setIsBlurMode(false);
+      }, 3000);
+    }, 600);
   };
 
   const handleSave = async () => {
@@ -1194,27 +1207,41 @@ export default function TabProspecting() {
               </div>
 
               {/* Barra de Ações do Report */}
-              <div className="flex items-center justify-between print:hidden bg-[#161b22]/50 border border-gray-800 p-4 rounded-xl">
-                <div className="flex items-center gap-3">
-                  {report.thumbnail && (
-                    <img src={report.thumbnail} alt="Thumb" className="w-8 h-8 rounded-lg object-cover border border-gray-800" />
-                  )}
-                  <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-                    Análise: <span className="text-white">{report.name}</span>
-                  </p>
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden bg-[#161b22]/50 border border-gray-800 p-4 rounded-xl">
+                <div className="flex flex-wrap items-center justify-between lg:justify-start gap-4 w-full lg:w-auto">
+                  <div className="flex items-center gap-3">
+                    {report.thumbnail && (
+                      <img src={report.thumbnail} alt="Thumb" className="w-8 h-8 rounded-lg object-cover border border-gray-800 shrink-0" />
+                    )}
+                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest truncate max-w-[180px] sm:max-w-[300px]">
+                      Análise: <span className="text-white font-black">{report.name}</span>
+                    </p>
+                  </div>
+                  
+                  {/* Toggle do Modo Blur Visual na Tela (Excelente para print no celular) */}
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-[10px] sm:text-xs text-gray-400 font-black uppercase tracking-wider bg-[#0d1117]/80 border border-gray-800 rounded-xl px-3 py-2 hover:border-gray-700 hover:text-white transition-all shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isBlurMode}
+                      onChange={(e) => setIsBlurMode(e.target.checked)}
+                      className="w-4 h-4 rounded bg-[#0d1117] border-gray-800 accent-[#ef4444] text-black focus:ring-0 cursor-pointer"
+                    />
+                    <span>🔒 Modo Pré-Venda (Blur)</span>
+                  </label>
                 </div>
-                <div className="flex gap-2.5">
+                
+                <div className="flex flex-col sm:flex-row gap-2.5 w-full lg:w-auto">
                   <button onClick={handleSave} disabled={saving}
-                    className="flex items-center gap-2 bg-[#161b22] border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white px-4 py-2.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50">
+                    className="flex items-center justify-center gap-2 bg-[#161b22] border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white px-4 py-2.5 rounded-xl transition-all text-xs font-bold disabled:opacity-50 w-full sm:w-auto shrink-0">
                     <BookmarkPlus size={14} />
                     {saving ? 'Salvando...' : 'Salvar no Histórico'}
                   </button>
                   <button onClick={handlePrintWithBlur}
-                    className="flex items-center gap-2 bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 hover:from-red-500/30 hover:to-orange-500/30 text-red-400 px-4 py-2.5 rounded-xl transition-all text-xs font-black uppercase tracking-wider shadow-[0_0_10px_rgba(239,68,68,0.1)]">
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 hover:from-red-500/30 hover:to-orange-500/30 text-red-400 px-4 py-2.5 rounded-xl transition-all text-xs font-black uppercase tracking-wider shadow-[0_0_10px_rgba(239,68,68,0.1)] w-full sm:w-auto shrink-0">
                     <span>🔒 PDF Pré-Venda (Blur)</span>
                   </button>
                   <button onClick={() => window.print()}
-                    className="flex items-center gap-2 bg-[#00ff9d] hover:bg-[#02e08a] text-black px-4 py-2.5 rounded-xl transition-all text-xs font-black uppercase tracking-wider shadow-[0_0_10px_rgba(0,255,157,0.2)]">
+                    className="flex items-center justify-center gap-2 bg-[#00ff9d] hover:bg-[#02e08a] text-black px-4 py-2.5 rounded-xl transition-all text-xs font-black uppercase tracking-wider shadow-[0_0_10px_rgba(0,255,157,0.2)] w-full sm:w-auto shrink-0">
                     <Download size={14} /> PDF Completo
                   </button>
                 </div>
