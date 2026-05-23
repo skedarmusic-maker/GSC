@@ -1,0 +1,44 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js (App Router)
+  - React
+  - TailwindCSS
+  - Supabase
+routes:
+  - path: /
+    file: src/app/page.tsx
+    auth_required: false
+    description: Main GSC Insight Engine Dashboard
+  - path: /preview/[slug]
+    file: src/app/preview/[slug]/page.tsx
+    auth_required: false
+    description: Native dynamic preview page for AI generated layouts
+features:
+  - name: Main Dashboard
+    description: Access multiple tabs like SEO Opportunities, GBP Audit, etc.
+    files:
+      - src/app/page.tsx
+      - src/components/tabs/TabSEOOpportunities.tsx
+      - src/components/tabs/TabGBPDashboard.tsx
+    entry_route: /
+    user_interactions:
+      - Click to change tabs
+      - View metrics and configurations
+    api_calls:
+      - method: GET
+        endpoint: Supabase DB calls
+    auth_required: false
+  - name: Layout Preview
+    description: View dynamically generated React layouts for clients
+    files:
+      - src/app/preview/[slug]/page.tsx
+    entry_route: /preview/test-slug
+    user_interactions:
+      - Scroll page to view static preview
+    api_calls:
+      - method: GET
+        endpoint: /api/ai/publish-preview
+    auth_required: false
+known_limitations: []

@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# 1. Remove a extensão .html da URL visível para o usuário (Redirecionamento 301)
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^.]+)\.html\ HTTP [NC]
+RewriteRule ^([^.]+)\.html$ /$1 [R=301,L]
+
+# 2. Permite que o servidor busque internamente o arquivo .html quando acessado sem a extensão
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.html -f
+RewriteRule ^([^/]+)$ /$1.html [L]

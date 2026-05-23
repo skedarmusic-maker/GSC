@@ -90,15 +90,18 @@ export default function Dashboard() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [manualDesignCode, setManualDesignCode] = useState('');
 
+  const fetchSites = async () => {
+    try {
+      const res = await fetch('/api/sites', { cache: 'no-store' });
+      const d = await res.json();
+      if (Array.isArray(d)) setSites(d);
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
   useEffect(() => {
-    async function fetchSites() {
-      try {
-        const res = await fetch('/api/sites', { cache: 'no-store' });
-        const d = await res.json();
-        if (Array.isArray(d)) setSites(d);
-      } catch (err) { console.error(err); } finally { setLoading(false); }
-    }
     fetchSites();
+    window.addEventListener('refresh-clients', fetchSites);
+    return () => window.removeEventListener('refresh-clients', fetchSites);
   }, []);
 
   useEffect(() => {

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaveiro Rafael - Ribeirão Preto 24h</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#101415] text-white">
+
+    <!-- Header -->
+    <header class="fixed top-0 w-full z-50 bg-[#101415]/90 backdrop-blur-md border-b border-white/10 px-4 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-2 font-bold text-xl uppercase tracking-tighter">
+            <span class="material-icons text-[#EF4444]">lock</span>
+            CHAVEIRO RAFAEL
+        </div>
+        <a href="tel:+5516999999999" class="bg-[#EF4444] text-white px-4 py-2 rounded-lg text-xs font-bold animate-pulse">
+            LIGAR AGORA
+        </a>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 px-6 text-center overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-[#EF4444]/10 to-transparent pointer-events-none"></div>
+        
+        <div class="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full mb-6">
+            <span class="w-2 h-2 rounded-full bg-[#EAB308] animate-ping"></span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-[#EAB308]">Técnico Disponível Agora</span>
+        </div>
+
+        <h1 class="text-4xl font-extrabold leading-tight mb-4">
+            Cópia de Chave em <br>
+            <span class="text-[#EF4444]">Ribeirão Preto - 24h</span>
+        </h1>
+        
+        <p class="text-lg text-white/70 mb-10 max-w-sm mx-auto">
+            Chegamos em 20 minutos. Preço justo e qualidade garantida para você nunca ficar do lado de fora.
+        </p>
+
+        <div class="flex flex-col gap-4">
+            <a href="tel:+5516999999999" class="bg-[#EF4444] hover:bg-[#dc2626] text-white py-5 rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#EF4444]/20">
+                <span class="material-icons">call</span>
+                LIGAR AGORA
+            </a>
+            <a href="https://wa.me/5516999999999" class="bg-[#EAB308] hover:bg-[#ca8a04] text-black py-5 rounded-xl font-bold flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-[#EAB308]/20">
+                <span class="material-icons">chat</span>
+                CHAMAR NO WHATSAPP
+            </a>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="px-6 py-12 grid grid-cols-1 gap-6">
+        <div class="bg-white/5 p-6 rounded-2xl border border-white/10 flex items-start gap-4">
+            <div class="bg-[#EAB308]/10 p-3 rounded-xl">
+                <span class="material-icons text-[#EAB308]">schedule</span>
+            </div>
+            <div>
+                <h3 class="font-bold text-xl mb-1">20 Minutos</h3>
+                <p class="text-sm text-white/50">Chegada ultrarrápida em qualquer bairro de Ribeirão Preto.</p>
+            </div>
+        </div>
+        <div class="bg-white/5 p-6 rounded-2xl border border-white/10 flex items-start gap-4">
+            <div class="bg-[#EF4444]/10 p-3 rounded-xl">
+                <span class="material-icons text-[#EF4444]">build</span>
+            </div>
+            <div>
+                <h3 class="font-bold text-xl mb-1">Profissionalismo</h3>
+                <p class="text-sm text-white/50">Equipamentos de ponta e técnicos altamente capacitados.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section class="px-6 py-12">
+        <h2 class="text-3xl font-bold mb-8 flex items-center gap-3">
+            Nossos Serviços
+            <div class="h-1 flex-1 bg-gradient-to-r from-[#EAB308] to-transparent rounded-full"></div>
+        </h2>
+
+        <div class="space-y-8">
+            <!-- Residencial -->
+            <div class="group">
+                <div class="h-48 rounded-2xl bg-zinc-900 mb-4 overflow-hidden relative">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                    <img src="https://images.unsplash.com/photo-1558002038-103792e07931?auto=format&fit=crop&q=80&w=800" alt="Residencial" class="w-full h-full object-cover">
+                    <h4 class="absolute bottom-4 left-4 text-xl font-bold">Residencial</h4>
+                </div>
+                <ul class="space-y-2 text-white/60 text-sm">
+                    <li class="flex items-center gap-2"><span class="material-icons text-[#EAB308] text-xs">check_circle</span> Aberturas técnicas</li>
+                    <li class="flex items-center gap-2"><span class="material-icons text-[#EAB308] text-xs">check_circle</span> Trocas de segredo</li>
+                    <li class="flex items-center gap-2"><span class="material-icons text-[#EAB308] text-xs">check_circle</span> Instalação de chaves mestras</li>
+                </ul>
+            </div>
+
+            <!-- Automotivo -->
+            <div class="group">
+                <div class="h-48 rounded-2xl bg-zinc-900 mb-4 overflow-hidden relative">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                    <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=800" alt="Automotivo" class="w-full h-full object-cover">
+                    <h4 class="absolute bottom-4 left-4 text-xl font-bold">Automotivo</h4>
+                </div>
+                <ul class="space-y-2 text-white/60 text-sm">
+                    <li class="flex items-center gap-2"><span class="material-icons text-[#EAB308] text-xs">check_circle</span> Abertura de veículos</li>
+                    <li class="flex items-center gap-2"><span class="material-icons text-[#EAB308] text-xs">check_circle</span> Confecção de chaves canivete</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-black pt-16 pb-32 px-6 text-center border-t border-white/10">
+        <div class="font-bold text-xl uppercase tracking-tighter mb-4 flex items-center justify-center gap-2">
+            <span class="material-icons text-[#EF4444]">lock</span>
+            CHAVEIRO RAFAEL
+        </div>
+        <p class="text-white/50 text-sm mb-6">
+            Av. Recife, 768 - Ribeirão Preto<br>
+            <span class="text-[#EAB308] font-bold">Atendimento 24 Horas</span>
+        </p>
+        <p class="text-xs text-white/30">
+            &copy; 2024 Chaveiro Rafael - Ribeirão Preto. Todos os direitos reservados.
+        </p>
+    </footer>
+
+    <!-- Bottom Action -->
+    <div class="fixed bottom-0 left-0 w-full p-4 bg-gradient-to-t from-[#101415] to-transparent z-50">
+        <a href="tel:+5516999999999" class="bg-[#EF4444] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 shadow-2xl">
+            <span class="material-icons">help_outline</span>
+            PRECISA DE AJUDA AGORA? LIGUE
+        </a>
+    </div>
+
+</body>
+</html>

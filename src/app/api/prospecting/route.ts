@@ -354,6 +354,58 @@ export async function POST(req: Request) {
       reviews: Number(c.reviewsCount || c.reviews) || 0,
     }));
 
+    let aiRecommendation = null;
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        console.log(`🤖 Chamando Gemini para gerar abordagens do lead individual: "${n.title}"`);
+        const prompt = `Você é um especialista em prospecção comercial e SEO de negócios locais no Brasil.
+Analise a ficha do Google da empresa "${n.title}" que obteve uma nota de otimização GBP de ${score}/100.
+Informações da Ficha:
+- Nota Google: ${n.rating} ⭐ (${n.reviews} avaliações)
+- Website: ${n.website ? (webInfo.status === 'bom' ? 'Site próprio' : 'Rede social/Linktree') : 'Não possui site'}
+- Telefone: ${n.phone || 'Sem telefone cadastrado'}
+- Fotos: ${n.thumbnail ? 'Possui fotos' : 'Sem fotos'}
+- Oportunidades críticas identificadas: ${opportunities.join(', ')}
+
+Com base nesses dados técnicos, crie dois scripts de abordagem comercial direcionados e persuasivos para este cliente:
+1. "quick": Uma abordagem de prospecção rápida (máx. 250 caracteres), em tom simpático e profissional, chamando pelo nome da empresa e focando em abrir diálogo (ex: perguntar se eles estão recebendo clientes pelo Google, sem fazer venda direta agressiva).
+2. "impact": Uma abordagem persuasiva de impacto (máx. 400 caracteres), chamando pelo nome da empresa. Destaque que realizou um diagnóstico técnico gratuito e identificou falhas que fazem eles perderem clientes diariamente (cite uma ou duas falhas reais listadas acima), diga que está enviando em anexo uma imagem do Relatório de Saúde Visual da ficha, e convide para uma breve conversa no WhatsApp.
+
+Sua resposta DEVE ser estritamente um objeto JSON válido, sem markdown (\`\`\`json / \`\`\`), no seguinte formato:
+{
+  "quick": "texto da abordagem rápida",
+  "impact": "texto da abordagem de impacto"
+}
+Importante: Substitua qualquer menção ao nome da empresa no texto por "${n.title.toUpperCase()}" (em caixa alta). Use emojis de forma moderada e profissional.`;
+
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { 
+                temperature: 0.3, 
+                maxOutputTokens: 1000,
+                responseMimeType: "application/json"
+              }
+            })
+          }
+        );
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          let rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          rawText = rawText.replace(/^```(?:json)?\n?/m, '').replace(/```\s*$/m, '').trim();
+          aiRecommendation = JSON.parse(rawText);
+          console.log('✅ Abordagens comerciais individuais geradas com o Gemini!');
+        }
+      } catch (geminiErr) {
+        console.error('❌ Erro ao gerar abordagens no Gemini:', geminiErr);
+      }
+    }
+
     return NextResponse.json({
       name: n.title,
       score,
@@ -369,6 +421,7 @@ export async function POST(req: Request) {
       metrics,
       competitors,
       opportunities,
+      aiRecommendation,
       // Dados geográficos extras
       latitude: rawPlace.location?.lat || null,
       longitude: rawPlace.location?.lng || null,

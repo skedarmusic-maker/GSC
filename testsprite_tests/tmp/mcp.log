@@ -1,0 +1,14 @@
+{"timestamp":"2026-05-18T00:20:55.856Z","level":"debug","message":"Generate code and execute params","context":{"projectName":"GSC","projectPath":"c:\\Users\\Skedar\\Desktop\\IA - SITES\\GSC","testIds":[],"serverMode":"development"}}
+{"timestamp":"2026-05-18T00:20:55.882Z","level":"info","message":"HTTP server started successfully on port 58451"}
+{"timestamp":"2026-05-18T00:20:55.879Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-05-18T00:20:57.406Z","level":"info","message":"proxy: [REDACTED]proxy.tun.testsprite.com:9090"}
+{"timestamp":"2026-05-18T00:20:57.403Z","level":"info","message":"[TunnelClient] Control websocket connected","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-05-18T00:20:57.536Z","level":"debug","message":"[TunnelClient] Control message: {\"type\":\"Ack\"}","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-05-18T00:20:57.407Z","level":"info","message":"Pre-flight probe attempt 1/3 to http://localhost:3000/C:\\Users\\Skedar\\Desktop\\IA - SITES\\GSC..."}
+{"timestamp":"2026-05-18T00:20:57.406Z","level":"info","message":"[TunnelClient] Tunnel client started","context":{"tunnelVersion":"2"}}
+{"timestamp":"2026-05-18T00:20:59.182Z","level":"info","message":"GET /favicon.ico 404 3ms"}
+{"timestamp":"2026-05-18T00:20:59.414Z","level":"info","message":"Verifying tunnel connectivity..."}
+{"timestamp":"2026-05-18T00:20:59.413Z","level":"info","message":"Pre-flight probe succeeded on attempt 1: status=404"}
+{"timestamp":"2026-05-18T00:20:59.414Z","level":"info","message":"Tunnel probe attempt 1/2 through proxy.tun.testsprite.com:9090 to http://localhost:3000/C:\\Users\\Skedar\\Desktop\\IA - SITES\\GSC..."}
+{"timestamp":"2026-05-18T00:20:59.415Z","level":"warn","message":"Tunnel probe attempt 1 failed: Request path contains unescaped characters — retrying in 3s..."}
+{"timestamp":"2026-05-18T00:21:02.454Z","level":"error","message":"Tunnel probe failed after 2 attempts: Request path contains unescaped characters"}
