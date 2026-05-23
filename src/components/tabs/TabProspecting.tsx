@@ -227,10 +227,11 @@ export default function TabProspecting() {
     setLoadingDiagnostico(prev => ({ ...prev, [lead.id]: true }));
     setError(null);
     try {
+      const searchQuery = lead.address ? `${lead.name}, ${lead.address}` : lead.name;
       const res = await fetch('/api/prospecting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName: lead.name }),
+        body: JSON.stringify({ businessName: searchQuery }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
