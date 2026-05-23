@@ -8,9 +8,31 @@ const PSEUDO_SITE_DOMAINS = [
   'linktr.ee', 'linktree.com', 'bio.link', 'beacons.ai', 'campsite.bio',
   'taplink.cc', 'lnk.bio', 'twitter.com', 'x.com', 'tiktok.com',
   'youtube.com', 'pinterest.com', 'snapchat.com', 'telegra.ph',
+  // Agregadores / construtores gratuitos que não contam como site profissional
+  'sites.google.com', 'wixsite.com', 'weebly.com', 'jimdo.com',
+  'blogspot.com', 'wordpress.com', 'tumblr.com', 'notion.site',
+  'carrd.co', 'strikingly.com', 'yola.com', 'webnode.com',
 ];
 
-function classifyWebsite(url: string): { status: 'bom' | 'razoável' | 'fraco'; label: string; value: string } {
+// Verifica se o website realmente responde (HEAD rápido, 4s timeout)
+async function verifyWebsiteExists(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GBP-Checker/1.0)' },
+    });
+    clearTimeout(timeoutId);
+    return res.status < 400;
+  } catch {
+    return false;
+  }
+}
+
+function classifyWebsite(url: string, verified = true): { status: 'bom' | 'razoável' | 'fraco'; label: string; value: string } {
   if (!url) return { status: 'fraco', label: 'Website', value: 'Não encontrado' };
   try {
     const hostname = new URL(url).hostname.replace('www.', '');
@@ -23,6 +45,7 @@ function classifyWebsite(url: string): { status: 'bom' | 'razoável' | 'fraco'; 
         value: `Rede social como site (${network}) ⚠️`,
       };
     }
+    if (!verified) return { status: 'fraco', label: 'Website', value: 'Não encontrado' };
     return { status: 'bom', label: 'Website', value: 'Site próprio ✓' };
   } catch {
     return { status: 'razoável', label: 'Website', value: url };
@@ -81,7 +104,15 @@ function normalize(place: any) {
     address: place.address || place.full_address || place.formatted_address || place.locationName || '',
     rating: Number(place.totalScore || place.rating) || 0,
     reviews,
-    website: place.website || place.site || place.links?.website || place.url || '',
+    website: (() => {
+      const rawWeb = place.website || place.site || place.links?.website || '';
+      if (!rawWeb || typeof rawWeb !== 'string') return '';
+      const low = rawWeb.toLowerCase();
+      if (low.includes('google.com') || low.includes('google.com.br') || low.includes('maps.google') || low.includes('maps.apple.com')) {
+        return '';
+      }
+      return rawWeb;
+    })(),
     phone,
     type: place.categoryName || place.type || place.category || place.types?.[0] || '',
     thumbnail: place.imageUrl || place.thumbnail || place.photo || place.logo || place.photos?.[0]?.url || place.image || '',
@@ -161,14 +192,37 @@ export async function POST(req: Request) {
       }, { status: 404 });
     }
 
-    // ── 3. PROCESSAR E FILTRAR OS LEADS ──────────────────────────────────────
-    let processedLeads = rawResults.map((place, idx) => {
-      const n = normalize(place);
-      const webInfo = classifyWebsite(n.website);
+    // ── 3. PROCESSAR E FILTRAR OS LEADS (com verificação de website) ─────────────
+    // Verificamos todos os websites em paralelo (Promise.all) para não bloquear muito
+    const normalized = rawResults.map((place) => normalize(place));
+
+    // Coleta URLs únicas para verificar em paralelo (evita verificar mesma URL 2x)
+    const uniqueWebsites = [...new Set(normalized.map(n => n.website).filter(Boolean))];
+    const websiteStatusMap: Record<string, boolean> = {};
+    if (uniqueWebsites.length > 0) {
+      console.log(`🌐 Verificando ${uniqueWebsites.length} websites em paralelo...`);
+      const results = await Promise.allSettled(
+        uniqueWebsites.map(url => verifyWebsiteExists(url).then(ok => ({ url, ok })))
+      );
+      results.forEach(r => {
+        if (r.status === 'fulfilled') websiteStatusMap[r.value.url] = r.value.ok;
+      });
+    }
+
+    let processedLeads = normalized.map((n, idx) => {
+      // Zera website se não confirmado via HEAD
+      if (n.website && websiteStatusMap[n.website] === false) {
+        console.log(`❌ Website não acessível para ${n.title}: ${n.website}`);
+        n.website = '';
+      }
+      const webInfo = classifyWebsite(n.website, n.website ? (websiteStatusMap[n.website] ?? true) : false);
       const score = calcScore(n);
 
-      const description = place.description || place.snippet || place.about || '';
-      const hasDescription = description.length > 50;
+      const hasDescription = (() => {
+        const raw = rawResults[idx];
+        const desc = raw?.description || raw?.snippet || raw?.about || '';
+        return desc.length > 50;
+      })();
 
       // Montar oportunidades rápidas
       const opportunities: string[] = [];

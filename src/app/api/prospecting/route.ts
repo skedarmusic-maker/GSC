@@ -8,9 +8,32 @@ const PSEUDO_SITE_DOMAINS = [
   'linktr.ee', 'linktree.com', 'bio.link', 'beacons.ai', 'campsite.bio',
   'taplink.cc', 'lnk.bio', 'twitter.com', 'x.com', 'tiktok.com',
   'youtube.com', 'pinterest.com', 'snapchat.com', 'telegra.ph',
+  // Agregadores / construtores gratuitos que não contam como site profissional
+  'sites.google.com', 'wixsite.com', 'weebly.com', 'jimdo.com',
+  'blogspot.com', 'wordpress.com', 'tumblr.com', 'notion.site',
+  'carrd.co', 'strikingly.com', 'yola.com', 'webnode.com',
 ];
 
-function classifyWebsite(url: string): { status: 'bom' | 'razoável' | 'fraco'; label: string; value: string } {
+// Verifica se o website realmente responde (HEAD rápido, 5s timeout)
+async function verifyWebsiteExists(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GBP-Checker/1.0)' },
+    });
+    clearTimeout(timeoutId);
+    // 200-399 = site existe; 4xx/5xx = não conta
+    return res.status < 400;
+  } catch {
+    return false;
+  }
+}
+
+function classifyWebsite(url: string, verified = true): { status: 'bom' | 'razoável' | 'fraco'; label: string; value: string } {
   if (!url) return { status: 'fraco', label: 'Website', value: 'Não encontrado' };
   try {
     const hostname = new URL(url).hostname.replace('www.', '');
@@ -22,6 +45,10 @@ function classifyWebsite(url: string): { status: 'bom' | 'razoável' | 'fraco'; 
         label: 'Website',
         value: `Rede social como site (${network}) ⚠️`,
       };
+    }
+    // Se a verificação HEAD falhou, o site não está acessível
+    if (!verified) {
+      return { status: 'fraco', label: 'Website', value: 'Não encontrado' };
     }
     return { status: 'bom', label: 'Website', value: 'Site próprio ✓' };
   } catch {
@@ -86,7 +113,15 @@ function normalize(place: any) {
     address: place.address || place.full_address || place.formatted_address || place.locationName || '',
     rating: Number(place.totalScore || place.rating) || 0,
     reviews,
-    website: place.website || place.site || place.links?.website || place.url || '',
+    website: (() => {
+      const rawWeb = place.website || place.site || place.links?.website || '';
+      if (!rawWeb || typeof rawWeb !== 'string') return '';
+      const low = rawWeb.toLowerCase();
+      if (low.includes('google.com') || low.includes('google.com.br') || low.includes('maps.google') || low.includes('maps.apple.com')) {
+        return '';
+      }
+      return rawWeb;
+    })(),
     phone,
     type: place.categoryName || place.type || place.category || place.types?.[0] || '',
     thumbnail: place.imageUrl || place.thumbnail || place.photo || place.logo || place.photos?.[0]?.url || place.image || '',
@@ -226,7 +261,22 @@ export async function POST(req: Request) {
     const n = normalize(rawPlace);
     console.log('📊 Dados normalizados:', { rating: n.rating, reviews: n.reviews, phone: n.phone, website: n.website });
 
-    const webInfo = classifyWebsite(n.website);
+    // ── Verificação real do website (HEAD request) ────────────────────────────
+    // A SerpAPI pode retornar URLs que não estão cadastradas no GBP real do negócio.
+    // Verificamos se o site realmente responde antes de classificar como "Site Profissional".
+    let websiteVerified = false;
+    if (n.website) {
+      console.log('🌐 Verificando se o website realmente existe:', n.website);
+      websiteVerified = await verifyWebsiteExists(n.website);
+      if (!websiteVerified) {
+        console.log('❌ Website não respondeu — tratando como sem site');
+        n.website = ''; // Zera para evitar classificação incorreta
+      } else {
+        console.log('✅ Website confirmado e acessível');
+      }
+    }
+
+    const webInfo = classifyWebsite(n.website, websiteVerified);
     const score = calcScore(n);
 
     // Extração de novos dados disponíveis gratuitamente via SerpApi
