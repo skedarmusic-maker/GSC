@@ -85,15 +85,32 @@ function HistoryCard({ analysis, onLoad, onDelete }: { analysis: any; onLoad: (a
   );
 }
 
+// ─── HELPER: lê do localStorage de forma segura ───────────────────────────
+function readLS<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function TabProspecting() {
-  // Navigation State
-  const [activeSubTab, setActiveSubTab] = useState<'individual' | 'batch'>('batch');
+  // ─── ESTADOS COM INICIALIZAÇÃO LAZY (lê localStorage de forma SÍNCRONA) ───
+  // Isso garante que os dados estejam presentes desde o primeiro render,
+  // evitando a race condition entre o useEffect de leitura e o de escrita.
+  const [activeSubTab, setActiveSubTab] = useState<'individual' | 'batch'>(
+    () => readLS<'individual' | 'batch'>('gsc_prospect_subtab', 'batch')
+  );
 
   // Single analysis states
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [businessName, setBusinessName] = useState('');
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<any>(
+    () => readLS<any>('gsc_prospect_report', null)
+  );
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState('');
   const [history, setHistory] = useState<any[]>([]);
@@ -101,8 +118,12 @@ export default function TabProspecting() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Batch analysis states
-  const [niche, setNiche] = useState('');
-  const [location, setLocation] = useState('');
+  const [niche, setNiche] = useState(
+    () => readLS<string>('gsc_prospect_niche', '')
+  );
+  const [location, setLocation] = useState(
+    () => readLS<string>('gsc_prospect_loc', '')
+  );
   const [minRating, setMinRating] = useState<number>(0);
   const [limit, setLimit] = useState<number>(10);
   const [filterNoWebsite, setFilterNoWebsite] = useState(false);
@@ -110,8 +131,12 @@ export default function TabProspecting() {
 
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [aiRecs, setAiRecs] = useState<any>({ topLeads: [], whatsappMessages: {} });
+  const [leads, setLeads] = useState<any[]>(
+    () => readLS<any[]>('gsc_prospect_leads', [])
+  );
+  const [aiRecs, setAiRecs] = useState<any>(
+    () => readLS<any>('gsc_prospect_recs', { topLeads: [], whatsappMessages: {} })
+  );
   const [importingLeadId, setImportingLeadId] = useState<string | null>(null);
   const [importedLeads, setImportedLeads] = useState<Record<string, boolean>>({});
 
@@ -119,6 +144,10 @@ export default function TabProspecting() {
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
   const [isBlurMode, setIsBlurMode] = useState(false);
   const [loadingDiagnostico, setLoadingDiagnostico] = useState<Record<string, boolean>>({});
+
+  // Flag para evitar que o useEffect de escrita apague dados durante a
+  // hidratação inicial (primeiro render do componente)
+  const [hydrated, setHydrated] = useState(false);
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -136,30 +165,16 @@ export default function TabProspecting() {
 
   useEffect(() => {
     loadHistory();
+    // Marca que o componente já foi hidratado (dados do localStorage já estão
+    // nos estados). A partir daqui, os useEffects de escrita podem salvar dados.
+    setHydrated(true);
   }, []);
 
-  // ─── PERSISTÊNCIA AUTOMÁTICA EM LOCALSTORAGE (CORREÇÃO DE BUG MOBILE) ───
+  // ─── PERSISTÊNCIA AUTOMÁTICA EM LOCALSTORAGE ─────────────────────────────
+  // Só grava após a hidratação para evitar apagar dados válidos com
+  // estados vazios durante o primeiro render.
   useEffect(() => {
-    try {
-      const savedLeads = localStorage.getItem('gsc_prospect_leads');
-      const savedRecs = localStorage.getItem('gsc_prospect_recs');
-      const savedReport = localStorage.getItem('gsc_prospect_report');
-      const savedSubTab = localStorage.getItem('gsc_prospect_subtab');
-      const savedNiche = localStorage.getItem('gsc_prospect_niche');
-      const savedLoc = localStorage.getItem('gsc_prospect_loc');
-
-      if (savedLeads) setLeads(JSON.parse(savedLeads));
-      if (savedRecs) setAiRecs(JSON.parse(savedRecs));
-      if (savedReport) setReport(JSON.parse(savedReport));
-      if (savedSubTab) setActiveSubTab(savedSubTab as any);
-      if (savedNiche) setNiche(savedNiche);
-      if (savedLoc) setLocation(savedLoc);
-    } catch (e) {
-      console.error('Erro ao restaurar cache do localStorage:', e);
-    }
-  }, []);
-
-  useEffect(() => {
+    if (!hydrated) return;
     try {
       if (leads.length > 0) {
         localStorage.setItem('gsc_prospect_leads', JSON.stringify(leads));
@@ -167,9 +182,10 @@ export default function TabProspecting() {
         localStorage.removeItem('gsc_prospect_leads');
       }
     } catch (e) {}
-  }, [leads]);
+  }, [leads, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       if (aiRecs && (aiRecs.topLeads?.length > 0 || Object.keys(aiRecs.whatsappMessages || {}).length > 0)) {
         localStorage.setItem('gsc_prospect_recs', JSON.stringify(aiRecs));
@@ -177,9 +193,10 @@ export default function TabProspecting() {
         localStorage.removeItem('gsc_prospect_recs');
       }
     } catch (e) {}
-  }, [aiRecs]);
+  }, [aiRecs, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       if (report) {
         localStorage.setItem('gsc_prospect_report', JSON.stringify(report));
@@ -187,25 +204,28 @@ export default function TabProspecting() {
         localStorage.removeItem('gsc_prospect_report');
       }
     } catch (e) {}
-  }, [report]);
+  }, [report, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem('gsc_prospect_subtab', activeSubTab);
     } catch (e) {}
-  }, [activeSubTab]);
+  }, [activeSubTab, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem('gsc_prospect_niche', niche);
     } catch (e) {}
-  }, [niche]);
+  }, [niche, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem('gsc_prospect_loc', location);
     } catch (e) {}
-  }, [location]);
+  }, [location, hydrated]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
