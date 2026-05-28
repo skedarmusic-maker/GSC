@@ -158,14 +158,9 @@ export async function GET(req: Request) {
         }
       }
     } else {
-      // Sem token (compatibilidade/webhooks): busca tudo
-      const { data, error } = await adminSupabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
-        
-      dbClients = data;
-      dbError = error;
+      // Sem token de usuário logado (ex: acessos diretos/anônimos): Bloqueia por completo por motivos de segurança!
+      console.log('📡 API SITES: Tentativa de acesso anônimo bloqueada por segurança.');
+      return NextResponse.json({ error: 'Não autorizado. Token de sessão ausente.' }, { status: 401 });
     }
 
     if (dbError) throw dbError;

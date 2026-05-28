@@ -218,7 +218,6 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    fetchSites();
     window.addEventListener('refresh-clients', fetchSites);
     return () => window.removeEventListener('refresh-clients', fetchSites);
   }, []);
