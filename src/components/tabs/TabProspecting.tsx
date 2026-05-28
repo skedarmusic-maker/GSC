@@ -138,6 +138,75 @@ export default function TabProspecting() {
     loadHistory();
   }, []);
 
+  // ─── PERSISTÊNCIA AUTOMÁTICA EM LOCALSTORAGE (CORREÇÃO DE BUG MOBILE) ───
+  useEffect(() => {
+    try {
+      const savedLeads = localStorage.getItem('gsc_prospect_leads');
+      const savedRecs = localStorage.getItem('gsc_prospect_recs');
+      const savedReport = localStorage.getItem('gsc_prospect_report');
+      const savedSubTab = localStorage.getItem('gsc_prospect_subtab');
+      const savedNiche = localStorage.getItem('gsc_prospect_niche');
+      const savedLoc = localStorage.getItem('gsc_prospect_loc');
+
+      if (savedLeads) setLeads(JSON.parse(savedLeads));
+      if (savedRecs) setAiRecs(JSON.parse(savedRecs));
+      if (savedReport) setReport(JSON.parse(savedReport));
+      if (savedSubTab) setActiveSubTab(savedSubTab as any);
+      if (savedNiche) setNiche(savedNiche);
+      if (savedLoc) setLocation(savedLoc);
+    } catch (e) {
+      console.error('Erro ao restaurar cache do localStorage:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (leads.length > 0) {
+        localStorage.setItem('gsc_prospect_leads', JSON.stringify(leads));
+      } else {
+        localStorage.removeItem('gsc_prospect_leads');
+      }
+    } catch (e) {}
+  }, [leads]);
+
+  useEffect(() => {
+    try {
+      if (aiRecs && (aiRecs.topLeads?.length > 0 || Object.keys(aiRecs.whatsappMessages || {}).length > 0)) {
+        localStorage.setItem('gsc_prospect_recs', JSON.stringify(aiRecs));
+      } else {
+        localStorage.removeItem('gsc_prospect_recs');
+      }
+    } catch (e) {}
+  }, [aiRecs]);
+
+  useEffect(() => {
+    try {
+      if (report) {
+        localStorage.setItem('gsc_prospect_report', JSON.stringify(report));
+      } else {
+        localStorage.removeItem('gsc_prospect_report');
+      }
+    } catch (e) {}
+  }, [report]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gsc_prospect_subtab', activeSubTab);
+    } catch (e) {}
+  }, [activeSubTab]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gsc_prospect_niche', niche);
+    } catch (e) {}
+  }, [niche]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gsc_prospect_loc', location);
+    } catch (e) {}
+  }, [location]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessName.trim()) return;
@@ -576,6 +645,32 @@ export default function TabProspecting() {
                   <span className="text-[9px] text-gray-500 font-bold uppercase max-w-[200px] leading-tight text-right hidden lg:block">
                     ⚠️ Limite padrão de 10 leads ativo para otimizar suas chamadas de APIs do Google Maps.
                   </span>
+                  {leads.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Deseja realmente limpar toda a pesquisa atual e começar do zero?')) {
+                          setLeads([]);
+                          setAiRecs({ topLeads: [], whatsappMessages: {} });
+                          setReport(null);
+                          setNiche('');
+                          setLocation('');
+                          try {
+                            localStorage.removeItem('gsc_prospect_leads');
+                            localStorage.removeItem('gsc_prospect_recs');
+                            localStorage.removeItem('gsc_prospect_report');
+                            localStorage.removeItem('gsc_prospect_subtab');
+                            localStorage.removeItem('gsc_prospect_niche');
+                            localStorage.removeItem('gsc_prospect_loc');
+                          } catch (e) {}
+                        }
+                      }}
+                      className="px-4 py-3 bg-[#0d1117] hover:bg-rose-500/10 border border-gray-800 hover:border-rose-500/30 text-gray-400 hover:text-rose-400 font-bold rounded-xl text-xs uppercase transition-all flex items-center gap-1.5 shrink-0"
+                    >
+                      <Trash2 size={14} />
+                      <span>Limpar</span>
+                    </button>
+                  )}
                   <button
                     type="submit"
                     disabled={batchLoading}

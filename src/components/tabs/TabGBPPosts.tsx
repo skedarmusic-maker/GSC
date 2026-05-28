@@ -49,6 +49,19 @@ export default function TabGBPPosts({
 
   const topics = getTopics();
 
+  const getMinDateTime = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offset).toISOString().slice(0, 16);
+  };
+
+  const getMaxDateTime = () => {
+    const now = new Date();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const offset = lastDayOfMonth.getTimezoneOffset() * 60000;
+    return new Date(lastDayOfMonth.getTime() - offset).toISOString().slice(0, 16);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl">
       <h2 className="text-2xl font-bold mb-2">📣 Atualizações da Empresa (Posts)</h2>
@@ -170,6 +183,7 @@ export default function TabGBPPosts({
           <div className="w-full md:w-auto">
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Agendar? (Opcional)</label>
             <input type="datetime-local" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)}
+              min={getMinDateTime()} max={getMaxDateTime()}
               className="w-full md:w-64 bg-[#161b22] border border-gray-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00ff9d] font-medium cursor-pointer" />
           </div>
           <button onClick={handlePost} disabled={!postText}

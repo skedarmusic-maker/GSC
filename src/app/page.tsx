@@ -814,6 +814,21 @@ export default function Dashboard() {
   const handlePost = async () => {
     if (!postText || !gbpData) return;
     try {
+      if (scheduledDate) {
+        const scheduledTime = new Date(scheduledDate);
+        const now = new Date();
+        const minTime = Date.now() - 5 * 60 * 1000; // 5 min tolerance
+        
+        if (scheduledTime.getMonth() !== now.getMonth() || scheduledTime.getFullYear() !== now.getFullYear()) {
+          alert('🚫 Limite Excedido: Você só pode agendar postagens para o mês vigente atual.');
+          return;
+        }
+        if (scheduledTime.getTime() < minTime) {
+          alert('🚫 Data Inválida: Não é possível agendar uma postagem em data retroativa.');
+          return;
+        }
+      }
+
       if (editingPostId) {
         await supabase.from('scheduled_posts').update({
           scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : new Date().toISOString(),
