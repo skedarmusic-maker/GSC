@@ -1,16 +1,38 @@
 import { NextResponse } from 'next/server';
 import { getLocationDetails } from '@/lib/business';
 
+import { createClient } from '@supabase/supabase-js';
+
 export async function POST(req: Request) {
   try {
     const { accountId, locationId } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (token) {
+      const userSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      );
+      const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
+      }
+    }
 
     if (!accountId || !locationId) {
       return NextResponse.json({ error: 'Faltam dados de identificação' }, { status: 400 });
     }
 
     const locationName = `accounts/${accountId}/locations/${locationId}`;
-    const details = await getLocationDetails(locationName);
+    const details = await getLocationDetails(locationName, token);
 
     if (!details) {
       return NextResponse.json({ error: 'Falha ao recuperar dados do Google Maps' }, { status: 500 });

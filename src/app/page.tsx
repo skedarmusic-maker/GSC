@@ -14,11 +14,18 @@ import TabGBPPosts from '@/components/tabs/TabGBPPosts';
 import TabHostinger from '@/components/tabs/TabHostinger';
 import TabClientConfig from '@/components/tabs/TabClientConfig';
 import TabProspecting from '@/components/tabs/TabProspecting';
+import TabIntegrations from '@/components/tabs/TabIntegrations';
+import TabAdminPanel from '@/components/tabs/TabAdminPanel';
 import MonthRangePicker from '@/components/MonthRangePicker';
+import SubscriptionGate from '@/components/SubscriptionGate';
 
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [checkingSubscription, setCheckingSubscription] = useState(false);
+  const [seoAllowed, setSeoAllowed] = useState(false);
 
   // Estados Gerais
   const [sites, setSites] = useState<any[]>([]);
@@ -97,6 +104,118 @@ export default function Dashboard() {
       if (Array.isArray(d)) setSites(d);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
+
+  const checkUserStatus = async (userId: string, email: string) => {
+    if (email === 'gabrielamorimseo@gmail.com' || email === 'focus.earts@gmail.com') {
+      setIsAdmin(true);
+      setSubscriptionStatus('active');
+      setSeoAllowed(true);
+      return;
+    }
+    setCheckingSubscription(true);
+    try {
+      const res = await fetch('/api/auth/subscription');
+      const data = await res.json();
+      
+      if (data.success) {
+        setSubscriptionStatus(data.subscription_status || 'pending');
+        const isAllowed = data.seo_allowed ?? false;
+        setSeoAllowed(isAllowed);
+        if (!isAllowed) {
+          setAppMode('gbp');
+          setActiveTab('gbp-dashboard');
+        }
+        if (data.role === 'super_admin') {
+          setIsAdmin(true);
+        }
+      } else {
+        console.warn('Erro ao verificar status via API, tentando fallback direto...');
+        const { data: dbCredits } = await supabase
+          .from('user_credits')
+          .select('subscription_status, seo_allowed')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        const status = (dbCredits as any)?.subscription_status || 'pending';
+        const isAllowed = (dbCredits as any)?.seo_allowed ?? false;
+        
+        setSubscriptionStatus(status);
+        setSeoAllowed(isAllowed);
+        
+        if (!isAllowed) {
+          setAppMode('gbp');
+          setActiveTab('gbp-dashboard');
+        }
+
+        const { data: dbRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (dbRole && dbRole.role === 'super_admin') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao verificar status do usuário:', err);
+      setSubscriptionStatus('pending');
+      setSeoAllowed(false);
+      setAppMode('gbp');
+      setActiveTab('gbp-dashboard');
+    } finally {
+      setCheckingSubscription(false);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Validar e capturar sessão atual no Supabase Auth
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoadingSession(false);
+      
+      if (session) {
+        // Interceptar o fetch global para injetar automaticamente o Bearer Token do usuário logado
+        const originalFetch = window.fetch;
+        window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+          const headers = new Headers(init?.headers);
+          if (session.access_token && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${session.access_token}`);
+          }
+          return originalFetch(input, { ...init, headers });
+        };
+        fetchSites();
+        if (session.user?.id && session.user?.email) {
+          checkUserStatus(session.user.id, session.user.email);
+        }
+      } else {
+        window.location.href = '/login';
+      }
+    });
+
+    // 2. Escutar mudanças no estado de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setLoadingSession(false);
+      if (session) {
+        const originalFetch = window.fetch;
+        window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+          const headers = new Headers(init?.headers);
+          if (session.access_token && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${session.access_token}`);
+          }
+          return originalFetch(input, { ...init, headers });
+        };
+        fetchSites();
+        if (session.user?.id && session.user?.email) {
+          checkUserStatus(session.user.id, session.user.email);
+        }
+      } else {
+        window.location.href = '/login';
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     fetchSites();
@@ -272,8 +391,19 @@ export default function Dashboard() {
           zoom: rankRadius
         })
       });
-      if (res.ok) { setNewKeyword(''); fetchRankData(mapsData.locationId); }
-    } catch(e) { console.error(e); } finally { setLoadingRank(false); }
+      const resData = await res.json();
+      if (res.ok) { 
+        setNewKeyword(''); 
+        fetchRankData(mapsData.locationId); 
+      } else {
+        alert(resData.error || 'Falha ao monitorar palavra-chave.');
+      }
+    } catch(e) { 
+      console.error(e); 
+      alert('Erro de conexão ao salvar palavra-chave.');
+    } finally { 
+      setLoadingRank(false); 
+    }
   };
 
   const fetchCompetitors = async (keyword: string) => {
@@ -480,12 +610,26 @@ export default function Dashboard() {
     setScheduledDate('');
     setEditingPostId(null);
 
-    if (client.type !== 'GBP_ONLY') {
-       setActiveTab('seo-insights');
-       fetchData(client.gscUrl, days, client.gbpData);
+    if (client.seoEnabled) {
+      if (client.type !== 'GBP_ONLY') {
+         setActiveTab('seo-insights');
+         setAppMode('seo');
+         fetchData(client.gscUrl, days, client.gbpData);
+      } else {
+         setActiveTab('gbp-dashboard');
+         setAppMode('gbp');
+         handleSelectGbpProfile(client.gbpData);
+      }
     } else {
-       setActiveTab('gbp-dashboard');
-       handleSelectGbpProfile(client.gbpData);
+      // SEO Inativo para este cliente: Trava no GBP Maps
+      setAppMode('gbp');
+      setActiveTab('gbp-dashboard');
+      if (client.gbpData) {
+        handleSelectGbpProfile(client.gbpData);
+      } else {
+        setGbpData(null);
+        setSelectedGbp(null);
+      }
     }
   };
 
@@ -613,15 +757,28 @@ export default function Dashboard() {
     setButtonType(val);
     
     const rawName = gbpData?.title || selectedClient?.name;
-    if (val === 'LEARN_MORE' && rawName) {
-      const clientName = rawName.toLowerCase();
+    if (val === 'LEARN_MORE') {
       let wpp = '';
       
-      if (clientName.includes('amor & patas')) wpp = 'https://wa.me/5534997622017';
-      else if (clientName.includes('chaveiro urgente')) wpp = 'https://wa.me/5516993499652';
-      else if (clientName.includes('pagani')) wpp = 'https://wa.me/554832495596';
-      else if (clientName.includes('simone')) wpp = 'https://wa.me/5511992299294';
-      else if (clientName.includes('soft english')) wpp = 'https://wa.me/5511958694687';
+      // 1. Tentar obter o telefone de forma totalmente dinâmica do auditData (Google Meu Negócio real)
+      const phoneItem = auditData?.checklist?.find((item: any) => item.id === 'phone');
+      if (phoneItem?.passed && phoneItem.value) {
+        const digits = phoneItem.value.replace(/\D/g, '');
+        if (digits.length >= 10) {
+          wpp = `https://wa.me/${digits.startsWith('55') ? digits : '55' + digits}`;
+          console.log('📱 WhatsApp gerado dinamicamente via Google:', wpp);
+        }
+      }
+      
+      // 2. Fallback para demonstrações estáticas caso o auditData não tenha telefone ou esteja carregando
+      if (!wpp && rawName) {
+        const clientName = rawName.toLowerCase();
+        if (clientName.includes('amor & patas')) wpp = 'https://wa.me/5534997622017';
+        else if (clientName.includes('chaveiro urgente')) wpp = 'https://wa.me/5516993499652';
+        else if (clientName.includes('pagani')) wpp = 'https://wa.me/554832495596';
+        else if (clientName.includes('simone')) wpp = 'https://wa.me/5511992299294';
+        else if (clientName.includes('soft english')) wpp = 'https://wa.me/5511958694687';
+      }
       
       if (wpp) {
         setButtonUrl(wpp);
@@ -745,28 +902,76 @@ export default function Dashboard() {
     if (activeTab === 'seo-opportunities' && selectedClient?.id) fetchOpportunities(selectedClient.id);
   }, [activeTab, selectedClient]);
 
-  const gscSites = sites.filter((s: any) => !!s.gscUrl && s.type !== 'PROSPECT');
+  const gscSites = seoAllowed ? sites.filter((s: any) => !!s.gscUrl && s.type !== 'PROSPECT' && s.seoEnabled) : [];
   const gbpProfiles = sites.filter((s: any) => !!s.gbpData && s.type !== 'PROSPECT');
 
+  if (loadingSession || checkingSubscription) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00ff9d]"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  // Portão de assinatura — bloqueia acesso ao dashboard se não for assinante ativo
+  if (subscriptionStatus !== null && subscriptionStatus !== 'active') {
+    return <SubscriptionGate userEmail={session.user?.email || ''} />;
+  }
+
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] flex flex-col lg:flex-row font-sans">
+    <div className="min-h-screen bg-[#06090e] text-[#f0f6fc] flex flex-col lg:flex-row font-sans">
       
-      <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-800 bg-[#0d1117] sticky top-0 z-50 print:hidden">
-          <h1 className="text-lg font-black tracking-tighter" style={{ color: '#00ff9d' }}>GSC<span className="text-white">Strategy</span></h1>
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-[#00ff9d]/10 bg-[#080b10] sticky top-0 z-50 print:hidden">
+          <div className="flex items-center gap-2">
+            <svg className="w-7 h-7 text-[#00ff9d] filter drop-shadow-[0_0_6px_rgba(0,255,157,0.5)]" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="mobLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#00ff9d" />
+                  <stop offset="100%" stopColor="#05c475" />
+                </linearGradient>
+              </defs>
+              <path d="M50 15 L85 75 A4 4 0 0 1 81.5 81 L18.5 81 A4 4 0 0 1 15 75 Z" stroke="url(#mobLogoGrad)" strokeWidth="11" strokeLinejoin="round" strokeLinecap="round" />
+              <path d="M50 32 L70 67 L30 67 Z" fill="url(#mobLogoGrad)" fillOpacity="0.18" />
+            </svg>
+            <span className="text-base font-black tracking-tighter text-white">GSC<span className="text-[#00ff9d]">Strategy</span></span>
+          </div>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
               {showMobileMenu ? '✕' : '☰'}
           </button>
       </div>
 
-      <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#0d1117] border-r border-gray-800 flex-col shrink-0 h-screen print:hidden`}>
-        <div className="p-5 pt-20 lg:pt-5 border-b border-gray-800">
-          <h1 className="text-2xl font-black tracking-tighter mb-6 hidden lg:block text-white">GSC<span className="text-[#00ff9d] ml-1">Strategy</span></h1>
-          <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
-            <button onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'seo' ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>🌐 SEO</button>
-            <button onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }}
-              className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'gbp' ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>📍 Maps</button>
+      <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#080b10] border-r border-[#00ff9d]/10 flex-col shrink-0 h-screen print:hidden`}>
+        <div className="p-5 pt-20 lg:pt-5 border-b border-[#00ff9d]/10">
+          <div className="flex items-center gap-3.5 mb-6 hidden lg:flex">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 bg-[#00ff9d]/10 blur-md rounded-full w-8 h-8"></div>
+              <svg className="w-8 h-8 relative z-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="sideLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#00ff9d" />
+                    <stop offset="100%" stopColor="#05c475" />
+                  </linearGradient>
+                </defs>
+                <path d="M50 15 L85 75 A4 4 0 0 1 81.5 81 L18.5 81 A4 4 0 0 1 15 75 Z" stroke="url(#sideLogoGrad)" strokeWidth="11" strokeLinejoin="round" strokeLinecap="round" />
+                <path d="M50 32 L70 67 L30 67 Z" fill="url(#sideLogoGrad)" fillOpacity="0.18" />
+              </svg>
+            </div>
+            <span className="text-xl font-black tracking-tighter text-white">GSC<span className="text-[#00ff9d] ml-0.5">Strategy</span></span>
           </div>
+          
+          {/* Ocultar seletor se o cliente atual tiver SEO desativado ou se o Módulo SEO não for permitido globalmente */}
+          {seoAllowed && (!selectedClient?.id || selectedClient.seoEnabled) && (!selectedGbp?.id || selectedGbp.seoEnabled) && (
+            <div className="flex bg-[#06090e] p-1 rounded-lg border border-gray-800 gap-1">
+              <button onClick={() => { setAppMode('seo'); setActiveTab('seo-insights'); setShowMobileMenu(false); }}
+                className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'seo' ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.35)]' : 'text-gray-400'}`}>🌐 SEO</button>
+              <button onClick={() => { setAppMode('gbp'); setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }}
+                className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${appMode === 'gbp' ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.35)]' : 'text-gray-400'}`}>📍 Maps</button>
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-b border-gray-800">
@@ -783,7 +988,9 @@ export default function Dashboard() {
             </select>
           ) : (
             <select value={selectedGbp?.id || ''} onChange={(e) => {
-                handleSelectGbpProfile(gbpProfiles.find((p:any) => p.id === e.target.value));
+                const client = gbpProfiles.find((p:any) => p.id === e.target.value);
+                if (client) handleSelectClient(client);
+                else { setSelectedClient(null); setSelectedGbp(null); setGbpData(null); }
                 setShowMobileMenu(false);
               }}
               className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
@@ -828,21 +1035,46 @@ export default function Dashboard() {
             <button onClick={() => { setActiveTab('prospecting'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'prospecting' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
               🔍 Prospecção
             </button>
+            <button onClick={() => { setActiveTab('integrations'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'integrations' ? 'bg-blue-500/10 text-blue-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+              🔌 Integrações
+            </button>
+            {isAdmin && (
+              <button onClick={() => { setActiveTab('admin-panel'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'admin-panel' ? 'bg-emerald-500/10 text-emerald-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+                👑 Super Admin
+              </button>
+            )}
+          </div>
+
+          {/* Rodapé: info do usuário + botão sair */}
+          <div className="mt-auto pt-4 border-t border-gray-800">
+            <div className="px-3 py-2 mb-2">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold">Logado como</p>
+              <p className="text-xs text-gray-400 font-semibold truncate mt-0.5">{session?.user?.email || ''}</p>
+            </div>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+              }}
+              className="w-full text-left px-3 py-2 rounded-md font-bold transition-all text-rose-500/70 hover:text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 text-sm"
+            >
+              <span>⏻</span>
+              <span>Sair da conta</span>
+            </button>
           </div>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible">
-        <header className="h-[64px] border-b border-gray-800 bg-[#0d1117] flex items-center justify-between px-8 print:hidden">
+        <header className="h-[64px] border-b border-[#00ff9d]/10 bg-[#080b10] flex items-center justify-between px-8 print:hidden">
           <span className="text-sm font-bold text-white">
             {appMode === 'seo' ? (selectedClient?.name || 'Dashboard') : (selectedGbp?.name || 'Dashboard')}
           </span>
           
 
           {appMode === 'seo' && selectedClient && (
-            <div className="flex bg-[#161b22] p-1 rounded-lg border border-gray-800 gap-1">
+            <div className="flex bg-[#06090e] p-1 rounded-lg border border-gray-800 gap-1">
               {[7, 28, 90, 180, 365].map(v => (
-                <button key={v} onClick={() => setDays(v)} className={`px-3 py-1 rounded text-[10px] font-bold ${days === v ? 'bg-[#00ff9d] text-gray-900' : 'text-gray-400'}`}>
+                <button key={v} onClick={() => setDays(v)} className={`px-3 py-1 rounded text-[10px] font-bold ${days === v ? 'bg-[#00ff9d] text-gray-900 shadow-[0_0_10px_rgba(0,255,157,0.35)]' : 'text-gray-400'}`}>
                   {v === 180 ? '6m' : v === 365 ? '12m' : `${v}d`}
                 </button>
               ))}
@@ -858,7 +1090,7 @@ export default function Dashboard() {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible print:bg-[#0d1117]">
+        <main className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible print:bg-[#06090e]">
           {appMode === 'seo' && selectedClient && (
             <div className="max-w-6xl mx-auto">
               {activeTab === 'seo-insights' && <TabSEOInsights data={data} getStrategicInsights={getStrategicInsights} />}
@@ -989,6 +1221,16 @@ export default function Dashboard() {
           {activeTab === 'prospecting' && (
             <div className="max-w-6xl mx-auto">
               <TabProspecting />
+            </div>
+          )}
+          {activeTab === 'integrations' && (
+            <div className="max-w-6xl mx-auto">
+              <TabIntegrations session={session} />
+            </div>
+          )}
+          {activeTab === 'admin-panel' && isAdmin && (
+            <div className="max-w-6xl mx-auto">
+              <TabAdminPanel session={session} />
             </div>
           )}
         </main>

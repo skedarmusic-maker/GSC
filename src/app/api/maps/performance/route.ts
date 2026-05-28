@@ -9,7 +9,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'locationName é obrigatório' }, { status: 400 });
     }
 
-    const perf = await getLocationPerformance(locationName, days, startDate, endDate);
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    const perf = await getLocationPerformance(locationName, days, startDate, endDate, token);
     
     if (!perf) {
       return NextResponse.json({ totals: { calls: 0, directions: 0, websiteClicks: 0 }, chartData: [] });

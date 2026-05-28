@@ -9,7 +9,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'reviewName e replyText são obrigatórios' }, { status: 400 });
     }
 
-    const success = await replyToReview(reviewName, replyText);
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    const success = await replyToReview(reviewName, replyText, token);
     
     if (!success) {
       return NextResponse.json({ error: 'Falha ao enviar resposta para o Google' }, { status: 500 });

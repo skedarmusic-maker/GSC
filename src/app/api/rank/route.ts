@@ -1,15 +1,34 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getLocationDetails } from '@/lib/business';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const locationId = searchParams.get('locationId');
+  const authHeader = req.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
 
   if (!locationId) return NextResponse.json({ error: 'Location ID missing' }, { status: 400 });
 
+  let dbSupabase = supabase;
+
+  if (token) {
+    dbSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
+    );
+  }
+
   // Buscar palavras-chave e seus históricos
-  const { data: keywords, error } = await supabase
+  const { data: keywords, error } = await dbSupabase
     .from('tracked_keywords')
     .select('*, rank_history(*)')
     .eq('location_id', locationId)
@@ -23,9 +42,84 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const { locationId, businessName, keyword, accountId, zoom } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    let dbSupabase = supabase;
+
+    if (token) {
+      dbSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      );
+      
+      const { data: userResponse, error: authError } = await dbSupabase.auth.getUser();
+      if (authError || !userResponse?.user) {
+        return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
+      }
+
+      const userId = userResponse.user.id;
+
+      // === SISTEMA DE CRÉDITOS SAAS ===
+      // 1. Buscar saldo de créditos do usuário logado
+      const { data: credits, error: creditError } = await dbSupabase
+        .from('user_credits')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (creditError) throw creditError;
+
+      const totalCredits = (credits?.monthly_allowance || 0) + (credits?.purchased_credits || 0);
+
+      if (!credits || totalCredits <= 0) {
+        return NextResponse.json({ 
+          error: 'Cota de créditos de ranking esgotada. Adquira mais créditos na central de integrações/perfil.' 
+        }, { status: 403 });
+      }
+
+      // 2. Decrementar 1 crédito (priorizando monthly_allowance e depois purchased_credits)
+      let newMonthly = credits.monthly_allowance;
+      let newPurchased = credits.purchased_credits;
+
+      if (newMonthly > 0) {
+        newMonthly -= 1;
+      } else {
+        newPurchased -= 1;
+      }
+
+      // 3. Atualizar saldo no banco
+      const { error: updateError } = await dbSupabase
+        .from('user_credits')
+        .update({
+          monthly_allowance: newMonthly,
+          purchased_credits: newPurchased
+        })
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
+
+      // 4. Registrar no log de consumo para auditoria do usuário
+      await dbSupabase
+        .from('credit_usage_log')
+        .insert([
+          {
+            user_id: userId,
+            tokens_consumed: 1,
+            action_description: `Verificação de ranking local da palavra-chave: "${keyword}"`
+          }
+        ]);
+    }
 
     // 1. Salvar a palavra-chave no banco
-    const { data: kw, error } = await supabase
+    const { data: kw, error } = await dbSupabase
       .from('tracked_keywords')
       .insert([{ location_id: locationId, business_name: businessName, keyword }])
       .select()
@@ -35,7 +129,7 @@ export async function POST(req: Request) {
 
     // 2. Disparar a primeira busca na SerpApi imediatamente
     const locationName = `accounts/${accountId}/locations/${locationId}`;
-    const details = await getLocationDetails(locationName);
+    const details = await getLocationDetails(locationName, token);
     
     // Pegar coordenadas para precisão total (Geolocalização Local)
     const lat = details?.latlng?.latitude;
@@ -57,7 +151,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Salvar o primeiro registro de posição
-    await supabase
+    await dbSupabase
       .from('rank_history')
       .insert([{ keyword_id: kw.id, position }]);
 

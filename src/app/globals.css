@@ -6,13 +6,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --bg-color: #0d1117;
-  --card-bg: rgba(22, 27, 34, 0.8);
+  --bg-color: #06090e;
+  --card-bg: rgba(11, 15, 23, 0.65);
   --accent-blue: #0070f3;
   --accent-purple: #7928ca;
-  --text-main: #e6edf3;
+  --text-main: #f0f6fc;
   --text-muted: #8b949e;
-  --border-color: rgba(48, 54, 61, 0.5);
+  --border-color: rgba(0, 255, 157, 0.12);
 }
 
 * {
@@ -29,11 +29,34 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Custom Scrollbars ultra-clean */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #06090e;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 157, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 157, 0.3);
+}
+
 .glass-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 0 20px rgba(0, 255, 157, 0.05);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 255, 157, 0.02);
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 255, 157, 0.35);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 157, 0.08);
 }
 
 .active-nav-link {

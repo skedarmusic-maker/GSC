@@ -2,9 +2,32 @@ import { NextResponse } from 'next/server';
 import { getDetailedInsights } from '@/lib/gsc';
 import { listLocations, getLocationPerformance } from '@/lib/business';
 
+import { createClient } from '@supabase/supabase-js';
+
 export async function POST(request: Request) {
   try {
     const { siteUrl, days } = await request.json();
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (token) {
+      // Validar sessão do usuário logado no Supabase
+      const userSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      );
+      const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
+      }
+    }
     
     // 1. Dados do SEO (GSC)
     const seoData = await getDetailedInsights(siteUrl, days);
@@ -12,7 +35,7 @@ export async function POST(request: Request) {
     // 2. Dados Reais do Maps (Business Profile)
     let mapsData = null;
     try {
-      const locations = await listLocations();
+      const locations = await listLocations(token);
       
       // Limpa a URL do site para comparação profunda
       const cleanUrl = siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
@@ -26,7 +49,7 @@ export async function POST(request: Request) {
       });
       
       if (myLocation) {
-        const perf = await getLocationPerformance(myLocation.name, days);
+        const perf = await getLocationPerformance(myLocation.name, days, undefined, undefined, token);
         mapsData = {
           title: myLocation.title,
           accountId: myLocation.accountId,

@@ -9,12 +9,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'accountId, locationId e postText são obrigatórios' }, { status: 400 });
     }
 
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
     const success = await createLocalPost(accountId, locationId, {
         text: postText,
         imageUrl,
         buttonType,
         buttonUrl
-    });
+    }, token);
     
     if (!success) {
       return NextResponse.json({ error: 'Falha ao criar postagem no Google' }, { status: 500 });

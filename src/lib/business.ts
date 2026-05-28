@@ -1,6 +1,39 @@
 import { supabase } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 
-async function getAccessToken() {
+export async function getAccessToken(tokenSupabase?: string) {
+  let googleRefreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN;
+
+  if (tokenSupabase) {
+    try {
+      const userSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${tokenSupabase}`
+            }
+          }
+        }
+      );
+      
+      const { data: integration, error } = await userSupabase
+        .from('google_integrations')
+        .select('refresh_token')
+        .single();
+        
+      if (!error && integration?.refresh_token) {
+        googleRefreshToken = integration.refresh_token;
+        console.log('📡 GBP: Usando Refresh Token OAuth dinâmico do usuário.');
+      } else {
+        console.log('📡 GBP: Nenhuma integração ativa encontrada ou erro. Usando token legado do .env.');
+      }
+    } catch (err) {
+      console.error('Erro ao ler integração do Google:', err);
+    }
+  }
+
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -8,7 +41,7 @@ async function getAccessToken() {
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_ADS_CLIENT_ID!.trim(),
       client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!.trim(),
-      refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN!.trim(),
+      refresh_token: googleRefreshToken!.trim(),
       grant_type: 'refresh_token',
     }),
   });
@@ -19,9 +52,9 @@ async function getAccessToken() {
 // === DESCOBERTA AUTOMÁTICA DE LOCAIS ===
 // Agora o sistema busca dinamicamente todos os perfis que você gerencia
 
-export async function listLocations() {
+export async function listLocations(tokenSupabase?: string) {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tokenSupabase);
 
     // 1. Listar todas as contas de gerenciamento
     const accountsRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
@@ -65,9 +98,9 @@ export async function listLocations() {
   }
 }
 
-export async function getLocationPerformance(locationName: string, days?: number, startDateStr?: string, endDateStr?: string) {
+export async function getLocationPerformance(locationName: string, days?: number, startDateStr?: string, endDateStr?: string, tokenSupabase?: string) {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tokenSupabase);
     const cleanLocationName = locationName.replace(/^accounts\/[^/]+\//, '');
 
     let start: Date;
@@ -144,9 +177,9 @@ export async function getLocationPerformance(locationName: string, days?: number
 
 // === NOVAS FUNÇÕES: GESTÃO DO PERFIL ===
 
-export async function getReviews(accountId: string, locationId: string) {
+export async function getReviews(accountId: string, locationId: string, tokenSupabase?: string) {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tokenSupabase);
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
 
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
@@ -169,9 +202,9 @@ export async function getReviews(accountId: string, locationId: string) {
   }
 }
 
-export async function replyToReview(reviewName: string, replyText: string) {
+export async function replyToReview(reviewName: string, replyText: string, tokenSupabase?: string) {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tokenSupabase);
     const url = `https://mybusiness.googleapis.com/v4/${reviewName}/reply`;
 
     const res = await fetch(url, {
@@ -191,9 +224,9 @@ export async function replyToReview(reviewName: string, replyText: string) {
   }
 }
 
-export async function createLocalPost(accountId: string, locationId: string, postData: { text: string, imageUrl?: string, buttonType?: string, buttonUrl?: string }) {
+export async function createLocalPost(accountId: string, locationId: string, postData: { text: string, imageUrl?: string, buttonType?: string, buttonUrl?: string }, tokenSupabase?: string) {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tokenSupabase);
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/localPosts`;
 
     const body: any = {
@@ -244,9 +277,9 @@ export async function createLocalPost(accountId: string, locationId: string, pos
   }
 }
 
-export async function getLocationDetails(locationId: string) {
+export async function getLocationDetails(locationId: string, tokenSupabase?: string) {
   try {
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tokenSupabase);
     // A API v1 aceita apenas locations/{id} sem o prefixo de account
     // readMask=* não é suportado — listamos campos explícitos
     const cleanId = locationId.replace(/^accounts\/[^\/]+\//, '');
