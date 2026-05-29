@@ -106,10 +106,10 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161b22] border border-gray-800 text-xs font-bold text-gray-400 mb-4 animate-pulse">
             <Sparkles className="w-3.5 h-3.5 text-[#00ff9d]" />
-            <span>GSC Strategy Engine v2.0 SaaS</span>
+            <span>FocusLocal Engine v2.0 SaaS</span>
           </div>
           <h1 className="text-4xl font-black tracking-tighter text-white">
-            GSC<span className="text-[#00ff9d]">Strategy</span>
+            Focus<span className="text-[#00ff9d]">Local</span>
           </h1>
           <p className="text-gray-400 text-sm mt-2">
             {isLogin 
@@ -193,7 +193,7 @@ export default function LoginPage() {
                 <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <span>{isLogin ? 'Entrar no GSC' : 'Cadastrar Minha Conta'}</span>
+                  <span>{isLogin ? 'Entrar no FocusLocal' : 'Cadastrar Minha Conta'}</span>
                   {isLogin ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                 </>
               )}

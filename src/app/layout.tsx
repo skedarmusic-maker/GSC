@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "GSC Insight Engine",
-  description: "Análise avançada de dados do Search Console",
+  title: "FocusLocal",
+  description: "Análise avançada de SEO Local e Google Search Console",
 };
 
 export const viewport = {

@@ -152,7 +152,7 @@ export default function TabClientConfig({
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <span className="text-2xl">🎨</span> Inteligência de Layout (Stitch)
             </h3>
-            <p className="text-sm text-gray-500 mt-1">Defina como o GSC deve gerar e onde deve salvar as novas páginas automáticas (Landing Pages, Artigos).</p>
+            <p className="text-sm text-gray-500 mt-1">Defina como o FocusLocal deve gerar e onde deve salvar as novas páginas automáticas (Landing Pages, Artigos).</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

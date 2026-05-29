@@ -67,7 +67,7 @@ const TabHostinger: React.FC<TabHostingerProps> = ({ sites = [] }) => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black text-white tracking-tighter">Gestão Hostinger</h2>
-          <p className="text-gray-400 text-sm">Controle seus domínios e servidores diretamente no Strategy.</p>
+          <p className="text-gray-400 text-sm">Controle seus domínios e servidores diretamente no FocusLocal.</p>
         </div>
         <button 
           onClick={fetchHostingerData}

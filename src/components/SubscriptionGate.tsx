@@ -15,7 +15,7 @@ export default function SubscriptionGate({ userEmail }: SubscriptionGateProps) {
   };
 
   const whatsappMsg = encodeURIComponent(
-    `Olá! Acabei de realizar o pagamento via PIX para assinar o GSC Strategy. Meu e-mail de cadastro é: ${userEmail}`
+    `Olá! Acabei de realizar o pagamento via PIX para assinar o FocusLocal. Meu e-mail de cadastro é: ${userEmail}`
   );
 
   return (
@@ -31,7 +31,7 @@ export default function SubscriptionGate({ userEmail }: SubscriptionGateProps) {
         <div className="text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161b22] border border-[#00ff9d]/20 text-xs font-bold text-[#00ff9d] mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] animate-pulse inline-block" />
-            GSC Strategy — Acesso Profissional
+            FocusLocal — Acesso Profissional
           </div>
           <h1 className="text-4xl font-black tracking-tighter text-white">
             Quase lá, <span className="text-[#00ff9d]">falta um passo!</span>

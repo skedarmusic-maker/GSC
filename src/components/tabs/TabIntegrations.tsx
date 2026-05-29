@@ -85,7 +85,7 @@ export default function TabIntegrations({ session }: TabIntegrationsProps) {
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
             <span>🔌 Central de Integrações</span>
           </h2>
-          <p className="text-gray-400 text-xs mt-1">Conecte e gerencie seus canais externos para alimentar o motor do GSC.</p>
+          <p className="text-gray-400 text-xs mt-1">Conecte e gerencie seus canais externos para alimentar o motor do FocusLocal.</p>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export default function TabIntegrations({ session }: TabIntegrationsProps) {
           </div>
 
           <p className="text-gray-400 text-xs leading-relaxed mb-6">
-            Conecte sua conta do Google para permitir a importação e leitura automática dos relatórios de Cliques e CTR do GSC e para responder avaliações e criar postagens no Google Maps de forma direta pela plataforma.
+            Conecte sua conta do Google para permitir a importação e leitura automática dos relatórios de Cliques e CTR do Google Search Console e para responder avaliações e criar postagens no Google Maps de forma direta pela plataforma.
           </p>
 
           {integration ? (

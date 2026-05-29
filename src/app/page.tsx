@@ -992,7 +992,7 @@ export default function Dashboard() {
               <path d="M50 15 L85 75 A4 4 0 0 1 81.5 81 L18.5 81 A4 4 0 0 1 15 75 Z" stroke="url(#mobLogoGrad)" strokeWidth="11" strokeLinejoin="round" strokeLinecap="round" />
               <path d="M50 32 L70 67 L30 67 Z" fill="url(#mobLogoGrad)" fillOpacity="0.18" />
             </svg>
-            <span className="text-base font-black tracking-tighter text-white">GSC<span className="text-[#00ff9d]">Strategy</span></span>
+            <span className="text-base font-black tracking-tighter text-white">Focus<span className="text-[#00ff9d]">Local</span></span>
           </div>
           <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-400">
               {showMobileMenu ? '✕' : '☰'}
@@ -1015,7 +1015,7 @@ export default function Dashboard() {
                 <path d="M50 32 L70 67 L30 67 Z" fill="url(#sideLogoGrad)" fillOpacity="0.18" />
               </svg>
             </div>
-            <span className="text-xl font-black tracking-tighter text-white">GSC<span className="text-[#00ff9d] ml-0.5">Strategy</span></span>
+            <span className="text-xl font-black tracking-tighter text-white">Focus<span className="text-[#00ff9d] ml-0.5">Local</span></span>
           </div>
           
           {/* Ocultar seletor se o cliente atual tiver SEO desativado ou se o Módulo SEO não for permitido globalmente */}
@@ -1038,7 +1038,7 @@ export default function Dashboard() {
                 setShowMobileMenu(false);
               }}
               className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
-              <option value="">Selecionar GSC...</option>
+              <option value="">Selecionar Site...</option>
               {gscSites.map((c:any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           ) : (
@@ -1289,7 +1289,7 @@ export default function Dashboard() {
               </svg>
               <h3 className="text-white font-black text-lg uppercase tracking-tight">Sem Ficha de Maps</h3>
               <p className="text-gray-400 text-xs mt-2 leading-relaxed">
-                Este cliente ({selectedClient.name}) não possui uma ficha do Google Meu Negócio vinculada ao GSC Strategy.
+                Este cliente ({selectedClient.name}) não possui uma ficha do Google Meu Negócio vinculada ao FocusLocal.
               </p>
               <div className="mt-6 flex justify-center">
                 <button

@@ -132,7 +132,7 @@ export async function GET(req: Request) {
       return {
         id: usr.id,
         email: usr.email,
-        fullName: usr.user_metadata?.full_name || 'Profissional GSC',
+        fullName: usr.user_metadata?.full_name || 'Profissional FocusLocal',
         role: userRole,
         subscriptionStatus: userCredits?.subscription_status || 'pending',
         seoAllowed: userCredits?.seo_allowed ?? false,
@@ -149,7 +149,7 @@ export async function GET(req: Request) {
         id: log.id,
         userId: log.user_id,
         userEmail: logUser?.email || 'Sistema (Sem Usuário)',
-        userName: logUser?.user_metadata?.full_name || 'Profissional GSC',
+        userName: logUser?.user_metadata?.full_name || 'Profissional FocusLocal',
         tokensConsumed: log.tokens_consumed ?? 1,
         actionDescription: log.action_description || 'Ação da API',
         createdAt: log.created_at

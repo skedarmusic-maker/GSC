@@ -1093,7 +1093,7 @@ export default function TabProspecting({ session }: { session?: any }) {
                   )}
                   <div>
                     <h3 className="text-lg font-black text-white tracking-tight uppercase leading-tight">
-                      {session?.user?.user_metadata?.agency_name || 'GSC Strategy'}
+                      {session?.user?.user_metadata?.agency_name || 'FocusLocal'}
                     </h3>
                     <p className="text-[10px] text-[#00ff9d] uppercase font-black tracking-widest mt-0.5">Relatório Técnico de Saúde Local</p>
                   </div>

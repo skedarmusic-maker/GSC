@@ -108,7 +108,7 @@ export default function TabGBPRank({
 
     doc.setTextColor(...gray);
     doc.setFontSize(7);
-    doc.text('Gerado por GSCStrategy • Os dados são snapshot no momento da consulta.', 105, 292, { align: 'center' });
+    doc.text('Gerado por FocusLocal • Os dados são snapshot no momento da consulta.', 105, 292, { align: 'center' });
     doc.save(`Rank_Tracker_${(gbpData?.title || 'relatorio').replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
