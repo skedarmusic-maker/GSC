@@ -197,7 +197,7 @@ export async function POST(req: Request) {
     const normalized = rawResults.map((place) => normalize(place));
 
     // Coleta URLs únicas para verificar em paralelo (evita verificar mesma URL 2x)
-    const uniqueWebsites = [...new Set(normalized.map(n => n.website).filter(Boolean))];
+    const uniqueWebsites = Array.from(new Set(normalized.map(n => n.website).filter(Boolean)));
     const websiteStatusMap: Record<string, boolean> = {};
     if (uniqueWebsites.length > 0) {
       console.log(`🌐 Verificando ${uniqueWebsites.length} websites em paralelo...`);
@@ -246,7 +246,7 @@ export async function POST(req: Request) {
         phone: n.phone,
         thumbnail: n.thumbnail,
         hours: n.hours,
-        category: n.type || place.category || niche,
+        category: n.type || niche,
         score,
         opportunities,
         hasDescription,

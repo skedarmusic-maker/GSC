@@ -136,7 +136,7 @@ export default function GSCChart({ history }: Props) {
               interval={Math.ceil(chartData.length / 10)}
             />
             <YAxis 
-              yId="left"
+              yAxisId="left"
               stroke="#4b5563" 
               fontSize={10} 
               tickLine={false} 
@@ -144,7 +144,7 @@ export default function GSCChart({ history }: Props) {
               tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v}
             />
             <YAxis 
-              yId="right"
+              yAxisId="right"
               orientation="right"
               stroke="#4b5563" 
               fontSize={10} 
@@ -153,7 +153,7 @@ export default function GSCChart({ history }: Props) {
               hide={!activeMetrics.ctr}
             />
             <YAxis 
-              yId="position"
+              yAxisId="position"
               orientation="right"
               reversed={true}
               stroke="#ffbb00" 
@@ -171,7 +171,7 @@ export default function GSCChart({ history }: Props) {
             
             {activeMetrics.impressions && (
               <Line
-                yId="left"
+                yAxisId="left"
                 type="monotone"
                 dataKey="impressions"
                 stroke="#8133f1"
@@ -184,7 +184,7 @@ export default function GSCChart({ history }: Props) {
 
             {activeMetrics.clicks && (
               <Line
-                yId="left"
+                yAxisId="left"
                 type="monotone"
                 dataKey="clicks"
                 stroke="#4285f4"
@@ -197,7 +197,7 @@ export default function GSCChart({ history }: Props) {
 
             {activeMetrics.ctr && (
               <Line
-                yId="right"
+                yAxisId="right"
                 type="monotone"
                 dataKey="ctr"
                 stroke="#00ff9d"
@@ -210,7 +210,7 @@ export default function GSCChart({ history }: Props) {
 
             {activeMetrics.position && (
               <Line
-                yId="position"
+                yAxisId="position"
                 type="monotone"
                 dataKey="position"
                 stroke="#ffbb00"

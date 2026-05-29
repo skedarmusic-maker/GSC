@@ -62,7 +62,7 @@ export async function GET(req: Request) {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const isSuperAdmin = roleData?.role === 'super_admin' || user.email === 'gabrielamorimseo@gmail.com' || user.email === 'focus.earts@gmail.com';
+      const isSuperAdmin = roleData?.role === 'super_admin';
 
       // 3. Buscar clientes com base no nível de acesso
       if (isSuperAdmin) {
@@ -299,7 +299,7 @@ export async function PATCH(req: Request) {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const isSuperAdmin = roleData?.role === 'super_admin' || user.email === 'gabrielamorimseo@gmail.com' || user.email === 'focus.earts@gmail.com';
+      const isSuperAdmin = roleData?.role === 'super_admin';
 
       // 3. Atualizar com restrição rígida de proprietário para usuários comuns
       if (isSuperAdmin) {
@@ -335,20 +335,7 @@ export async function PATCH(req: Request) {
         updateError = error;
       }
     } else {
-      const { data, error } = await adminSupabase
-        .from('clients')
-        .update({ 
-          local_path: localPath, 
-          business_context: businessContext,
-          design_context: design_context,
-          project_folder: projectFolder,
-          stitch_prompt: stitchPrompt
-        })
-        .eq('id', id)
-        .select();
-        
-      updateResult = data;
-      updateError = error;
+      return NextResponse.json({ error: 'Não autorizado. Token de sessão ausente.' }, { status: 401 });
     }
 
     if (updateError) throw updateError;

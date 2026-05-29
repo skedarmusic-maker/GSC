@@ -96,7 +96,7 @@ function readLS<T>(key: string, fallback: T): T {
   }
 }
 
-export default function TabProspecting() {
+export default function TabProspecting({ session }: { session?: any }) {
   // ─── ESTADOS COM INICIALIZAÇÃO LAZY (lê localStorage de forma SÍNCRONA) ───
   // Isso garante que os dados estejam presentes desde o primeiro render,
   // evitando a race condition entre o useEffect de leitura e o de escrita.
@@ -1064,7 +1064,7 @@ export default function TabProspecting() {
               {/* Print Header */}
               <div className="hidden print:flex justify-between items-center mb-8 border-b border-gray-800/50 pb-6">
                 <div className="flex items-center gap-4">
-                  <img src="/logo.png" className="h-24 w-auto object-contain" alt="Focus Arts Logo" />
+                  <img src={session?.user?.user_metadata?.agency_logo_url || '/logo.png'} className="h-24 w-auto object-contain" alt={session?.user?.user_metadata?.agency_name || 'Logo'} />
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-400 font-bold">{new Date().toLocaleDateString('pt-BR')}</p>

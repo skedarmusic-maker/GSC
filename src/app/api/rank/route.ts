@@ -11,24 +11,56 @@ export async function GET(req: Request) {
 
   if (!locationId) return NextResponse.json({ error: 'Location ID missing' }, { status: 400 });
 
-  let dbSupabase = supabase;
+  if (!token) {
+    return NextResponse.json({ error: 'Não autorizado. Token de sessão ausente.' }, { status: 401 });
+  }
 
-  if (token) {
-    dbSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+  const userSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
       }
-    );
+    }
+  );
+
+  const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
+  }
+
+  // Verificar posse: o locationId deve pertencer a um cliente deste usuário
+  const adminSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+
+  const { data: roleData } = await adminSupabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const isSuperAdmin = roleData?.role === 'super_admin';
+
+  if (!isSuperAdmin) {
+    const { data: ownerCheck } = await adminSupabase
+      .from('clients')
+      .select('id')
+      .eq('gbp_location_id', locationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!ownerCheck) {
+      return NextResponse.json({ error: 'Acesso negado. Este local não pertence à sua conta.' }, { status: 403 });
+    }
   }
 
   // Buscar palavras-chave e seus históricos
-  const { data: keywords, error } = await dbSupabase
+  const { data: keywords, error } = await adminSupabase
     .from('tracked_keywords')
     .select('*, rank_history(*)')
     .eq('location_id', locationId)

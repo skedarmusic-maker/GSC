@@ -16,6 +16,7 @@ import TabClientConfig from '@/components/tabs/TabClientConfig';
 import TabProspecting from '@/components/tabs/TabProspecting';
 import TabIntegrations from '@/components/tabs/TabIntegrations';
 import TabAdminPanel from '@/components/tabs/TabAdminPanel';
+import TabSettings from '@/components/tabs/TabSettings';
 import MonthRangePicker from '@/components/MonthRangePicker';
 import SubscriptionGate from '@/components/SubscriptionGate';
 
@@ -533,7 +534,7 @@ export default function Dashboard() {
               homePage: "Sincronizado"
             }
           } : s));
-          setSelectedClient(prev => prev ? {
+          setSelectedClient((prev: any) => prev ? {
             ...prev,
             stitchPrompt: result.stitchPrompt,
             projectFolder: folderName,
@@ -577,7 +578,7 @@ export default function Dashboard() {
               designTokens: manualDesignCode
             }
           } : s));
-          setSelectedClient(prev => prev ? {
+          setSelectedClient((prev: any) => prev ? {
             ...prev,
             stitchPrompt: result.stitchPrompt,
             designContext: {
@@ -1052,6 +1053,9 @@ export default function Dashboard() {
             <button onClick={() => { setActiveTab('integrations'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'integrations' ? 'bg-blue-500/10 text-blue-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
               🔌 Integrações
             </button>
+            <button onClick={() => { setActiveTab('agency-settings'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'agency-settings' ? 'bg-orange-500/10 text-orange-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
+              🎨 Personalizar Agência
+            </button>
             {isAdmin && (
               <button onClick={() => { setActiveTab('admin-panel'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-bold transition-all mt-1 ${activeTab === 'admin-panel' ? 'bg-emerald-500/10 text-emerald-400' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}>
                 👑 Super Admin
@@ -1234,12 +1238,17 @@ export default function Dashboard() {
           )}
           {activeTab === 'prospecting' && (
             <div className="max-w-6xl mx-auto">
-              <TabProspecting />
+              <TabProspecting session={session} />
             </div>
           )}
           {activeTab === 'integrations' && (
             <div className="max-w-6xl mx-auto">
               <TabIntegrations session={session} />
+            </div>
+          )}
+          {activeTab === 'agency-settings' && (
+            <div className="max-w-6xl mx-auto">
+              <TabSettings session={session} />
             </div>
           )}
           {activeTab === 'admin-panel' && isAdmin && (

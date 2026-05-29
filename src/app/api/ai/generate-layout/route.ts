@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         path.join(localPath, 'website', 'src', 'app', 'globals.css'),
         path.join(localPath, 'website', 'src', 'globals.css'),
         path.join(localPath, 'website', 'globals.css'),
-      ], 3000);
+      ], 6000);
 
       // Tentar ler tailwind.config para tokens de design
       const tailwindConfig = tryReadFile([
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         path.join(localPath, 'tailwind.config.js'),
         path.join(localPath, 'website', 'tailwind.config.ts'),
         path.join(localPath, 'website', 'tailwind.config.js'),
-      ], 3000);
+      ], 6000);
 
       designTokens = [globalsCss, tailwindConfig].filter(Boolean).join('\n\n');
     }
@@ -184,15 +184,16 @@ REGRAS OBRIGATÓRIAS DE DESENVOLVIMENTO:
 3. Exporte a função como: export default function Page() { ... }
 4. Inclua metadados SEO: export const metadata = { title: "...", description: "..." } usando a palavra-chave "${opp.keyword}" no título e na descrição.
 5. Use Tailwind CSS para toda estilização.
-6. ${hasLocalFiles ? 'OBRIGATÓRIO: Importe e renderize o Header/Navbar e Footer do projeto exatamente como estão no layout.tsx ou page.tsx acima.' : 'Crie um header e footer seguindo o manual da marca.'}
+6. IMPORTANTE (Navbar/Footer): Se o layout.tsx fornecido já contiver o Header/Navbar e Footer principais do projeto (definidos de forma global), a página gerada NÃO DEVE renderizar nem importar novos componentes de Header, Navbar ou Footer, focando estritamente no conteúdo útil do corpo da página para evitar duplicidades visuais no site original. Caso contrário, se o layout.tsx não contiver esses elementos globais ou não houver arquivos locais, crie um header e footer conforme as regras do manual de design do cliente.
 7. O corpo principal da página DEVE incluir de forma INTEGRAL e FIEL o texto fornecido em "TEXTO/COPY DA PÁGINA". Não resuma, não encurte e não invente substitutos.
-8. Diagramação Premium: Organize o texto da cópia fornecida em seções bem espaçadas e limpas: (1) Hero impactante com a palavra-chave, (2) Seções de leitura/artigo com títulos chamativos, listas estéticas, blocos com ícones SVG nativos/Lucide e cartões com fundo sutil para destacar ideias, (3) Seção final de FAQ/Dúvidas Frequentes se houver no texto, (4) CTA (Chamada para Ação) final ligada a um botão de contato.
-9. NÃO use imagens externas. Use fundos coloridos com Tailwind ou SVGs inline simples se necessário.
-10. O código deve compilar sem erros em um projeto Next.js 14 com Tailwind CSS.`;
+8. Diagramação Premium e Identidade de Marca: Aplique rigorosamente a identidade visual descrita no "MANUAL DA MARCA DO CLIENTE" e os padrões estéticos observados nos componentes da Home (como classes de inclinação -skew-x-12 nos botões/badges contendo elementos com skew-x-12 para compensar, glows neon nos cards, efeitos de flare radial gradient em hover, contornos com a classe .border-text ou .border-text-primary, e fontes nos tamanhos adequados). A página deve parecer uma extensão premium e agressiva do site original, não uma página genérica de template. Divida o texto do copy em seções com Hero impactante, blocos estéticos de diferenciais e serviços, FAQs e CTAs proeminentes para WhatsApp.
+9. NÃO use imagens externas. Use fundos coloridos com Tailwind ou SVGs inline simples se necessário. NÃO importe nenhuma biblioteca externa como lucide-react, heroicons, react-icons ou similar. Se precisar de ícones, defina-os como componentes SVG inline diretamente no arquivo.
+10. O código deve compilar sem erros em um projeto Next.js 14 com Tailwind CSS sem nenhuma dependência adicional além das já existentes no projeto.
+11. O código gerado deve ser limpo, estruturado de forma concisa e direta. Evite redundâncias extremas de componentes e ícones repetidos para garantir que o código total tenha menos de 10.000 caracteres, prevenindo problemas de truncamento na transmissão e mantendo a alta fidelidade estética.`;
 
     // 4. Chamar o Gemini
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

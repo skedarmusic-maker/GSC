@@ -10,23 +10,25 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
 
-    if (token) {
-      // Validar sessão do usuário logado no Supabase
-      const userSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-        {
-          global: {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+    if (!token) {
+      return NextResponse.json({ error: 'Não autorizado. Token de sessão ausente.' }, { status: 401 });
+    }
+
+    // Validar sessão do usuário logado no Supabase
+    const userSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
           }
         }
-      );
-      const { data: { user }, error: authError } = await userSupabase.auth.getUser();
-      if (authError || !user) {
-        return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
       }
+    );
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
     }
     
     // 1. Dados do SEO (GSC)

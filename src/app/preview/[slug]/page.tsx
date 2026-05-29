@@ -149,13 +149,13 @@ export default function PreviewPage() {
           const regexStr = `<${iconName}\\s+className="([^"]*)"\\s*\\/>`;
           const regex = new RegExp(regexStr, 'gi');
           
-          cleanHtml = cleanHtml.replace(regex, (match, classes) => {
+          cleanHtml = cleanHtml.replace(regex, (_match: string, classes: string) => {
             return svgString.replace('class="lucide', `class="${classes} lucide`);
           });
         });
 
         // Caso haja chaves de estilo inline {style={{...}}}
-        cleanHtml = cleanHtml.replace(/style=\{\{\s*([\s\S]*?)\s*\}\}/g, (match, styleBody) => {
+        cleanHtml = cleanHtml.replace(/style=\{\{\s*([\s\S]*?)\s*\}\}/g, (_match: string, styleBody: string) => {
           const styleCss = styleBody
             .replace(/([A-Z])/g, '-$1').toLowerCase()
             .replace(/["']/g, '')
