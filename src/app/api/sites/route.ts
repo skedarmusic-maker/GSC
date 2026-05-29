@@ -74,9 +74,11 @@ export async function GET(req: Request) {
       dbClients = data;
       dbError = error;
 
-        // Se o banco estiver vazio para este usuário comum, tenta fazer a descoberta automática usando os tokens OAuth dele!
-        if (!dbError && (!dbClients || dbClients.length === 0)) {
-          console.log(`🔄 Descoberta automática de perfis para o usuário comum: ${user.email}`);
+        // Se o banco de dados não contiver nenhum cliente conectado (GBP/GSC) ou estiver totalmente vazio, tenta a descoberta automática.
+        const hasConnectedClients = dbClients?.some(c => c.gbp_location_id || c.gsc_url);
+
+        if (!dbError && (!dbClients || dbClients.length === 0 || !hasConnectedClients)) {
+          console.log(`🔄 Descoberta automática de perfis para o usuário: ${user.email} (Total clientes: ${dbClients?.length || 0}, Conectados: ${hasConnectedClients ? 'Sim' : 'Não'})`);
           try {
             const accessToken = await getAccessToken(token).catch(() => null);
             if (accessToken) {
@@ -91,19 +93,28 @@ export async function GET(req: Request) {
 
               // Mapear GBP
               for (const loc of gbpLocations) {
+                // Evitar duplicar locais que já existam no banco
+                const exists = dbClients?.some(c => c.gbp_location_id === loc.name.replace('locations/', ''));
+                if (exists) continue;
+
                 unified.push({
                   name: loc.title,
                   gbp_account_id: loc.accountId,
                   gbp_location_id: loc.name.replace('locations/', ''),
                   website_url: loc.websiteUri,
                   gsc_url: null,
-                  user_id: user.id // Associar rigorosamente ao ID do usuário!
+                  user_id: user.id
                 });
               }
 
               // Mapear GSC e vincular
               for (const site of gscSites) {
                 if (!site.siteUrl) continue;
+                
+                // Evitar duplicar sites GSC já existentes
+                const exists = dbClients?.some(c => c.gsc_url === site.siteUrl);
+                if (exists) continue;
+
                 const cleanGscUrl = site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase();
                 
                 let found = false;
@@ -122,7 +133,7 @@ export async function GET(req: Request) {
                     name: site.siteUrl.replace(/^sc-domain:/, '').replace(/^https?:\/\//, ''),
                     gsc_url: site.siteUrl,
                     website_url: site.siteUrl.startsWith('http') ? site.siteUrl : null,
-                    user_id: user.id // Associar rigorosamente ao ID do usuário!
+                    user_id: user.id
                   });
                 }
               }
@@ -135,8 +146,8 @@ export async function GET(req: Request) {
                   .select();
                 
                 if (insertError) throw insertError;
-                dbClients = inserted;
-                console.log(`✅ Descoberta automática concluída: ${inserted.length} clientes vinculados ao usuário ${user.email}.`);
+                dbClients = [...(dbClients || []), ...inserted];
+                console.log(`✅ Descoberta automática concluída: ${inserted.length} novos clientes vinculados ao usuário ${user.email}.`);
               }
             } else {
               console.log(`📡 Usuário ${user.email} ainda não integrou sua conta do Google na central.`);
