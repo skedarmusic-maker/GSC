@@ -64,26 +64,15 @@ export async function GET(req: Request) {
 
       const isSuperAdmin = roleData?.role === 'super_admin';
 
-      // 3. Buscar clientes com base no nível de acesso
-      if (isSuperAdmin) {
-        // Super Admin vê TODOS os clientes da plataforma
-        console.log(`👑 SUPER ADMIN DETECTADO (${user.email}): Carregando visão global de clientes.`);
-        const { data, error } = await adminSupabase
-          .from('clients')
-          .select('*')
-          .order('name', { ascending: true });
-        dbClients = data;
-        dbError = error;
-      } else {
-        // Usuário comum vê APENAS seus próprios clientes
-        console.log(`👤 USUÁRIO COMUM DETECTADO (${user.email}): Carregando apenas clientes próprios.`);
-        const { data, error } = await adminSupabase
-          .from('clients')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true });
-        dbClients = data;
-        dbError = error;
+      // 3. Buscar clientes: Ambos (Super Admin e Usuários Comuns) veem APENAS seus próprios clientes no painel de uso cotidiano.
+      console.log(`👤 Carregando clientes do usuário (${user.email}).`);
+      const { data, error } = await adminSupabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name', { ascending: true });
+      dbClients = data;
+      dbError = error;
 
         // Se o banco estiver vazio para este usuário comum, tenta fazer a descoberta automática usando os tokens OAuth dele!
         if (!dbError && (!dbClients || dbClients.length === 0)) {
@@ -156,7 +145,6 @@ export async function GET(req: Request) {
             console.error(`Erro ao fazer descoberta automática para ${user.email}:`, err);
           }
         }
-      }
     } else {
       // Sem token de usuário logado (ex: acessos diretos/anônimos): Bloqueia por completo por motivos de segurança!
       console.log('📡 API SITES: Tentativa de acesso anônimo bloqueada por segurança.');
