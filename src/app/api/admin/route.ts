@@ -81,6 +81,15 @@ export async function GET(req: Request) {
 
     if (creditsError) throw creditsError;
 
+    // Buscar os 300 logs de requisições de APIs mais recentes
+    const { data: dbLogs, error: logsError } = await adminSupabase
+      .from('credit_usage_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(300);
+
+    if (logsError) throw logsError;
+
     // Buscar todos os usuários cadastrados via Admin Auth API (requer service role)
     let usersList: any[] = [];
     try {
@@ -133,10 +142,25 @@ export async function GET(req: Request) {
       };
     });
 
+    // 3. Formatar Logs de consumo de API
+    const logs = (dbLogs || []).map((log: any) => {
+      const logUser = usersMap.get(log.user_id);
+      return {
+        id: log.id,
+        userId: log.user_id,
+        userEmail: logUser?.email || 'Sistema (Sem Usuário)',
+        userName: logUser?.user_metadata?.full_name || 'Profissional GSC',
+        tokensConsumed: log.tokens_consumed ?? 1,
+        actionDescription: log.action_description || 'Ação da API',
+        createdAt: log.created_at
+      };
+    });
+
     return NextResponse.json({
       success: true,
       clients,
-      users: platformUsers
+      users: platformUsers,
+      logs
     });
   } catch (error: any) {
     console.error('ERRO GET API/ADMIN:', error);

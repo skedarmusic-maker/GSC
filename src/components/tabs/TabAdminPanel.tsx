@@ -24,10 +24,11 @@ interface TabAdminPanelProps {
 export default function TabAdminPanel({ session }: TabAdminPanelProps) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [data, setData] = useState<{ clients: any[]; users: any[] }>({ clients: [], users: [] });
+  const [data, setData] = useState<{ clients: any[]; users: any[]; logs: any[] }>({ clients: [], users: [], logs: [] });
   const [clientSearch, setClientSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'users'>('clients');
+  const [logSearch, setLogSearch] = useState('');
+  const [activeSubTab, setActiveSubTab] = useState<'clients' | 'users' | 'logs'>('clients');
   const [clientFilter, setClientFilter] = useState<'real' | 'prospect' | 'all'>('real');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -46,7 +47,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
       });
       const resData = await res.json();
       if (resData.success) {
-        setData({ clients: resData.clients || [], users: resData.users || [] });
+        setData({ clients: resData.clients || [], users: resData.users || [], logs: resData.logs || [] });
       } else {
         setMessage({ text: resData.error || 'Erro ao carregar dados do admin.', type: 'error' });
       }
@@ -366,6 +367,16 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
         >
           👥 Usuários & Cotas ({data.users.length})
         </button>
+        <button 
+          onClick={() => setActiveSubTab('logs')}
+          className={`px-5 py-3 border-b-2 font-bold text-xs transition-all uppercase tracking-wider ${
+            activeSubTab === 'logs' 
+              ? 'border-[#00ff9d] text-white' 
+              : 'border-transparent text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          📊 Requisições & APIs ({data.logs?.length || 0})
+        </button>
       </div>
 
       {/* TAB 1: CLIENTES & TOGGLE SEO */}
@@ -658,6 +669,181 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* TAB 3: LOGS DE REQUISIÇÕES & APIS */}
+      {activeSubTab === 'logs' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Caixa de Busca */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+            <input 
+              type="text"
+              placeholder="Buscar por e-mail, nome do gestor ou descrição do log..."
+              value={logSearch}
+              onChange={(e) => setLogSearch(e.target.value)}
+              className="w-full bg-[#161b22] border border-gray-800 focus:border-[#00ff9d]/30 text-xs text-white placeholder-gray-600 rounded-xl pl-12 pr-4 py-3 outline-none"
+            />
+          </div>
+
+          {/* Seção de Análise de Consumo (O que o usuário pediu!) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Box 1: Usuários que mais usam APIs (Ranking) */}
+            <div className="bg-[#161b22]/50 border border-gray-800 rounded-2xl p-5 lg:col-span-2 space-y-4">
+              <div>
+                <h3 className="text-white font-black text-sm uppercase tracking-widest">Top Consumidores de APIs</h3>
+                <p className="text-gray-500 text-[10px] uppercase font-bold mt-0.5">Ranking acumulado das últimas 300 requisições</p>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                {(() => {
+                  // Agrupar requisições por usuário
+                  const userConsumption: Record<string, { email: string; name: string; count: number }> = {};
+                  (data.logs || []).forEach(log => {
+                    if (!userConsumption[log.userId]) {
+                      userConsumption[log.userId] = {
+                        email: log.userEmail,
+                        name: log.userName,
+                        count: 0
+                      };
+                    }
+                    userConsumption[log.userId].count += log.tokensConsumed;
+                  });
+
+                  const sortedConsumers = Object.values(userConsumption)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 5);
+
+                  if (sortedConsumers.length === 0) {
+                    return <p className="text-gray-500 text-xs italic">Sem dados de consumo registrados.</p>;
+                  }
+
+                  const maxCount = sortedConsumers[0]?.count || 1;
+
+                  return sortedConsumers.map((c, index) => {
+                    const widthPercent = Math.max((c.count / maxCount) * 100, 2);
+                    return (
+                      <div key={index} className="space-y-1">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span className="text-gray-300">
+                            {index + 1}º. <span className="text-white">{c.name}</span> ({c.email})
+                          </span>
+                          <span className="text-[#00ff9d] font-black">{c.count} reqs</span>
+                        </div>
+                        <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-gray-800">
+                          <div 
+                            className="h-full bg-gradient-to-r from-emerald-500 to-[#00ff9d] rounded-full transition-all duration-500"
+                            style={{ width: `${widthPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* Box 2: Total de Custo de Requisições */}
+            <div className="bg-[#161b22]/50 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+              <div>
+                <h3 className="text-white font-black text-sm uppercase tracking-widest">Resumo de Chamadas</h3>
+                <p className="text-gray-500 text-[10px] uppercase font-bold mt-0.5">Métricas globais de APIs externas</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-xs border-b border-gray-800 pb-2.5">
+                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Total Acumulado:</span>
+                  <span className="text-white font-black text-sm">
+                    {data.logs?.reduce((acc, curr) => acc + (curr.tokensConsumed || 0), 0) || 0} chamadas
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-b border-gray-800 pb-2.5">
+                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Média por Usuário:</span>
+                  <span className="text-[#00ff9d] font-black text-sm">
+                    {(() => {
+                      const totalLogs = data.logs?.reduce((acc, curr) => acc + (curr.tokensConsumed || 0), 0) || 0;
+                      const uniqueUsers = new Set(data.logs?.map(l => l.userId)).size || 1;
+                      return (totalLogs / uniqueUsers).toFixed(1);
+                    })()} reqs
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px]">Carga da API Apify:</span>
+                  <span className="text-orange-400 font-black text-sm">
+                    {data.logs?.filter(l => l.actionDescription.toLowerCase().includes('radar') || l.actionDescription.toLowerCase().includes('diagnóstico')).length || 0} reqs
+                  </span>
+                </div>
+              </div>
+              <p className="text-[9px] text-gray-600 font-semibold uppercase leading-tight">
+                💡 Esses dados servem para você planejar a escala do Apify e SerpApi.
+              </p>
+            </div>
+          </div>
+
+          {/* Tabela de Logs de Consumo */}
+          <div className="bg-[#161b22]/40 border border-gray-800/80 rounded-2xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-800 bg-[#161b22]/80 text-gray-400 font-bold uppercase tracking-wider">
+                    <th className="p-4 pl-6">👤 Usuário</th>
+                    <th className="p-4">⚙️ Ação / API Requisitada</th>
+                    <th className="p-4 text-center">📊 Consumo</th>
+                    <th className="p-4 text-right pr-6">📅 Data / Hora</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/60 text-gray-300 font-medium">
+                  {(() => {
+                    const filteredLogs = (data.logs || []).filter(log => 
+                      log.userEmail.toLowerCase().includes(logSearch.toLowerCase()) ||
+                      log.userName.toLowerCase().includes(logSearch.toLowerCase()) ||
+                      log.actionDescription.toLowerCase().includes(logSearch.toLowerCase())
+                    );
+
+                    if (filteredLogs.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={4} className="p-12 text-center text-gray-500 text-xs font-bold">
+                            Nenhum log de requisição encontrado.
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredLogs.map((log) => {
+                      const logDate = new Date(log.createdAt).toLocaleString('pt-BR');
+                      return (
+                        <tr key={log.id} className="hover:bg-gray-800/20 transition-all duration-150">
+                          <td className="p-4 pl-6 font-bold text-white">
+                            <div className="flex flex-col">
+                              <span>{log.userName}</span>
+                              <span className="text-[10px] font-normal text-gray-500 block truncate max-w-[200px] mt-0.5">{log.userEmail}</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-300 font-bold max-w-sm truncate">
+                            {log.actionDescription}
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase tracking-wider border ${
+                              log.tokensConsumed > 1
+                                ? 'bg-orange-500/10 border-orange-500/25 text-orange-400'
+                                : 'bg-[#00ff9d]/10 border-[#00ff9d]/25 text-[#00ff9d]'
+                            }`}>
+                              {log.tokensConsumed} {log.tokensConsumed > 1 ? 'reqs' : 'req'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right pr-6 text-gray-500 text-[10px] font-bold">
+                            {logDate}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

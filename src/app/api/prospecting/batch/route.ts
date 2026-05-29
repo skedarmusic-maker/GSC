@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -309,6 +310,39 @@ export async function POST(req: Request) {
       topLeads,
       whatsappMessages: {} // Será gerado dinamicamente sob demanda ao auditar individualmente!
     };
+
+    // ── PASSO 6: Logar requisição no credit_usage_log se autenticado ───────────
+    try {
+      const authHeader = req.headers.get('Authorization');
+      const token = authHeader?.replace('Bearer ', '');
+      if (token) {
+        const userSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          }
+        );
+        const { data: { user } } = await userSupabase.auth.getUser();
+        if (user) {
+          const adminSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+            process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+          );
+          await adminSupabase.from('credit_usage_log').insert([{
+            user_id: user.id,
+            tokens_consumed: limit,
+            action_description: `Radar de prospecção em lote: "${niche}" em "${location}" (limite: ${limit})`
+          }]);
+        }
+      }
+    } catch (logErr) {
+      console.error('⚠️ Falha ao registrar log de requisição em lote:', logErr);
+    }
 
     return NextResponse.json({
       success: true,
