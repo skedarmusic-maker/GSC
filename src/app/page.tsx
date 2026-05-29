@@ -194,21 +194,29 @@ export default function Dashboard() {
     });
 
     // 2. Escutar mudanças no estado de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // Evita loops e requisições repetidas se a sessão não mudou de verdade (ex: no focus da janela / refetch de token)
+      const sessionChanged = !session || session.user?.id !== newSession?.user?.id;
+      
+      setSession(newSession);
       setLoadingSession(false);
-      if (session) {
+      
+      if (newSession) {
         const originalFetch = window.fetch;
         window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
           const headers = new Headers(init?.headers);
-          if (session.access_token && !headers.has('Authorization')) {
-            headers.set('Authorization', `Bearer ${session.access_token}`);
+          if (newSession.access_token && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${newSession.access_token}`);
           }
           return originalFetch(input, { ...init, headers });
         };
-        fetchSites();
-        if (session.user?.id && session.user?.email) {
-          checkUserStatus(session.user.id, session.user.email);
+        
+        // Apenas recarrega a carteira e valida o status se o usuário mudou de fato!
+        if (sessionChanged) {
+          fetchSites();
+          if (newSession.user?.id && newSession.user?.email) {
+            checkUserStatus(newSession.user.id, newSession.user.email);
+          }
         }
       } else {
         window.location.href = '/login';
@@ -1028,7 +1036,7 @@ export default function Dashboard() {
               {gscSites.map((c:any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
           ) : (
-            <select value={selectedGbp?.id || ''} onChange={(e) => {
+            <select value={selectedClient?.id || ''} onChange={(e) => {
                 const client = gbpProfiles.find((p:any) => p.id === e.target.value);
                 if (client) handleSelectClient(client);
                 else { setSelectedClient(null); setSelectedGbp(null); setGbpData(null); }
