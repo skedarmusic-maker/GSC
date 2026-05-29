@@ -2,11 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Building2, UploadCloud, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Building2, UploadCloud, CheckCircle, AlertTriangle, Globe, Phone, MapPin } from 'lucide-react';
+
+const InstagramIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 
 export default function TabSettings({ session }: { session: any }) {
   const [agencyName, setAgencyName] = useState('');
   const [agencyLogoUrl, setAgencyLogoUrl] = useState('');
+  const [agencyInstagram, setAgencyInstagram] = useState('');
+  const [agencyWebsite, setAgencyWebsite] = useState('');
+  const [agencyPhone, setAgencyPhone] = useState('');
+  const [agencyAddress, setAgencyAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -14,6 +37,10 @@ export default function TabSettings({ session }: { session: any }) {
     if (session?.user?.user_metadata) {
       setAgencyName(session.user.user_metadata.agency_name || '');
       setAgencyLogoUrl(session.user.user_metadata.agency_logo_url || '');
+      setAgencyInstagram(session.user.user_metadata.agency_instagram || '');
+      setAgencyWebsite(session.user.user_metadata.agency_website || '');
+      setAgencyPhone(session.user.user_metadata.agency_phone || '');
+      setAgencyAddress(session.user.user_metadata.agency_address || '');
     }
   }, [session]);
 
@@ -61,6 +88,10 @@ export default function TabSettings({ session }: { session: any }) {
         data: {
           agency_name: agencyName,
           agency_logo_url: agencyLogoUrl,
+          agency_instagram: agencyInstagram,
+          agency_website: agencyWebsite,
+          agency_phone: agencyPhone,
+          agency_address: agencyAddress,
         }
       });
 
@@ -155,6 +186,66 @@ export default function TabSettings({ session }: { session: any }) {
                     Faça upload clicando no quadro ao lado ou cole a URL direta de uma imagem (.png, .jpg ou .svg). Formato ideal: retangular ou quadrado com fundo transparente.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800/80 pt-6">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Phone className="text-[#00ff9d] w-4 h-4" /> Informações de Contato (Exibidos no PDF do Relatório)
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <InstagramIcon size={14} className="text-[#00ff9d]" /> Instagram / Rede Social
+                </label>
+                <input
+                  type="text"
+                  value={agencyInstagram}
+                  onChange={(e) => setAgencyInstagram(e.target.value)}
+                  placeholder="Ex: @focus.earts"
+                  className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d]/50 focus:ring-1 focus:ring-[#00ff9d]/30 transition-all"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Globe size={14} className="text-[#00ff9d]" /> Website
+                </label>
+                <input
+                  type="text"
+                  value={agencyWebsite}
+                  onChange={(e) => setAgencyWebsite(e.target.value)}
+                  placeholder="Ex: www.focusarts.com.br"
+                  className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d]/50 focus:ring-1 focus:ring-[#00ff9d]/30 transition-all"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Phone size={14} className="text-[#00ff9d]" /> Telefone
+                </label>
+                <input
+                  type="text"
+                  value={agencyPhone}
+                  onChange={(e) => setAgencyPhone(e.target.value)}
+                  placeholder="Ex: +55 (34) 99762-2017"
+                  className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d]/50 focus:ring-1 focus:ring-[#00ff9d]/30 transition-all"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <MapPin size={14} className="text-[#00ff9d]" /> Endereço Comercial
+                </label>
+                <input
+                  type="text"
+                  value={agencyAddress}
+                  onChange={(e) => setAgencyAddress(e.target.value)}
+                  placeholder="Ex: Av. Afonso Pena, 1500 - Belo Horizonte"
+                  className="w-full bg-[#0d1117] border border-gray-800 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-[#00ff9d]/50 focus:ring-1 focus:ring-[#00ff9d]/30 transition-all"
+                />
               </div>
             </div>
           </div>

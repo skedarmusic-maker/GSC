@@ -5,8 +5,28 @@ import {
   Search, Globe, Phone, Clock, Camera, Star, Tag, TrendingUp,
   AlertTriangle, CheckCircle, XCircle, ChevronRight, Download,
   BookmarkPlus, History, Trash2, ChevronDown, ChevronUp,
-  Sparkles, MessageSquare, Plus, Eye, Filter, Clipboard, Check
+  Sparkles, MessageSquare, Plus, Eye, Filter, Clipboard, Check,
+  Building2, MapPin
 } from 'lucide-react';
+
+const InstagramIcon = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+  </svg>
+);
 
 const FOCUS_DEFAULT_MSG = `👋 Olá, [NOME_EMPRESA]! Tudo joia?
 
@@ -1062,12 +1082,51 @@ export default function TabProspecting({ session }: { session?: any }) {
             <div className="space-y-6" id="report-content">
 
               {/* Print Header */}
-              <div className="hidden print:flex justify-between items-center mb-8 border-b border-gray-800/50 pb-6">
+              <div className="hidden print:flex justify-between items-center mb-8 border-b border-gray-850 pb-6">
                 <div className="flex items-center gap-4">
-                  <img src={session?.user?.user_metadata?.agency_logo_url || '/logo.png'} className="h-24 w-auto object-contain" alt={session?.user?.user_metadata?.agency_name || 'Logo'} />
+                  {session?.user?.user_metadata?.agency_logo_url ? (
+                    <img src={session.user.user_metadata.agency_logo_url} className="h-16 w-auto object-contain shrink-0" alt="Logo" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-[#00ff9d]/10 border border-[#00ff9d]/30 flex items-center justify-center shrink-0">
+                      <Building2 className="text-[#00ff9d] w-6 h-6" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-black text-white tracking-tight uppercase leading-tight">
+                      {session?.user?.user_metadata?.agency_name || 'GSC Strategy'}
+                    </h3>
+                    <p className="text-[10px] text-[#00ff9d] uppercase font-black tracking-widest mt-0.5">Relatório Técnico de Saúde Local</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-400 font-bold">{new Date().toLocaleDateString('pt-BR')}</p>
+                
+                <div className="text-right text-xs text-gray-400 space-y-1 font-medium">
+                  {session?.user?.user_metadata?.agency_phone && (
+                    <p className="flex items-center justify-end gap-1.5 text-gray-300">
+                      <Phone size={12} className="text-[#00ff9d]" />
+                      <span>{session.user.user_metadata.agency_phone}</span>
+                    </p>
+                  )}
+                  {session?.user?.user_metadata?.agency_website && (
+                    <p className="flex items-center justify-end gap-1.5 text-gray-300">
+                      <Globe size={12} className="text-[#00ff9d]" />
+                      <span>{session.user.user_metadata.agency_website}</span>
+                    </p>
+                  )}
+                  {session?.user?.user_metadata?.agency_instagram && (
+                    <p className="flex items-center justify-end gap-1.5 text-gray-300">
+                      <InstagramIcon size={12} className="text-[#00ff9d]" />
+                      <span>{session.user.user_metadata.agency_instagram.startsWith('@') ? session.user.user_metadata.agency_instagram : `@${session.user.user_metadata.agency_instagram}`}</span>
+                    </p>
+                  )}
+                  {session?.user?.user_metadata?.agency_address && (
+                    <p className="flex items-center justify-end gap-1.5 text-[10px] text-gray-500 max-w-[280px] truncate">
+                      <MapPin size={10} className="text-gray-500 shrink-0" />
+                      <span>{session.user.user_metadata.agency_address}</span>
+                    </p>
+                  )}
+                  <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest pt-1 border-t border-gray-800/40 mt-1">
+                    Gerado em {new Date().toLocaleDateString('pt-BR')}
+                  </p>
                 </div>
               </div>
 
