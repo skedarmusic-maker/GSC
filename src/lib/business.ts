@@ -2,7 +2,8 @@ import { supabase } from './supabase';
 import { createClient } from '@supabase/supabase-js';
 
 export async function getAccessToken(tokenSupabase?: string) {
-  let googleRefreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  // Se houver tokenSupabase, NÃO podemos usar o token global do .env por questões de segurança e multi-tenancy!
+  let googleRefreshToken = tokenSupabase ? null : process.env.GOOGLE_ADS_REFRESH_TOKEN;
 
   if (tokenSupabase) {
     try {
@@ -27,26 +28,45 @@ export async function getAccessToken(tokenSupabase?: string) {
         googleRefreshToken = integration.refresh_token;
         console.log('📡 GBP: Usando Refresh Token OAuth dinâmico do usuário.');
       } else {
-        console.log('📡 GBP: Nenhuma integração ativa encontrada ou erro. Usando token legado do .env.');
+        console.warn('⚠️ GBP: Nenhuma integração ativa encontrada para este usuário. Operação cancelada por segurança.');
+        return null;
       }
     } catch (err) {
       console.error('Erro ao ler integração do Google:', err);
+      return null;
     }
   }
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    cache: 'no-store',
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_ADS_CLIENT_ID!.trim(),
-      client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!.trim(),
-      refresh_token: googleRefreshToken!.trim(),
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await res.json();
-  return data.access_token;
+  if (!googleRefreshToken) {
+    console.error('❌ GBP: Nenhum refresh token disponível.');
+    return null;
+  }
+
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      cache: 'no-store',
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_ADS_CLIENT_ID!.trim(),
+        client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!.trim(),
+        refresh_token: googleRefreshToken.trim(),
+        grant_type: 'refresh_token',
+      }),
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Erro ao renovar token OAuth do Google:', errText);
+      return null;
+    }
+    
+    const data = await res.json();
+    return data.access_token || null;
+  } catch (err) {
+    console.error('Erro de conexão ao renovar token OAuth:', err);
+    return null;
+  }
 }
 
 // === DESCOBERTA AUTOMÁTICA DE LOCAIS ===
