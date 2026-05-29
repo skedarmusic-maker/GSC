@@ -610,25 +610,51 @@ export default function Dashboard() {
     setScheduledDate('');
     setEditingPostId(null);
 
-    if (client.seoEnabled) {
-      if (client.type !== 'GBP_ONLY') {
-         setActiveTab('seo-insights');
-         setAppMode('seo');
-         fetchData(client.gscUrl, days, client.gbpData);
+    const gbpTabs = ['gbp-dashboard', 'gbp-audit', 'gbp-rank', 'gbp-reviews', 'gbp-posts'];
+    const seoTabs = ['seo-insights', 'seo-keywords', 'seo-pages', 'seo-opportunities', 'client-config'];
+    const globalTabs = ['hostinger', 'prospecting', 'integrations', 'agency-settings', 'admin-panel'];
+
+    if (appMode === 'gbp') {
+      // Se estamos no modo Maps, tentamos permanecer no Maps
+      if (client.gbpData) {
+        setSelectedGbp(client.gbpData);
+        handleSelectGbpProfile(client.gbpData);
+        if (!gbpTabs.includes(activeTab) && !globalTabs.includes(activeTab)) {
+          setActiveTab('gbp-dashboard');
+        }
       } else {
-         setActiveTab('gbp-dashboard');
-         setAppMode('gbp');
-         handleSelectGbpProfile(client.gbpData);
+        setSelectedGbp(null);
+        setGbpData(null);
+        if (!globalTabs.includes(activeTab)) {
+          setActiveTab('gbp-dashboard');
+        }
+      }
+      
+      // Carrega dados de SEO em segundo plano se disponível para o caso do usuário mudar de aba
+      if (client.seoEnabled && client.type !== 'GBP_ONLY') {
+        fetchData(client.gscUrl, days, client.gbpData);
       }
     } else {
-      // SEO Inativo para este cliente: Trava no GBP Maps
-      setAppMode('gbp');
-      setActiveTab('gbp-dashboard');
-      if (client.gbpData) {
-        handleSelectGbpProfile(client.gbpData);
+      // Se estamos no modo SEO
+      if (client.seoEnabled && client.type !== 'GBP_ONLY') {
+        setAppMode('seo');
+        if (!seoTabs.includes(activeTab) && !globalTabs.includes(activeTab)) {
+          setActiveTab('seo-insights');
+        }
+        fetchData(client.gscUrl, days, client.gbpData);
       } else {
-        setGbpData(null);
-        setSelectedGbp(null);
+        // Redireciona para o Maps caso o cliente não tenha SEO ativo
+        setAppMode('gbp');
+        if (!gbpTabs.includes(activeTab) && !globalTabs.includes(activeTab)) {
+          setActiveTab('gbp-dashboard');
+        }
+        if (client.gbpData) {
+          setSelectedGbp(client.gbpData);
+          handleSelectGbpProfile(client.gbpData);
+        } else {
+          setSelectedGbp(null);
+          setGbpData(null);
+        }
       }
     }
   };
@@ -1227,6 +1253,41 @@ export default function Dashboard() {
                   }}
                 />
               )}
+            </div>
+          )}
+
+          {appMode === 'gbp' && !selectedGbp && selectedClient && (
+            <div className="max-w-md mx-auto my-20 bg-[#161b22] border border-gray-800 rounded-2xl p-8 text-center relative overflow-hidden animate-fadeIn">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-yellow-500/5 blur-[60px] pointer-events-none" />
+              <svg
+                className="text-yellow-500 w-12 h-12 mx-auto mb-4"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <h3 className="text-white font-black text-lg uppercase tracking-tight">Sem Ficha de Maps</h3>
+              <p className="text-gray-400 text-xs mt-2 leading-relaxed">
+                Este cliente ({selectedClient.name}) não possui uma ficha do Google Meu Negócio vinculada ao GSC Strategy.
+              </p>
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => {
+                    setActiveTab('client-config');
+                    setAppMode('seo');
+                  }}
+                  className="bg-[#00ff9d] hover:bg-[#02e08a] text-black font-black py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,255,157,0.2)]"
+                >
+                  Configurar Cliente
+                </button>
+              </div>
             </div>
           )}
 
