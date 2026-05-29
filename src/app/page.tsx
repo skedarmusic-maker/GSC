@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import TabSEOInsights from '@/components/tabs/TabSEOInsights';
 import TabSEOKeywords from '@/components/tabs/TabSEOKeywords';
@@ -23,6 +23,11 @@ import SubscriptionGate from '@/components/SubscriptionGate';
 export default function Dashboard() {
   const [session, setSession] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const sessionRef = useRef<any>(null);
+  
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
@@ -196,7 +201,8 @@ export default function Dashboard() {
     // 2. Escutar mudanças no estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       // Evita loops e requisições repetidas se a sessão não mudou de verdade (ex: no focus da janela / refetch de token)
-      const sessionChanged = !session || session.user?.id !== newSession?.user?.id;
+      const currentSession = sessionRef.current;
+      const sessionChanged = !currentSession || currentSession.user?.id !== newSession?.user?.id;
       
       setSession(newSession);
       setLoadingSession(false);
