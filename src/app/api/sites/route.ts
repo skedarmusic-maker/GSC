@@ -26,6 +26,9 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '');
 
+    const urlObj = new URL(req.url);
+    const forceSync = urlObj.searchParams.get('sync') === 'true';
+
     console.log(`🔍 DIAGNÓSTICO VERCEL: Tentando conectar em ${url.substring(0, 20)}...`);
 
     let dbClients: any[] | null = [];
@@ -77,8 +80,8 @@ export async function GET(req: Request) {
         // Se o banco de dados não contiver nenhum cliente conectado (GBP/GSC) ou estiver totalmente vazio, tenta a descoberta automática.
         const hasConnectedClients = dbClients?.some(c => c.gbp_location_id || c.gsc_url);
 
-        if (!dbError && (!dbClients || dbClients.length === 0 || !hasConnectedClients)) {
-          console.log(`🔄 Descoberta automática de perfis para o usuário: ${user.email} (Total clientes: ${dbClients?.length || 0}, Conectados: ${hasConnectedClients ? 'Sim' : 'Não'})`);
+        if (forceSync || (!dbError && (!dbClients || dbClients.length === 0 || !hasConnectedClients))) {
+          console.log(`🔄 Descoberta ${forceSync ? 'forçada (sincronização)' : 'automática'} de perfis para o usuário: ${user.email} (Total clientes: ${dbClients?.length || 0}, Conectados: ${hasConnectedClients ? 'Sim' : 'Não'})`);
           try {
             const accessToken = await getAccessToken(token).catch(() => null);
             if (accessToken) {

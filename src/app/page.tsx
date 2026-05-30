@@ -1318,7 +1318,7 @@ export default function Dashboard() {
           )}
           {activeTab === 'integrations' && (
             <div className="max-w-6xl mx-auto">
-              <TabIntegrations session={session} />
+              <TabIntegrations session={session} onSync={fetchSites} />
             </div>
           )}
           {activeTab === 'agency-settings' && (

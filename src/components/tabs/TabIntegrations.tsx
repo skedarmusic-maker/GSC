@@ -6,12 +6,14 @@ import { ShieldCheck, AlertCircle, RefreshCw, KeyRound, CheckCircle, Trash2, Ext
 
 interface TabIntegrationsProps {
   session: any;
+  onSync?: () => void;
 }
 
-export default function TabIntegrations({ session }: TabIntegrationsProps) {
+export default function TabIntegrations({ session, onSync }: TabIntegrationsProps) {
   const [integration, setIntegration] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchIntegration = async () => {
@@ -63,6 +65,40 @@ export default function TabIntegrations({ session }: TabIntegrationsProps) {
     if (!session?.user?.id) return;
     // Redirecionar para o endpoint da API de autenticação passando o ID do usuário no state
     window.location.href = `/api/auth/google?userId=${session.user.id}`;
+  };
+
+  const handleSyncProfiles = async () => {
+    setSyncing(true);
+    setError(null);
+    try {
+      const sessionData = await supabase.auth.getSession();
+      const userToken = sessionData.data.session?.access_token;
+      if (!userToken) {
+        throw new Error('Sessão do usuário não encontrada.');
+      }
+
+      const res = await fetch('/api/sites?sync=true', {
+        headers: {
+          'Authorization': `Bearer ${userToken}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Falha ao sincronizar fichas.');
+      }
+
+      alert('Sincronização de perfis do Google concluída com sucesso!');
+      if (onSync) {
+        onSync();
+      } else {
+        window.location.reload();
+      }
+    } catch (err: any) {
+      console.error('Erro ao sincronizar perfis:', err);
+      setError(err.message || 'Erro inesperado ao sincronizar perfis.');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   if (loading) {
@@ -170,9 +206,18 @@ export default function TabIntegrations({ session }: TabIntegrationsProps) {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
-                  disabled={actionLoading}
+                  disabled={actionLoading || syncing}
+                  onClick={handleSyncProfiles}
+                  className="flex-1 py-3 bg-[#00ff9d] hover:bg-[#00e08a] text-gray-900 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                  <span>{syncing ? 'Sincronizando...' : 'Sincronizar Novos Perfis'}</span>
+                </button>
+
+                <button
+                  disabled={actionLoading || syncing}
                   onClick={handleDisconnect}
                   className="flex-1 py-3 bg-[#0d1117] hover:bg-rose-500/5 hover:text-rose-400 border border-gray-800 hover:border-rose-500/30 text-gray-400 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
                 >
