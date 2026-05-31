@@ -51,7 +51,7 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
           <p className="text-xs text-[#00ff9d] font-bold uppercase tracking-wider mb-2">Visão Geral do Perfil</p>
           <h2 className="text-3xl font-black text-white tracking-tight">{gbpData?.title}</h2>
         </div>
-        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gbpData?.title)}`} target="_blank"
+        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gbpData?.title + (gbpData?.address ? ' ' + gbpData.address : ''))}`} target="_blank"
           className="bg-[#00ff9d] text-gray-900 font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(0,255,157,0.3)] hover:shadow-[0_0_30px_rgba(0,255,157,0.5)]">
           Visualizar no Maps ↗
         </a>
@@ -106,7 +106,7 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
                 minTickGap={30}
                 tickFormatter={(val) => {
                   const d = new Date(val);
-                  return `${d.getDate()}/${d.getMonth() + 1}`;
+                  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
                 }}
               />
               <YAxis 

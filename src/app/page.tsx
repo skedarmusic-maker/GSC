@@ -7,6 +7,7 @@ import TabSEOKeywords from '@/components/tabs/TabSEOKeywords';
 import TabSEOPages from '@/components/tabs/TabSEOPages';
 import TabSEOOpportunities from '@/components/tabs/TabSEOOpportunities';
 import TabGBPDashboard from '@/components/tabs/TabGBPDashboard';
+import TabGBPComparison from '@/components/tabs/TabGBPComparison';
 import TabGBPAudit from '@/components/tabs/TabGBPAudit';
 import TabGBPRank from '@/components/tabs/TabGBPRank';
 import TabGBPReviews from '@/components/tabs/TabGBPReviews';
@@ -624,7 +625,7 @@ export default function Dashboard() {
     setScheduledDate('');
     setEditingPostId(null);
 
-    const gbpTabs = ['gbp-dashboard', 'gbp-audit', 'gbp-rank', 'gbp-reviews', 'gbp-posts'];
+    const gbpTabs = ['gbp-dashboard', 'gbp-comparison', 'gbp-audit', 'gbp-rank', 'gbp-reviews', 'gbp-posts'];
     const seoTabs = ['seo-insights', 'seo-keywords', 'seo-pages', 'seo-opportunities', 'client-config'];
     const globalTabs = ['hostinger', 'prospecting', 'integrations', 'agency-settings', 'admin-panel'];
 
@@ -1068,6 +1069,7 @@ export default function Dashboard() {
           {appMode === 'gbp' && selectedGbp && (
             <ul className="space-y-1 text-sm">
               <li><button onClick={() => { setActiveTab('gbp-dashboard'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-dashboard' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🏪 Resumo Local</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-comparison'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-comparison' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📊 Comparar Histórico</button></li>
               <li><button onClick={() => { setActiveTab('gbp-audit'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-audit' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🛡️ Auditoria</button></li>
               <li><button onClick={() => { setActiveTab('gbp-rank'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-rank' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Rank Tracker</button></li>
               <li><button onClick={() => { setActiveTab('gbp-reviews'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md flex items-center justify-between ${activeTab === 'gbp-reviews' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>
@@ -1207,6 +1209,7 @@ export default function Dashboard() {
           {appMode === 'gbp' && selectedGbp && (
             <div className="max-w-6xl mx-auto">
               {activeTab === 'gbp-dashboard' && <TabGBPDashboard gbpData={gbpData} days={days} />}
+              {activeTab === 'gbp-comparison' && <TabGBPComparison gbpData={gbpData} clientId={selectedClient?.id} />}
               {activeTab === 'gbp-audit' && <TabGBPAudit auditData={auditData} loadingAudit={loadingAudit} />}
               {activeTab === 'gbp-rank' && (
                 <TabGBPRank

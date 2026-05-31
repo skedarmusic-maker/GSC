@@ -104,10 +104,6 @@ export default function LoginPage() {
         
         {/* Logo superior */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161b22] border border-gray-800 text-xs font-bold text-gray-400 mb-4 animate-pulse">
-            <Sparkles className="w-3.5 h-3.5 text-[#00ff9d]" />
-            <span>FocusLocal Engine v2.0 SaaS</span>
-          </div>
           <h1 className="text-4xl font-black tracking-tighter text-white">
             Focus<span className="text-[#00ff9d]">Local</span>
           </h1>

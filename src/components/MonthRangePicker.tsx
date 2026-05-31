@@ -42,7 +42,7 @@ export default function MonthRangePicker({ onRangeSelect, initialStart, initialE
       setEndMonth('');
     } else {
       // Se clicar em uma data anterior à inicial, ela vira a inicial
-      if (new Date(dateStr) < new Date(startMonth)) {
+      if (new Date(dateStr + 'T00:00:00') < new Date(startMonth + 'T00:00:00')) {
         setStartMonth(dateStr);
         setEndMonth('');
       } else {
@@ -65,8 +65,8 @@ export default function MonthRangePicker({ onRangeSelect, initialStart, initialE
 
   const formatDateLabel = (dateStr: string) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${months[d.getMonth()]} de ${d.getFullYear()}`;
+    const [year, month] = dateStr.split('-');
+    return `${months[parseInt(month, 10) - 1]} de ${year}`;
   };
 
   const isSelected = (mIdx: number) => {
@@ -78,8 +78,8 @@ export default function MonthRangePicker({ onRangeSelect, initialStart, initialE
   const isInRange = (mIdx: number) => {
     if (!startMonth || !endMonth) return false;
     const current = new Date(viewYear, mIdx, 1);
-    const start = new Date(startMonth);
-    const end = new Date(endMonth);
+    const start = new Date(startMonth + 'T00:00:00');
+    const end = new Date(endMonth + 'T00:00:00');
     return current > start && current < end;
   };
 
