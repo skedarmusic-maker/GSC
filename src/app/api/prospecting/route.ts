@@ -89,7 +89,7 @@ function calcScore(n: ReturnType<typeof normalize>): number {
   return Math.min(score, 100);
 }
 
-// Normaliza campos inconsistentes entre engines da SerpApi e Apify
+// Normaliza campos inconsistentes entre engines da SerpApi, Apify e Outscraper
 function normalize(place: any) {
   // Reviews pode vir como número ou string com vírgula (ex: "1,2k")
   let reviews = 0;
@@ -109,6 +109,15 @@ function normalize(place: any) {
   // Horário
   const hours = place.hours || place.openingHours || place.operating_hours || place.opening_hours || place.working_hours || null;
 
+  // Imagem/Thumbnail flexível (suporta Apify, SerpApi, Outscraper)
+  let thumbnail = place.imageUrl || place.thumbnail || place.photo || place.logo || place.image || '';
+  if (!thumbnail && place.photos && Array.isArray(place.photos) && place.photos.length > 0) {
+    const firstPhoto = place.photos[0];
+    thumbnail = typeof firstPhoto === 'string' ? firstPhoto : (firstPhoto?.url || '');
+  } else if (!thumbnail && place.photos && typeof place.photos === 'object') {
+    thumbnail = place.photos?.[0]?.url || '';
+  }
+
   return {
     title: place.title || place.name || '',
     address: place.address || place.full_address || place.formatted_address || place.locationName || '',
@@ -125,7 +134,7 @@ function normalize(place: any) {
     })(),
     phone,
     type: place.categoryName || place.type || place.category || place.types?.[0] || '',
-    thumbnail: place.imageUrl || place.thumbnail || place.photo || place.logo || place.photos?.[0]?.url || place.image || '',
+    thumbnail,
     hours,
   };
 }
@@ -177,12 +186,37 @@ export async function POST(req: Request) {
 
     console.log('🔍 Buscando:', businessName, locationContext ? 'com foco geográfico' : '');
 
-    // ── PASSO 2: Obter dados (Apify com fallback para SerpApi) ─────────────────
+    // ── PASSO 2: Obter dados (Outscraper -> Apify -> SerpApi) ─────────────────
     let rawPlace: any = null;
     let rawResults: any[] = [];
+    const outscraperKey = process.env.OUTSCRAPER_API_KEY;
     const apifyToken = process.env.APIFY_TOKEN;
 
-    if (apifyToken) {
+    if (outscraperKey) {
+      console.log('🚀 Usando Outscraper para busca profunda...');
+      try {
+        const url = `https://api.app.outscraper.com/maps/search-places?query=${encodeURIComponent(businessName)}&limit=6&language=pt&region=br`;
+        const outscraperRes = await fetch(url, {
+          headers: { 'X-API-KEY': outscraperKey }
+        });
+        
+        if (outscraperRes.ok) {
+          const result = await outscraperRes.json();
+          const items = result.data?.[0] || [];
+          if (items.length > 0) {
+            rawPlace = items[0];
+            rawResults = items;
+            console.log('✅ Dados obtidos via Outscraper!');
+          }
+        } else {
+          console.error('❌ Resposta inválida do Outscraper:', outscraperRes.status);
+        }
+      } catch (err) {
+        console.error('❌ Falha ao buscar no Outscraper, tentando Apify/SerpApi...', err);
+      }
+    }
+
+    if (!rawPlace && apifyToken) {
       console.log('🚀 Usando Apify para busca profunda...');
       try {
         const apifyUrl = `https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token=${apifyToken}`;
@@ -355,29 +389,41 @@ export async function POST(req: Request) {
       },
     ];
 
-    // Se for Apify e possuir dados ricos, adiciona métricas premium automaticamente
-    const isApify = !!apifyToken && rawPlace.imagesCount !== undefined;
-    if (isApify) {
+    // Se for Apify ou Outscraper e possuir dados ricos, adiciona métricas premium automaticamente
+    const isPremiumData = (rawPlace.imagesCount !== undefined) || (rawPlace.photos_count !== undefined) || (rawPlace.photos && Array.isArray(rawPlace.photos));
+    if (isPremiumData) {
+      const photosCount = rawPlace.imagesCount ?? rawPlace.photos_count ?? (Array.isArray(rawPlace.photos) ? rawPlace.photos.length : 0);
       metrics.push({
         label: 'Quantidade Total de Mídia',
-        status: rawPlace.imagesCount >= 30 ? 'bom' : rawPlace.imagesCount >= 10 ? 'razoável' : 'fraco',
-        value: `${rawPlace.imagesCount} fotos no perfil`,
+        status: photosCount >= 30 ? 'bom' : photosCount >= 10 ? 'razoável' : 'fraco',
+        value: `${photosCount} fotos no perfil`,
         icon: 'camera',
       });
-      const verified = !rawPlace.claimThisBusiness;
+
+      let isVerified = false;
+      if (rawPlace.verified !== undefined) {
+        isVerified = rawPlace.verified;
+      } else if (rawPlace.is_claimed !== undefined) {
+        isVerified = rawPlace.is_claimed;
+      } else if (rawPlace.claimThisBusiness !== undefined) {
+        isVerified = !rawPlace.claimThisBusiness;
+      }
+
       metrics.push({
         label: 'Ficha Verificada',
-        status: verified ? 'bom' : 'fraco',
-        value: verified ? 'Verificada pelo Google ✓' : 'Ficha não reivindicada / Não verificada ⚠️',
+        status: isVerified ? 'bom' : 'fraco',
+        value: isVerified ? 'Verificada pelo Google ✓' : 'Ficha não reivindicada / Não verificada ⚠️',
         icon: 'check',
       });
+
       // Extrai e checa Q&A (Perguntas e Respostas)
-      const qaList = rawPlace.questionsAndAnswers || [];
+      const qaList = rawPlace.questionsAndAnswers || rawPlace.questions || [];
       const qaCount = qaList.length;
       let unansweredQA = 0;
       if (qaCount > 0) {
         qaList.forEach((q: any) => {
-          if (!q.answer) unansweredQA++;
+          const hasAnswer = q.answer || (q.answers && q.answers.length > 0) || q.owner_answer;
+          if (!hasAnswer) unansweredQA++;
         });
       }
       metrics.push({

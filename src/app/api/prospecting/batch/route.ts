@@ -100,6 +100,15 @@ function normalize(place: any) {
 
   const hours = place.hours || place.openingHours || place.operating_hours || place.opening_hours || place.working_hours || null;
 
+  // Imagem/Thumbnail flexível (suporta Apify, SerpApi, Outscraper)
+  let thumbnail = place.imageUrl || place.thumbnail || place.photo || place.logo || place.image || '';
+  if (!thumbnail && place.photos && Array.isArray(place.photos) && place.photos.length > 0) {
+    const firstPhoto = place.photos[0];
+    thumbnail = typeof firstPhoto === 'string' ? firstPhoto : (firstPhoto?.url || '');
+  } else if (!thumbnail && place.photos && typeof place.photos === 'object') {
+    thumbnail = place.photos?.[0]?.url || '';
+  }
+
   return {
     title: place.title || place.name || '',
     address: place.address || place.full_address || place.formatted_address || place.locationName || '',
@@ -116,7 +125,7 @@ function normalize(place: any) {
     })(),
     phone,
     type: place.categoryName || place.type || place.category || place.types?.[0] || '',
-    thumbnail: place.imageUrl || place.thumbnail || place.photo || place.logo || place.photos?.[0]?.url || place.image || '',
+    thumbnail,
     hours,
   };
 }
@@ -164,7 +173,25 @@ export async function POST(req: Request) {
       }
     }
 
-    // ── 2. FALLBACK VIA APIFY SE SERPAPI FALHAR OU RETORNAR NADA ────────────────
+    // ── 2. FALLBACK VIA OUTSCRAPER / APIFY SE SERPAPI FALHAR OU RETORNAR NADA ────
+    const outscraperKey = process.env.OUTSCRAPER_API_KEY;
+    if (rawResults.length === 0 && outscraperKey) {
+      try {
+        console.log('🚀 Iniciando busca de fallback via Outscraper...');
+        const url = `https://api.app.outscraper.com/maps/search-places?query=${encodeURIComponent(queryStr)}&limit=${limit * 2}&language=pt&region=br`;
+        const res = await fetch(url, {
+          headers: { 'X-API-KEY': outscraperKey }
+        });
+        if (res.ok) {
+          const result = await res.json();
+          rawResults = result.data?.[0] || [];
+          console.log(`✅ Outscraper retornou ${rawResults.length} locais.`);
+        }
+      } catch (err) {
+        console.error('❌ Falha na busca de fallback do Outscraper:', err);
+      }
+    }
+
     if (rawResults.length === 0 && apifyToken) {
       try {
         console.log('🚀 Iniciando busca de fallback via Apify...');
