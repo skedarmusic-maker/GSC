@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import MonthRangePicker from '@/components/MonthRangePicker';
 
@@ -28,7 +28,7 @@ export default function TabGBPComparison({ gbpData, clientId }: Props) {
         body: JSON.stringify({ 
           locationId: gbpData.locationId, 
           clientId,
-          locationName: gbpData.name || gbpData.title
+          locationName: `locations/${gbpData.locationId}`
         })
       });
       const data = await res.json();
@@ -83,9 +83,9 @@ export default function TabGBPComparison({ gbpData, clientId }: Props) {
       const totalsB = sumMetrics(dataB || []);
 
       setComparisonData({ periodA: totalsA, periodB: totalsB });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Erro ao buscar dados do banco.');
+      alert('Erro ao buscar dados do banco: ' + (error?.message || error?.details || JSON.stringify(error)));
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,7 @@ export default function TabGBPComparison({ gbpData, clientId }: Props) {
         </button>
       </div>
 
-      <div className="glass-card rounded-2xl border-white/5 p-8 shadow-2xl">
+      <div className="glass-card rounded-2xl border-white/5 p-8 shadow-2xl relative z-20">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div>
             <h3 className="text-sm font-bold text-gray-400 mb-4">Período A (Atual)</h3>

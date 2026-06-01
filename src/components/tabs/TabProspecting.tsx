@@ -148,12 +148,53 @@ export default function TabProspecting({ session }: { session?: any }) {
   const [limit, setLimit] = useState<number>(10);
   const [filterNoWebsite, setFilterNoWebsite] = useState(false);
   const [filterNoPhone, setFilterNoPhone] = useState(false);
+  // Estados para filtro e ordenação client-side (em memória)
+  const [clientFilter, setClientFilter] = useState<'all' | 'no-website' | 'no-phone' | 'low-rating' | 'low-reviews'>('all');
+  const [clientSort, setClientSort] = useState<'default' | 'rating-asc' | 'rating-desc' | 'reviews-asc' | 'reviews-desc'>('default');
+
+  // Estados para Modo de Visualização (Lista / Mapa)
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [activeMapLead, setActiveMapLead] = useState<any>(null);
 
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [leads, setLeads] = useState<any[]>(
     () => readLS<any[]>('gsc_prospect_leads', [])
   );
+
+  // Derivar leads filtrados e ordenados client-side
+  const filteredAndSortedLeads = leads
+    .filter((lead) => {
+      if (clientFilter === 'no-website') {
+        return lead.websiteStatus === 'fraco';
+      }
+      if (clientFilter === 'no-phone') {
+        return !lead.phone;
+      }
+      if (clientFilter === 'low-rating') {
+        return lead.rating > 0 && lead.rating < 4.0;
+      }
+      if (clientFilter === 'low-reviews') {
+        return lead.reviews < 30;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (clientSort === 'rating-asc') {
+        return (Number(a.rating) || 0) - (Number(b.rating) || 0);
+      }
+      if (clientSort === 'rating-desc') {
+        return (Number(b.rating) || 0) - (Number(a.rating) || 0);
+      }
+      if (clientSort === 'reviews-asc') {
+        return (Number(a.reviews) || 0) - (Number(b.reviews) || 0);
+      }
+      if (clientSort === 'reviews-desc') {
+        return (Number(b.reviews) || 0) - (Number(a.reviews) || 0);
+      }
+      return 0; // Mantém ordem original
+    });
+
   const [aiRecs, setAiRecs] = useState<any>(
     () => readLS<any>('gsc_prospect_recs', { topLeads: [], whatsappMessages: {} })
   );
@@ -844,15 +885,74 @@ export default function TabProspecting({ session }: { session?: any }) {
 
               {/* LISTAGEM GERAL DE LEADS PROSPECTADOS */}
               <div className="bg-[#161b22] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="p-6 border-b border-gray-800 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                   <div>
-                    <h3 className="text-white font-black text-sm uppercase tracking-widest">Leads Prospectados ({leads.length})</h3>
+                    <h3 className="text-white font-black text-sm uppercase tracking-widest">Leads Prospectados ({filteredAndSortedLeads.length} de {leads.length})</h3>
                     <p className="text-gray-500 text-[10px] uppercase font-bold mt-1">Clique nas ações para vender ou cadastrar como cliente.</p>
+                  </div>
+
+                  {/* Controles de Filtros e Ordenação Rápidos (Client-Side) */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Seletor de Filtro */}
+                    <div className="flex items-center gap-1.5 bg-[#0d1117] border border-gray-800 px-3 py-2 rounded-xl">
+                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Filtro rápido:</span>
+                      <select
+                        value={clientFilter}
+                        onChange={(e) => setClientFilter(e.target.value as any)}
+                        className="bg-transparent border-none text-white text-xs font-bold focus:outline-none cursor-pointer pr-6"
+                      >
+                        <option value="all" className="bg-[#0d1117] text-white">Todos os Leads</option>
+                        <option value="no-website" className="bg-[#0d1117] text-white">Sem Website</option>
+                        <option value="no-phone" className="bg-[#0d1117] text-white">Sem Telefone</option>
+                        <option value="low-rating" className="bg-[#0d1117] text-white">Nota abaixo de 4.0</option>
+                        <option value="low-reviews" className="bg-[#0d1117] text-white">Poucas Avaliações (&lt; 30)</option>
+                      </select>
+                    </div>
+
+                    {/* Seletor de Ordenação */}
+                    <div className="flex items-center gap-1.5 bg-[#0d1117] border border-gray-800 px-3 py-2 rounded-xl">
+                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Ordenar por:</span>
+                      <select
+                        value={clientSort}
+                        onChange={(e) => setClientSort(e.target.value as any)}
+                        className="bg-transparent border-none text-white text-xs font-bold focus:outline-none cursor-pointer pr-6"
+                      >
+                        <option value="default" className="bg-[#0d1117] text-white">Padrão da busca</option>
+                        <option value="rating-asc" className="bg-[#0d1117] text-white">Menor Nota Primeiro</option>
+                        <option value="rating-desc" className="bg-[#0d1117] text-white">Maior Nota Primeiro</option>
+                        <option value="reviews-asc" className="bg-[#0d1117] text-white">Menos Avaliações Primeiro</option>
+                        <option value="reviews-desc" className="bg-[#0d1117] text-white">Mais Avaliações Primeiro</option>
+                      </select>
+                    </div>
+
+                    {/* Toggle de Modo de Visualização (Lista / Mapa) */}
+                    <div className="flex items-center bg-[#0d1117] border border-gray-800 p-1 rounded-xl">
+                      <button
+                        onClick={() => setViewMode('list')}
+                        className={`flex items-center justify-center p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-[#00ff9d] text-black shadow-sm' : 'text-gray-500 hover:text-white'}`}
+                        title="Ver em Lista"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setViewMode('map');
+                          if (!activeMapLead && filteredAndSortedLeads.length > 0) {
+                            setActiveMapLead(filteredAndSortedLeads[0]);
+                          }
+                        }}
+                        className={`flex items-center justify-center p-2 rounded-lg transition-all ${viewMode === 'map' ? 'bg-[#00ff9d] text-black shadow-sm' : 'text-gray-500 hover:text-white'}`}
+                        title="Ver no Mapa"
+                      >
+                        <MapPin size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                {viewMode === 'list' ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-gray-800 text-[10px] uppercase tracking-widest text-gray-500 font-black bg-[#0d1117]/50">
                         <th className="py-4 px-6">Empresa / Ficha</th>
@@ -863,7 +963,7 @@ export default function TabProspecting({ session }: { session?: any }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {leads.map((lead) => {
+                      {filteredAndSortedLeads.map((lead) => {
                         const whatsappMsg = aiRecs.whatsappMessages[lead.name] || '';
                         
                         return (
@@ -1006,7 +1106,50 @@ export default function TabProspecting({ session }: { session?: any }) {
                       })}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col lg:flex-row h-[600px] border-t border-gray-800">
+                    <div className="w-full lg:w-[400px] flex-shrink-0 border-r border-gray-800 overflow-y-auto bg-[#0d1117]/50 divide-y divide-gray-800 custom-scrollbar">
+                      {filteredAndSortedLeads.map((lead) => (
+                        <div 
+                          key={lead.id} 
+                          onClick={() => setActiveMapLead(lead)}
+                          className={`p-4 cursor-pointer transition-all hover:bg-[#12161f] ${activeMapLead?.id === lead.id ? 'bg-[#12161f] border-l-4 border-[#00ff9d]' : 'border-l-4 border-transparent'}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {lead.thumbnail ? (
+                              <img src={lead.thumbnail} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-800 shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-[#0d1117] border border-gray-800 flex items-center justify-center text-gray-600 font-bold text-xs uppercase shrink-0">G</div>
+                            )}
+                            <div className="min-w-0 w-full flex flex-col justify-between h-10">
+                              <p className="text-white font-black text-sm truncate">{lead.name}</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-white font-bold">{lead.rating > 0 ? `${lead.rating} ⭐` : 'S/N'}</span>
+                                <span className="text-[10px] text-gray-500">({lead.reviews})</span>
+                                <span style={{ color: lead.score >= 70 ? '#00ff9d' : lead.score >= 40 ? '#f59e0b' : '#ef4444' }} className="text-[9px] ml-auto font-black px-1.5 py-0.5 border rounded-md">Score: {lead.score}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex-1 bg-[#080b10] relative">
+                      {activeMapLead ? (
+                        <iframe 
+                          width="100%" 
+                          height="100%" 
+                          style={{ border: 0 }}
+                          loading="lazy" 
+                          allowFullScreen 
+                          src={`https://maps.google.com/maps?q=${encodeURIComponent(activeMapLead.name + ' ' + (activeMapLead.address || ''))}&t=m&z=15&output=embed&iwloc=near`}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-xs font-bold uppercase tracking-widest">Selecione um lead ao lado para ver no mapa</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

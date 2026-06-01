@@ -12,6 +12,8 @@ import TabGBPAudit from '@/components/tabs/TabGBPAudit';
 import TabGBPRank from '@/components/tabs/TabGBPRank';
 import TabGBPReviews from '@/components/tabs/TabGBPReviews';
 import TabGBPPosts from '@/components/tabs/TabGBPPosts';
+import TabGBPEvolution from '@/components/tabs/TabGBPEvolution';
+import TabGBPCards from '@/components/tabs/TabGBPCards';
 import TabHostinger from '@/components/tabs/TabHostinger';
 import TabClientConfig from '@/components/tabs/TabClientConfig';
 import TabProspecting from '@/components/tabs/TabProspecting';
@@ -102,6 +104,7 @@ export default function Dashboard() {
   const [configStitchPrompt, setConfigStitchPrompt] = useState('');
   const [savingBranded, setSavingBranded] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [manualDesignCode, setManualDesignCode] = useState('');
 
   const fetchSites = async () => {
@@ -625,7 +628,7 @@ export default function Dashboard() {
     setScheduledDate('');
     setEditingPostId(null);
 
-    const gbpTabs = ['gbp-dashboard', 'gbp-comparison', 'gbp-audit', 'gbp-rank', 'gbp-reviews', 'gbp-posts'];
+    const gbpTabs = ['gbp-dashboard', 'gbp-comparison', 'gbp-audit', 'gbp-rank', 'gbp-reviews', 'gbp-posts', 'gbp-evolution'];
     const seoTabs = ['seo-insights', 'seo-keywords', 'seo-pages', 'seo-opportunities', 'client-config'];
     const globalTabs = ['hostinger', 'prospecting', 'integrations', 'agency-settings', 'admin-panel'];
 
@@ -1000,7 +1003,7 @@ export default function Dashboard() {
           </button>
       </div>
 
-      <aside className={`${showMobileMenu ? 'flex' : 'hidden lg:flex'} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#080b10] border-r border-[#00ff9d]/10 flex-col shrink-0 h-screen print:hidden`}>
+      <aside className={`${showMobileMenu ? 'flex' : (isSidebarCollapsed ? 'hidden' : 'hidden lg:flex')} fixed lg:static inset-0 lg:inset-auto z-40 w-full lg:w-[270px] bg-[#080b10] border-r border-[#00ff9d]/10 flex-col shrink-0 h-screen transition-all duration-300 print:hidden`}>
         <div className="p-5 pt-20 lg:pt-5 border-b border-[#00ff9d]/10">
           <div className="flex items-center gap-3.5 mb-6 hidden lg:flex">
             <div className="relative flex items-center justify-center">
@@ -1081,6 +1084,8 @@ export default function Dashboard() {
                 )}
               </button></li>
               <li><button onClick={() => { setActiveTab('gbp-posts'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-cards'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-cards' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🎴 Cards de Avaliação</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-evolution'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-evolution' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Evolução da Análise</button></li>
             </ul>
           )}
           
@@ -1126,9 +1131,26 @@ export default function Dashboard() {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible">
         <header className="h-[64px] border-b border-[#00ff9d]/10 bg-[#080b10] flex items-center justify-between px-8 print:hidden">
-          <span className="text-sm font-bold text-white">
-            {appMode === 'seo' ? (selectedClient?.name || 'Dashboard') : (selectedGbp?.name || 'Dashboard')}
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="hidden lg:flex items-center justify-center p-2 rounded-lg border border-[#00ff9d]/20 bg-[#0d1117] hover:bg-[#00ff9d]/10 hover:border-[#00ff9d] text-gray-400 hover:text-[#00ff9d] transition-all"
+              title={isSidebarCollapsed ? "Mostrar menu lateral" : "Esconder menu lateral"}
+            >
+              {isSidebarCollapsed ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+              )}
+            </button>
+            <span className="text-sm font-bold text-white">
+              {appMode === 'seo' ? (selectedClient?.name || 'Dashboard') : (selectedGbp?.name || 'Dashboard')}
+            </span>
+          </div>
           
 
           {appMode === 'seo' && selectedClient && (
@@ -1270,6 +1292,8 @@ export default function Dashboard() {
                   }}
                 />
               )}
+              {activeTab === 'gbp-cards' && <TabGBPCards gbpData={gbpData} />}
+              {activeTab === 'gbp-evolution' && <TabGBPEvolution gbpData={gbpData} clientId={selectedClient?.id} />}
             </div>
           )}
 

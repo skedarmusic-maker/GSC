@@ -593,7 +593,6 @@ Importante: Substitua qualquer menção ao nome da empresa no texto por "${n.tit
       // Dados geográficos extras
       latitude: rawPlace.location?.lat || null,
       longitude: rawPlace.location?.lng || null,
-      isApify,
     });
 
   } catch (error: any) {

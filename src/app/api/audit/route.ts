@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getLocationDetails } from '@/lib/business';
-
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -88,6 +88,35 @@ export async function POST(req: Request) {
     let color = '#ff4444';
     if (score >= 80) { grade = 'Excelente'; color = '#00C851'; }
     else if (score >= 60) { grade = 'Bom'; color = '#ffbb33'; }
+
+    // Salvar auditoria no histórico do Supabase
+    try {
+      // 1. Achar o cliente correspondente a essa localização
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('gbp_location_id', locationId)
+        .maybeSingle();
+
+      if (client?.id) {
+        const currentDate = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        
+        await supabase
+          .from('gbp_audit_history')
+          .upsert({
+            client_id: client.id,
+            location_id: locationId,
+            date: currentDate,
+            score,
+            grade,
+            color,
+            checklist
+          }, { onConflict: 'location_id, date' });
+      }
+    } catch (dbErr) {
+      // Falha silenciosa no salvamento de histórico para não quebrar a API principal se a tabela não estiver criada
+      console.error('Erro ao registrar histórico de auditoria no Supabase:', dbErr);
+    }
 
     return NextResponse.json({ 
       score,

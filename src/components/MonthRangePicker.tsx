@@ -53,10 +53,10 @@ export default function MonthRangePicker({ onRangeSelect, initialStart, initialE
 
   const handleApply = () => {
     if (startMonth && endMonth) {
-      // Ajusta o final para o último dia do mês
-      const endDate = new Date(endMonth);
-      const lastDay = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate();
-      const finalEnd = `${endMonth.substring(0, 7)}-${lastDay}`;
+      // Ajusta o final para o último dia do mês de forma robusta e livre de fuso horário
+      const [year, month] = endMonth.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const finalEnd = `${endMonth.substring(0, 7)}-${String(lastDay).padStart(2, '0')}`;
       
       onRangeSelect(startMonth, finalEnd);
       setIsOpen(false);
@@ -84,7 +84,7 @@ export default function MonthRangePicker({ onRangeSelect, initialStart, initialE
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative z-30" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 bg-[#161b22] hover:bg-[#1c232d] border border-white/10 rounded-full px-4 py-2 text-sm font-bold text-white transition-all shadow-lg"
