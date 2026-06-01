@@ -30,97 +30,282 @@ export default function TabGBPRank({
   const handleExportPDF = async () => {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const blue = [66, 133, 244] as [number, number, number];
-    const dark = [10, 10, 10] as [number, number, number];
-    const white = [255, 255, 255] as [number, number, number];
-    const gray = [120, 120, 120] as [number, number, number];
 
-    doc.setFillColor(...dark);
-    doc.rect(0, 0, 210, 297, 'F');
+    const C = {
+      bg:      [10, 12, 18] as [number,number,number],
+      card:    [18, 24, 36] as [number,number,number],
+      cardAlt: [22, 28, 42] as [number,number,number],
+      accent:  [0, 220, 130] as [number,number,number],
+      blue:    [66, 133, 244] as [number,number,number],
+      white:   [255, 255, 255] as [number,number,number],
+      gray:    [140, 150, 165] as [number,number,number],
+      grayDk:  [60, 70, 85] as [number,number,number],
+      gold:    [255, 200, 60] as [number,number,number],
+      red:     [255, 80, 80] as [number,number,number],
+      green:   [0, 210, 100] as [number,number,number],
+      amber:   [255, 170, 40] as [number,number,number],
+    };
 
-    doc.setFillColor(...blue);
-    doc.rect(0, 0, 210, 36, 'F');
-    doc.setTextColor(...white);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Relatório de Rank Tracker', 14, 16);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Cliente: ${gbpData?.title || selectedGbp?.name || 'N/A'}`, 14, 26);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`, 14, 32);
-
-    doc.setFillColor(20, 20, 30);
-    doc.roundedRect(10, 42, 190, 38, 3, 3, 'F');
-    doc.setTextColor(...blue);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SOBRE OS DADOS', 16, 50);
-    doc.setTextColor(...gray);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    const disclaimer = 'As posições são obtidas via SerpApi simulando uma busca no Google Maps a partir das coordenadas do perfil do cliente. O ranking pode variar por localização do usuário, horário e personalização do Google.';
-    const lines = doc.splitTextToSize(disclaimer, 178);
-    doc.text(lines, 16, 57);
-
-    let y = 90;
-    doc.setTextColor(...white);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PALAVRAS-CHAVE MONITORADAS', 14, y - 4);
-
-    // Filtrar apenas as selecionadas para exportação, ou todas se nenhuma estiver selecionada
+    const businessName = gbpData?.title || selectedGbp?.name || 'N/A';
+    const today = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
     const keywordsToExport = selectedForPdf.length > 0
       ? trackedKeywords.filter(kw => selectedForPdf.includes(kw.id))
       : trackedKeywords;
 
-    keywordsToExport.forEach((kw: any) => {
-      if (y > 260) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0, 0, 210, 297, 'F'); y = 20; }
-      const pos = kw.rank_history?.[0]?.position || 99;
-      const posLabel = pos === 99 ? '20+' : `#${pos}`;
-      const bgColor: [number, number, number] = pos <= 3 ? [0, 80, 0] : pos <= 10 ? [80, 60, 0] : [80, 0, 0];
-      const posColor: [number, number, number] = pos <= 3 ? [0, 200, 81] : pos <= 10 ? [255, 187, 51] : [255, 68, 68];
-      const competitors = competitorData[kw.keyword] || [];
+    // ── CAPA ──────────────────────────────────────────────────────────────────
+    doc.setFillColor(...C.bg);
+    doc.rect(0, 0, 210, 297, 'F');
 
-      doc.setFillColor(18, 18, 28);
-      doc.roundedRect(10, y, 190, competitors.length > 0 ? 46 + (competitors.length * 10) : 28, 3, 3, 'F');
-      doc.setFillColor(...bgColor);
-      doc.roundedRect(170, y + 4, 24, 14, 2, 2, 'F');
-      doc.setTextColor(...posColor);
-      doc.setFontSize(13);
+    doc.setFillColor(0, 180, 110);
+    doc.rect(0, 0, 210, 70, 'F');
+    doc.setFillColor(...C.accent);
+    doc.rect(0, 0, 8, 70, 'F');
+
+    doc.setTextColor(...C.bg);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FOCUSLOCAL', 15, 12);
+    doc.setFontSize(22);
+    doc.text('RANK TRACKER', 15, 32);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Relatório de Posicionamento Local no Google Maps', 15, 42);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Perfil: ${businessName}`, 15, 56);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Gerado em: ${today}`, 15, 64);
+
+    // Badge com total de palavras
+    doc.setFillColor(...C.card);
+    doc.roundedRect(140, 10, 60, 50, 4, 4, 'F');
+    doc.setTextColor(...C.accent);
+    doc.setFontSize(32);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(keywordsToExport.length), 170, 38, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...C.gray);
+    doc.text('palavras-chave', 170, 47, { align: 'center' });
+    doc.text('monitoradas', 170, 53, { align: 'center' });
+
+    // ── RESUMO EXECUTIVO ─────────────────────────────────────────────────────
+    let y = 85;
+    doc.setTextColor(...C.accent);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('RESUMO EXECUTIVO', 15, y);
+    doc.setDrawColor(...C.accent);
+    doc.setLineWidth(0.4);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 9;
+
+    const top3Count = keywordsToExport.filter(kw => (kw.rank_history?.[0]?.position || 99) <= 3).length;
+    const top10Count = keywordsToExport.filter(kw => { const p = kw.rank_history?.[0]?.position || 99; return p > 3 && p <= 10; }).length;
+    const out20Count = keywordsToExport.filter(kw => (kw.rank_history?.[0]?.position || 99) >= 99).length;
+    const totalUpdates = keywordsToExport.reduce((acc: number, kw: any) => acc + (kw.rank_history?.length || 0), 0);
+
+    const statCards = [
+      { label: 'Top 3', value: String(top3Count), color: C.green },
+      { label: 'Top 10', value: String(top10Count), color: C.amber },
+      { label: 'Fora Top 20', value: String(out20Count), color: C.red },
+      { label: 'Atualizacoes', value: String(totalUpdates), color: C.blue },
+    ];
+    statCards.forEach((s, i) => {
+      const sx = 15 + i * 47;
+      doc.setFillColor(...C.card);
+      doc.roundedRect(sx, y, 43, 24, 3, 3, 'F');
+      doc.setFillColor(...s.color);
+      doc.roundedRect(sx, y, 43, 4, 1, 1, 'F');
+      doc.setTextColor(...s.color);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text(posLabel, 182, y + 13, { align: 'center' });
-
-      doc.setTextColor(...white);
-      doc.setFontSize(10);
-      doc.text(kw.keyword, 16, y + 12);
-      doc.setTextColor(...gray);
+      doc.text(s.value, sx + 21.5, y + 16, { align: 'center' });
+      doc.setTextColor(...C.gray);
       doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${kw.rank_history?.length || 1} registro(s) • posição: ${posLabel}`, 16, y + 20);
+      doc.text(s.label, sx + 21.5, y + 22, { align: 'center' });
+    });
+    y += 31;
 
+    // Legenda
+    doc.setFillColor(...C.card);
+    doc.roundedRect(15, y, 180, 13, 2, 2, 'F');
+    doc.setFontSize(7);
+    doc.setTextColor(...C.gray);
+    doc.text('Legenda:', 20, y + 8);
+    doc.setFillColor(...C.green); doc.circle(52, y + 6, 1.5, 'F');
+    doc.setTextColor(...C.white); doc.text('Top 3 (otimo)', 56, y + 8);
+    doc.setFillColor(...C.amber); doc.circle(93, y + 6, 1.5, 'F');
+    doc.text('Top 10 (bom)', 97, y + 8);
+    doc.setFillColor(...C.red); doc.circle(134, y + 6, 1.5, 'F');
+    doc.text('Top 11+ (melhorar)', 138, y + 8);
+    y += 19;
+
+    // Disclaimer
+    doc.setFillColor(...C.cardAlt);
+    doc.roundedRect(15, y, 180, 18, 2, 2, 'F');
+    doc.setTextColor(...C.blue);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('METODOLOGIA', 20, y + 6);
+    doc.setTextColor(...C.gray);
+    doc.setFont('helvetica', 'normal');
+    const discl = 'Posicoes obtidas via SerpApi simulando busca no Google Maps a partir das coordenadas exatas do perfil. O ranking pode variar por localizacao do usuario, horario e personalizacao do Google.';
+    doc.text(doc.splitTextToSize(discl, 170), 20, y + 12);
+    y += 25;
+
+    // ── DETALHES ─────────────────────────────────────────────────────────────
+    doc.setTextColor(...C.accent);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DETALHES POR PALAVRA-CHAVE', 15, y);
+    doc.setDrawColor(...C.accent);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 10;
+
+    keywordsToExport.forEach((kw: any) => {
+      const pos = kw.rank_history?.[0]?.position || 99;
+      const posLabel = pos === 99 ? '20+' : `#${pos}`;
+      const posColor: [number,number,number] = pos <= 3 ? C.green : pos <= 10 ? C.amber : C.red;
+      const bgPos: [number,number,number] = pos <= 3 ? [0,50,25] : pos <= 10 ? [50,38,0] : [50,10,10];
+
+      const compEntry = competitorData[kw.keyword];
+      const competitors: any[] = Array.isArray(compEntry) ? compEntry : (compEntry?.list || []);
+      const ourPosition: number | null = compEntry?.ourPosition ?? null;
+
+      const cardH = 32 + (competitors.length > 0 ? 10 + competitors.length * 10 + 12 : 0);
+
+      if (y + cardH > 275) {
+        doc.addPage();
+        doc.setFillColor(...C.bg);
+        doc.rect(0, 0, 210, 297, 'F');
+        y = 15;
+      }
+
+      // Card
+      doc.setFillColor(...C.card);
+      doc.roundedRect(15, y, 180, cardH, 3, 3, 'F');
+      doc.setFillColor(...posColor);
+      doc.roundedRect(15, y, 4, cardH, 2, 2, 'F');
+
+      // Badge posição
+      doc.setFillColor(...bgPos);
+      doc.roundedRect(162, y + 6, 29, 20, 3, 3, 'F');
+      doc.setTextColor(...posColor);
+      doc.setFontSize(15);
+      doc.setFont('helvetica', 'bold');
+      doc.text(posLabel, 176.5, y + 18, { align: 'center' });
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...C.gray);
+      doc.text('posicao Google', 176.5, y + 24, { align: 'center' });
+
+      // Keyword
+      doc.setTextColor(...C.white);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(kw.keyword, 22, y + 13);
+
+      // Subinfo
+      const histLen = kw.rank_history?.length || 0;
+      const firstDate = kw.created_at ? new Date(kw.created_at).toLocaleDateString('pt-BR') : 'N/A';
+      doc.setTextColor(...C.gray);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${histLen} atualizacao(oes) registrada(s)  •  monitorado desde ${firstDate}`, 22, y + 22);
+
+      // Histórico visual (últimas 5 posições)
+      const history = (kw.rank_history || []).slice(0, 5).reverse();
+      if (history.length >= 1) {
+        doc.setTextColor(...C.grayDk);
+        doc.setFontSize(6);
+        doc.text('Historico:', 22, y + 30);
+        history.forEach((h: any, i: number) => {
+          const hp = h.position === 99 ? '20+' : `#${h.position}`;
+          const hc: [number,number,number] = h.position <= 3 ? C.green : h.position <= 10 ? C.amber : C.red;
+          doc.setFillColor(...hc);
+          doc.circle(55 + i * 18, y + 29, 4, 'F');
+          doc.setTextColor(...C.bg);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6);
+          doc.text(hp, 55 + i * 18, y + 30.5, { align: 'center' });
+          doc.setFont('helvetica', 'normal');
+        });
+      }
+
+      // Concorrentes
       if (competitors.length > 0) {
-        doc.setTextColor(...blue);
+        const csy = y + 36;
+        doc.setDrawColor(...C.grayDk);
+        doc.setLineWidth(0.2);
+        doc.line(22, csy - 2, 193, csy - 2);
+        doc.setTextColor(...C.blue);
         doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
-        doc.text('TOP 3 CONCORRENTES', 16, y + 30);
+        doc.text('TOP 3 CONCORRENTES (busca centrada no seu perfil)', 22, csy + 5);
+
         competitors.forEach((c: any, idx: number) => {
-          doc.setTextColor(...(c.isUs ? blue : white));
-          doc.setFont('helvetica', c.isUs ? 'bold' : 'normal');
-          doc.setFontSize(8);
-          doc.text(`${idx + 1}. ${c.isUs ? '★ Você' : c.title}`.substring(0, 45), 16, y + 38 + (idx * 9));
-          doc.setTextColor(...gray);
-          doc.text(`${c.rating}★ (${c.reviews})`, 155, y + 38 + (idx * 9), { align: 'right' });
+          const cy = csy + 12 + idx * 10;
+          doc.setFillColor(...C.cardAlt);
+          doc.roundedRect(22, cy - 4, 171, 9, 1, 1, 'F');
+          doc.setTextColor(...C.white);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.text(`${idx + 1}.`, 26, cy + 2);
+          doc.setFont('helvetica', 'normal');
+          doc.text((c.title || '').substring(0, 50), 32, cy + 2);
+          doc.setTextColor(...C.gold);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`${c.rating}*`, 152, cy + 2);
+          doc.setTextColor(...C.gray);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`(${c.reviews})`, 163, cy + 2);
+          if (c.distanceKm && c.distanceKm !== 'N/A') {
+            doc.setTextColor(...C.grayDk);
+            doc.setFontSize(6);
+            doc.text(`${c.distanceKm}`, 193, cy + 2, { align: 'right' });
+          }
         });
-        y += 46 + (competitors.length * 9) + 6;
-      } else {
-        y += 34;
+
+        // Linha posição real do cliente
+        const myPosY = csy + 12 + competitors.length * 10 + 2;
+        doc.setFillColor(0, 70, 35);
+        doc.roundedRect(22, myPosY, 171, 8, 1, 1, 'F');
+        doc.setFontSize(7);
+        if (ourPosition == null) {
+          doc.setTextColor(...C.gray);
+          doc.setFont('helvetica', 'normal');
+          doc.text('Seu perfil nao apareceu no top 20 para esta busca', 107.5, myPosY + 5, { align: 'center' });
+        } else if (ourPosition <= 3) {
+          doc.setTextColor(...C.accent);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Voce esta em #${ourPosition} — Parabens! Esta no Top 3!`, 107.5, myPosY + 5, { align: 'center' });
+        } else {
+          doc.setTextColor(...C.amber);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Sua posicao real no Google: #${ourPosition}`, 107.5, myPosY + 5, { align: 'center' });
+        }
       }
+
+      y += cardH + 7;
     });
 
-    doc.setTextColor(...gray);
-    doc.setFontSize(7);
-    doc.text('Gerado por FocusLocal • Os dados são snapshot no momento da consulta.', 105, 292, { align: 'center' });
-    doc.save(`Rank_Tracker_${(gbpData?.title || 'relatorio').replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    // ── RODAPÉ em todas as páginas ────────────────────────────────────────────
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let pg = 1; pg <= totalPages; pg++) {
+      doc.setPage(pg);
+      doc.setFillColor(...C.card);
+      doc.rect(0, 289, 210, 8, 'F');
+      doc.setTextColor(...C.gray);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.text('FocusLocal • Dados sao snapshot no momento da consulta', 105, 294, { align: 'center' });
+      doc.text(`Pag. ${pg} / ${totalPages}`, 195, 294, { align: 'right' });
+    }
+
+    doc.save(`Rank_Tracker_${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   return (
