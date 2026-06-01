@@ -181,9 +181,35 @@ export async function POST(req: Request) {
     let position = 99; // 99 significa que não foi encontrado no top 20
     
     if (serpData.local_results) {
-      const idx = serpData.local_results.findIndex((r: any) => 
+      const results = serpData.local_results;
+
+      // Aplicar o mesmo filtro de raio que a API de concorrentes usa
+      // para que a posição exibida seja consistente com o raio selecionado
+      let filteredResults = results;
+      if (lat && lng) {
+        let maxDistanceKm = 5.5;
+        if (currentZoom === '16z') maxDistanceKm = 3.5;
+        else if (currentZoom === '14z') maxDistanceKm = 11.0;
+
+        const filtered = results.filter((r: any) => {
+          const cLat = r.gps_coordinates?.latitude;
+          const cLng = r.gps_coordinates?.longitude;
+          if (!cLat || !cLng) return true;
+          const dLat = (cLat - lat) * Math.PI / 180;
+          const dLon = (cLng - lng) * Math.PI / 180;
+          const a = Math.sin(dLat/2) ** 2 +
+            Math.cos(lat * Math.PI / 180) * Math.cos(cLat * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+          const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          return distKm <= maxDistanceKm;
+        });
+        // Só usa o filtro se o resultado filtrado incluir nossa empresa
+        const filteredHasUs = filtered.some((r: any) => r.title.toLowerCase().includes(businessName.toLowerCase()));
+        if (filteredHasUs) filteredResults = filtered;
+      }
+
+      const idx = filteredResults.findIndex((r: any) => 
         r.title.toLowerCase().includes(businessName.toLowerCase()) || 
-        r.place_id === details?.name
+        r.place_id === details?.metadata?.placeId
       );
       if (idx !== -1) position = idx + 1;
     }
