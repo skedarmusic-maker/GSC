@@ -129,11 +129,18 @@ export default function TabGBPRank({
 
       <div className="glass-card rounded-2xl p-8 border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
         <div className="flex flex-col sm:flex-row gap-4">
-          <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)}
-            placeholder="Ex: advogado trabalhista em são paulo"
-            className="flex-1 bg-[#161b22] border border-gray-800 text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] text-sm font-medium"
-            onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
-          <div className="flex items-center gap-2 bg-[#161b22] border border-gray-800 px-3 py-2 rounded-xl">
+          <div className="flex-1">
+            <input type="text" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)}
+              placeholder="Ex: motor de arranque (não precisa colocar a cidade)"
+              className="w-full bg-[#161b22] border border-gray-800 text-white px-5 py-3.5 rounded-xl focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] text-sm font-medium"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()} />
+          </div>
+          <div className="flex items-center gap-2 bg-[#161b22] border border-gray-800 px-3 py-2 rounded-xl" title="O centro da busca usa a coordenada GPS exata do perfil">
+            <div className="flex flex-col justify-center">
+              <span className="text-[8px] font-bold text-gray-500 uppercase px-1">Base da Busca</span>
+              <span className="text-[10px] font-bold text-[#00ff9d] uppercase px-1 max-w-[150px] truncate">📍 {gbpData?.address?.split(',')[0] || gbpData?.title || 'Seu Perfil'}</span>
+            </div>
+            <div className="w-px h-6 bg-gray-800 mx-1"></div>
             <span className="text-[10px] font-bold text-gray-500 uppercase px-1">Raio</span>
             <select value={rankRadius} onChange={(e) => setRankRadius(e.target.value)}
               className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer">
