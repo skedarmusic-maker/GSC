@@ -302,8 +302,8 @@ export async function getLocationDetails(locationId: string, tokenSupabase?: str
     const accessToken = await getAccessToken(tokenSupabase);
     // A API v1 aceita apenas locations/{id} sem o prefixo de account
     // readMask=* não é suportado — listamos campos explícitos
-    const cleanId = locationId.replace(/^accounts\/[^\/]+\//, '');
-    const readMask = 'name,title,websiteUri,phoneNumbers,regularHours,profile,categories';
+       const cleanId = locationId.replace(/^accounts\/[^\/]+\//, '');
+    const readMask = 'name,title,websiteUri,phoneNumbers,regularHours,profile,categories,latlng,storefrontAddress,metadata';
     const url = `https://mybusinessbusinessinformation.googleapis.com/v1/${cleanId}?readMask=${readMask}`;
 
     const res = await fetch(url, {

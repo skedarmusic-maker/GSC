@@ -168,8 +168,14 @@ export async function POST(req: Request) {
     const lng = details?.latlng?.longitude;
     const ll = lat && lng ? `${lat},${lng}` : '';
 
+    const city = details?.storefrontAddress?.locality || '';
+    const queryWithLocation = ll ? keyword : (city ? `${keyword} em ${city}` : keyword);
+
     const currentZoom = zoom || '15z';
-    const serpRes = await fetch(`https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(keyword)}${ll ? `&ll=@${ll},${currentZoom}` : ''}&api_key=${process.env.SERPAPI_KEY}`);
+    const serpUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(queryWithLocation)}${ll ? `&ll=@${ll},${currentZoom}` : ''}&hl=pt&gl=br&api_key=${process.env.SERPAPI_KEY}`;
+    console.log(`🌐 Chamando SerpApi Rank: ${serpUrl}`);
+    
+    const serpRes = await fetch(serpUrl);
     const serpData = await serpRes.json();
 
     let position = 99; // 99 significa que não foi encontrado no top 20
@@ -177,7 +183,7 @@ export async function POST(req: Request) {
     if (serpData.local_results) {
       const idx = serpData.local_results.findIndex((r: any) => 
         r.title.toLowerCase().includes(businessName.toLowerCase()) || 
-        r.place_id === details?.name // Tentativa de bater pelo ID (nem sempre vem da SerpApi)
+        r.place_id === details?.name
       );
       if (idx !== -1) position = idx + 1;
     }
