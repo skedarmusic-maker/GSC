@@ -4,16 +4,24 @@ import { getLocationDetails } from '@/lib/business';
 export async function POST(req: Request) {
   try {
     const { locationId, accountId, keyword, businessName } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
 
     const locationName = `accounts/${accountId}/locations/${locationId}`;
-    const details = await getLocationDetails(locationName);
+    const details = await getLocationDetails(locationName, token);
     
     const lat = details?.latlng?.latitude;
     const lng = details?.latlng?.longitude;
-    const center = lat && lng ? `@${lat},${lng},14z` : '';
+    const ll = lat && lng ? `${lat},${lng}` : '';
 
-    // Buscar no Google Maps via SerpApi
-    const serpRes = await fetch(`https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(keyword)}&ll=${center}&api_key=${process.env.SERPAPI_KEY}`);
+    const city = details?.storefrontAddress?.locality || '';
+    const queryWithLocation = ll ? keyword : (city ? `${keyword} em ${city}` : keyword);
+
+    const currentZoom = '14z';
+    const serpUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(queryWithLocation)}${ll ? `&ll=@${ll},${currentZoom}` : ''}&hl=pt&gl=br&api_key=${process.env.SERPAPI_KEY}`;
+    console.log(`🌐 Chamando SerpApi Competitors: ${serpUrl}`);
+
+    const serpRes = await fetch(serpUrl);
     const serpData = await serpRes.json();
 
     if (!serpData.local_results) {
