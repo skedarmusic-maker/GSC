@@ -68,7 +68,7 @@ export default function ProspectDashboard() {
         {error && <p style={{ color: '#ff4444', marginTop: '20px' }}>{error}</p>}
       </div>
 
-      {/* RELATÓRIO DE SAÚDE (Estilo GBP Check) */}
+      {/* RELATÓRIO DE SAÚDE (Estilo Perfil) */}
       {report && (
         <div className="report-container" style={{ background: '#fff', color: '#000', padding: '40px', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
           

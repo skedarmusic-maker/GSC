@@ -601,7 +601,7 @@ export default function TabProspecting({ session }: { session?: any }) {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden border-b border-gray-800 pb-5">
         <div>
           <h2 className="text-3xl font-black text-white tracking-tighter uppercase">
-            🔍 Radar de <span className="text-[#00ff9d]">Prospecção GBP</span>
+            🔍 Radar de <span className="text-[#00ff9d]">Prospecção de Perfis</span>
           </h2>
           <p className="text-gray-400 text-xs mt-1 uppercase tracking-wide">Busca e análise automatizada de perfis locais com inteligência competitiva e comercial.</p>
         </div>
@@ -826,7 +826,7 @@ export default function TabProspecting({ session }: { session?: any }) {
                           {/* Seção inferior com ações rápidas para o lead quente */}
                           <div className="border-t border-gray-800 pt-4 flex flex-col gap-2">
                             <div className="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
-                              <span>GBP Score:</span>
+                              <span>Score do Perfil:</span>
                               <span style={{ color: matchedLead.score >= 70 ? '#00ff9d' : matchedLead.score >= 40 ? '#f59e0b' : '#ef4444' }} className="font-black">
                                 {matchedLead.score || 0}/100
                               </span>
@@ -956,9 +956,9 @@ export default function TabProspecting({ session }: { session?: any }) {
                     <thead>
                       <tr className="border-b border-gray-800 text-[10px] uppercase tracking-widest text-gray-500 font-black bg-[#0d1117]/50">
                         <th className="py-4 px-6">Empresa / Ficha</th>
-                        <th className="py-4 px-6 text-center">Score GBP</th>
+                        <th className="py-4 px-6 text-center">Score do Perfil</th>
                         <th className="py-4 px-6">Autoridade</th>
-                        <th className="py-4 px-6">Oportunidades GBP</th>
+                        <th className="py-4 px-6">Oportunidades do Perfil</th>
                         <th className="py-4 px-6 text-center">Ações</th>
                       </tr>
                     </thead>

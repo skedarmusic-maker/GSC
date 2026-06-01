@@ -169,7 +169,7 @@ export default function TabIntegrations({ session, onSync }: TabIntegrationsProp
               </div>
               <div>
                 <h3 className="font-bold text-white text-sm">Google Services Suite</h3>
-                <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">Search Console + Maps (GBP)</span>
+                <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">Search Console + Maps</span>
               </div>
             </div>
             

@@ -478,9 +478,9 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                           <td className="p-4">
                             <div className="flex gap-1.5 flex-wrap">
                               {isGbp ? (
-                                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md text-[9px] font-bold">📍 GBP</span>
+                                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md text-[9px] font-bold">📍 Maps</span>
                               ) : (
-                                <span className="px-2 py-0.5 bg-gray-800 text-gray-500 rounded-md text-[9px] font-bold">📍 GBP Ausente</span>
+                                <span className="px-2 py-0.5 bg-gray-800 text-gray-500 rounded-md text-[9px] font-bold">📍 Maps Ausente</span>
                               )}
                               {isGsc ? (
                                 <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-md text-[9px] font-bold">🌐 GSC</span>

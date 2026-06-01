@@ -121,7 +121,7 @@ export default function TabGBPComparison({ gbpData, clientId }: Props) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#a855f7]/10 to-transparent border border-[#a855f7]/30 rounded-2xl p-8">
         <div>
           <p className="text-xs text-[#a855f7] font-bold uppercase tracking-wider mb-2">Análise Histórica</p>
-          <h2 className="text-3xl font-black text-white tracking-tight">Comparar Períodos (GBP Check)</h2>
+          <h2 className="text-3xl font-black text-white tracking-tight">Comparar Períodos</h2>
           <p className="text-sm text-gray-400 mt-2">Compare a evolução do perfil no Google Maps selecionando períodos distintos.</p>
         </div>
         <button

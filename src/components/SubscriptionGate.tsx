@@ -101,10 +101,10 @@ export default function SubscriptionGate({ userEmail }: SubscriptionGateProps) {
           <div className="grid grid-cols-1 gap-2">
             {[
               { icon: '📊', label: 'Dashboard GSC completo com análise de performance' },
-              { icon: '📍', label: 'Gestão do Google Business Profile (GBP)' },
+              { icon: '📍', label: 'Gestão da Ficha no Google Maps' },
               { icon: '🏆', label: 'Rank Tracker por palavra-chave com mapa de calor' },
               { icon: '⭐', label: 'Gerenciamento e resposta de avaliações com IA' },
-              { icon: '📣', label: 'Agendamento de postagens no GBP' },
+              { icon: '📣', label: 'Agendamento de postagens no Maps' },
               { icon: '🔍', label: 'Prospecção de clientes via Google Maps' },
               { icon: '🟣', label: 'Integração com Hostinger' },
             ].map((item, i) => (
