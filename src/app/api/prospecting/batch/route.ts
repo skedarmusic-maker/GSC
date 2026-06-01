@@ -157,27 +157,12 @@ export async function POST(req: Request) {
     const queryStr = `${niche} em ${location}`;
     console.log(`🔍 Iniciando busca em lote para: "${queryStr}"`);
 
-    // ── 1. BUSCA PRIMÁRIA VIA SERPAPI ──────────────────────────────────────────
-    if (apiKey) {
-      try {
-        console.log('🚀 Buscando locais via SerpApi...');
-        const url = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(queryStr)}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          rawResults = data.local_results || [];
-          console.log(`✅ SerpApi retornou ${rawResults.length} locais.`);
-        }
-      } catch (err) {
-        console.error('❌ Falha na busca da SerpApi:', err);
-      }
-    }
-
-    // ── 2. FALLBACK VIA OUTSCRAPER / APIFY SE SERPAPI FALHAR OU RETORNAR NADA ────
     const outscraperKey = process.env.OUTSCRAPER_API_KEY;
-    if (rawResults.length === 0 && outscraperKey) {
+
+    // ── 1. BUSCA PRIMÁRIA VIA OUTSCRAPER ──────────────────────────────────────────
+    if (outscraperKey) {
       try {
-        console.log('🚀 Iniciando busca de fallback via Outscraper...');
+        console.log('🚀 Buscando locais via Outscraper...');
         const url = `https://api.app.outscraper.com/maps/search-places?query=${encodeURIComponent(queryStr)}&limit=${limit * 2}&language=pt&region=br`;
         const res = await fetch(url, {
           headers: { 'X-API-KEY': outscraperKey }
@@ -188,7 +173,23 @@ export async function POST(req: Request) {
           console.log(`✅ Outscraper retornou ${rawResults.length} locais.`);
         }
       } catch (err) {
-        console.error('❌ Falha na busca de fallback do Outscraper:', err);
+        console.error('❌ Falha na busca do Outscraper:', err);
+      }
+    }
+
+    // ── 2. FALLBACK VIA SERPAPI ──────────────────────────────────────────────────
+    if (rawResults.length === 0 && apiKey) {
+      try {
+        console.log('🚀 Iniciando busca de fallback via SerpApi...');
+        const url = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(queryStr)}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          rawResults = data.local_results || [];
+          console.log(`✅ SerpApi retornou ${rawResults.length} locais.`);
+        }
+      } catch (err) {
+        console.error('❌ Falha na busca da SerpApi:', err);
       }
     }
 
