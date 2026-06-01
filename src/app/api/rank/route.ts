@@ -200,3 +200,53 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!id) return NextResponse.json({ error: 'Keyword ID missing' }, { status: 400 });
+
+    let dbSupabase = supabase;
+
+    if (token) {
+      dbSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      );
+      
+      const { data: userResponse, error: authError } = await dbSupabase.auth.getUser();
+      if (authError || !userResponse?.user) {
+        return NextResponse.json({ error: 'Sessão inválida ou expirada.' }, { status: 401 });
+      }
+    }
+
+    // Apaga os registros da tabela rank_history relacionados antes de apagar a keyword principal
+    await dbSupabase
+      .from('rank_history')
+      .delete()
+      .eq('keyword_id', id);
+
+    const { error } = await dbSupabase
+      .from('tracked_keywords')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Erro ao deletar palavra-chave:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

@@ -433,6 +433,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteKeyword = async (id: string) => {
+    if (!confirm('Tem certeza que deseja parar de monitorar e excluir esta palavra-chave?')) return;
+    try {
+      const res = await fetch(`/api/rank?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setTrackedKeywords(prev => prev.filter(k => k.id !== id));
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao excluir palavra-chave.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão ao excluir palavra-chave.');
+    }
+  };
+
   const fetchCompetitors = async (keyword: string) => {
     const mapsData = data?.maps || (selectedGbp ? {
       locationId: selectedGbp.id.replace('locations/', ''),
@@ -1257,6 +1273,7 @@ export default function Dashboard() {
                   setRankRadius={setRankRadius}
                   handleAddKeyword={handleAddKeyword}
                   fetchCompetitors={fetchCompetitors}
+                  handleDeleteKeyword={handleDeleteKeyword}
                 />
               )}
               {activeTab === 'gbp-reviews' && (

@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface Props {
   trackedKeywords: any[];
   newKeyword: string;
@@ -13,13 +15,17 @@ interface Props {
   setRankRadius: (v: string) => void;
   handleAddKeyword: () => void;
   fetchCompetitors: (keyword: string) => void;
+  handleDeleteKeyword: (id: string) => void;
 }
 
 export default function TabGBPRank({
   trackedKeywords, newKeyword, loadingRank, rankRadius,
   competitorData, loadingComp, gbpData, selectedGbp,
-  setNewKeyword, setRankRadius, handleAddKeyword, fetchCompetitors
+  setNewKeyword, setRankRadius, handleAddKeyword, fetchCompetitors,
+  handleDeleteKeyword
 }: Props) {
+
+  const [selectedForPdf, setSelectedForPdf] = useState<string[]>([]);
 
   const handleExportPDF = async () => {
     const { jsPDF } = await import('jspdf');
@@ -62,7 +68,12 @@ export default function TabGBPRank({
     doc.setFont('helvetica', 'bold');
     doc.text('PALAVRAS-CHAVE MONITORADAS', 14, y - 4);
 
-    trackedKeywords.forEach((kw: any) => {
+    // Filtrar apenas as selecionadas para exportação, ou todas se nenhuma estiver selecionada
+    const keywordsToExport = selectedForPdf.length > 0
+      ? trackedKeywords.filter(kw => selectedForPdf.includes(kw.id))
+      : trackedKeywords;
+
+    keywordsToExport.forEach((kw: any) => {
       if (y > 260) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0, 0, 210, 297, 'F'); y = 20; }
       const pos = kw.rank_history?.[0]?.position || 99;
       const posLabel = pos === 99 ? '20+' : `#${pos}`;
@@ -120,10 +131,17 @@ export default function TabGBPRank({
           <p className="text-gray-400 mt-1">Descubra em qual posição você aparece quando o cliente pesquisa pela palavra-chave na sua cidade.</p>
         </div>
         {trackedKeywords.length > 0 && (
-          <button onClick={handleExportPDF}
-            className="flex items-center gap-2 bg-[#00ff9d] text-gray-900 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)] whitespace-nowrap flex-shrink-0">
-            ⬇️ Baixar Relatório PDF
-          </button>
+          <div className="flex items-center gap-3">
+            {selectedForPdf.length > 0 && (
+              <span className="text-xs text-[#00ff9d] font-bold">
+                {selectedForPdf.length} selecionada(s)
+              </span>
+            )}
+            <button onClick={handleExportPDF}
+              className="flex items-center gap-2 bg-[#00ff9d] text-gray-900 font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)] whitespace-nowrap flex-shrink-0">
+              ⬇️ Baixar PDF {selectedForPdf.length > 0 ? 'Selecionadas' : 'Todas'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -167,7 +185,26 @@ export default function TabGBPRank({
             return (
               <div key={i} className="glass-card rounded-2xl p-8 flex flex-col border-[#00ff9d]/10" style={{ boxShadow: '0 0 30px rgba(0, 255, 157, 0.05)' }}>
                 <div className="flex justify-between items-start mb-2 border-b border-gray-800 pb-6">
-                  <div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <label className="flex items-center gap-2 cursor-pointer bg-[#161b22] px-3 py-1 rounded-full border border-gray-800 text-[10px] text-gray-400 font-bold uppercase hover:border-[#00ff9d]/30 transition-colors">
+                        <input type="checkbox"
+                          checked={selectedForPdf.includes(kw.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedForPdf(prev => [...prev, kw.id]);
+                            } else {
+                              setSelectedForPdf(prev => prev.filter(id => id !== kw.id));
+                            }
+                          }}
+                          className="rounded border-gray-800 text-[#00ff9d] focus:ring-[#00ff9d] bg-transparent" />
+                        <span>Selecionar para PDF</span>
+                      </label>
+                      <button onClick={() => handleDeleteKeyword(kw.id)}
+                        className="text-gray-500 hover:text-red-500 transition-colors p-1.5 hover:bg-white/5 rounded-lg text-xs" title="Excluir Palavra-chave">
+                        🗑️ Excluir
+                      </button>
+                    </div>
                     <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-2">Termo</p>
                     <h4 className="text-xl font-black text-white tracking-tight">{kw.keyword}</h4>
                     <p className="text-[10px] text-gray-500 mt-2">{histLen} atualização{histLen !== 1 ? 'ões' : ''} registrada{histLen !== 1 ? 's' : ''}</p>
@@ -177,7 +214,7 @@ export default function TabGBPRank({
                 {!competitorData[kw.keyword] ? (
                   <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]}
                     className="mt-auto w-full bg-[#161b22] hover:bg-[#161b22]/80 border border-gray-800 text-[#00ff9d] font-bold py-3.5 rounded-xl text-sm transition-colors">
-                    {loadingComp[kw.keyword] ? '🔍 Mapeando...' : '🔍 Benchmark com Top 3'}
+                    {loadingComp[kw.keyword] ? '⏳ Mapeando...' : '🔍 Benchmark com Top 3'}
                   </button>
                 ) : (
                   <div className="mt-auto bg-[#0d1117]/50 rounded-xl p-5 border border-[#00ff9d]/20">
