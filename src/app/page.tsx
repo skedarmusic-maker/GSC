@@ -309,7 +309,16 @@ export default function Dashboard() {
         body: JSON.stringify({ accountId, locationId })
       });
       const data = await res.json();
-      if (!data.error) setAuditData(data);
+      if (!data.error) {
+        setAuditData(data);
+        if (data.mapsUri || data.address) {
+          setGbpData((prev: any) => prev ? {
+            ...prev,
+            mapsUri: data.mapsUri,
+            address: data.address
+          } : null);
+        }
+      }
     } catch(e) { console.error(e); } finally { setLoadingAudit(false); }
   };
 
@@ -440,7 +449,8 @@ export default function Dashboard() {
           locationId: mapsData.locationId,
           accountId: mapsData.accountId,
           businessName: mapsData.title,
-          keyword
+          keyword,
+          zoom: rankRadius
         })
       });
       const resData = await res.json();

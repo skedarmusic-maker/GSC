@@ -122,7 +122,9 @@ export async function POST(req: Request) {
       score,
       grade,
       color,
-      checklist
+      checklist,
+      mapsUri: details.metadata?.mapsUri || null,
+      address: details.storefrontAddress ? `${details.storefrontAddress.addressLines?.join(', ')}, ${details.storefrontAddress.locality} - ${details.storefrontAddress.administrativeArea}` : null
     });
 
   } catch (error) {

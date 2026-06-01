@@ -191,7 +191,10 @@ export default function TabGBPRank({
                             <span>{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
                             {!c.isUs && <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">↗️</span>}
                           </a>
-                          <div className="flex gap-4 text-xs bg-[#161b22] px-3 py-1.5 rounded-full border border-gray-800">
+                          <div className="flex gap-3 text-xs bg-[#161b22] px-3 py-1.5 rounded-full border border-gray-800">
+                            {c.distanceKm && c.distanceKm !== 'N/A' && (
+                              <span className="text-gray-400 font-semibold" title="Distância até o seu perfil">📍 {c.distanceKm}</span>
+                            )}
                             <span className="font-bold text-[#00ff9d]">{c.rating}⭐</span>
                             <span className="text-gray-500">({c.reviews})</span>
                           </div>
