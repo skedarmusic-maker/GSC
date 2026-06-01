@@ -64,8 +64,9 @@ export async function POST(req: Request) {
     const ourPlace = finalResults.find((r: any) => 
       r.title.toLowerCase().includes(businessName.toLowerCase())
     );
+    const ourPosition = ourPlace ? finalResults.indexOf(ourPlace) + 1 : null;
 
-    // Pegar os Top 3 (Concorrentes)
+    // Pegar os Top 3 reais do Google (sem inventar posição artificial para o cliente)
     const competitors = finalResults.slice(0, 3).map((c: any) => {
       let distanceKm = 'N/A';
       if (lat && lng && c.gps_coordinates?.latitude && c.gps_coordinates?.longitude) {
@@ -82,22 +83,10 @@ export async function POST(req: Request) {
       };
     });
 
-    // Se a nossa empresa não estiver no Top 3, adicionamos ela ao final para comparação
-    if (!competitors.find((c: any) => c.isUs) && ourPlace) {
-      competitors.push({
-        title: ourPlace.title,
-        rating: ourPlace.rating || 0,
-        reviews: ourPlace.reviews || 0,
-        type: ourPlace.type || 'N/A',
-        place_id: ourPlace.place_id,
-        isUs: true,
-        distanceKm: '0.0 km'
-      });
-    }
-
     return NextResponse.json({
       keyword,
-      competitors
+      competitors,
+      ourPosition // posição real do cliente nos resultados (null = fora do top 20)
     });
 
   } catch (error: any) {

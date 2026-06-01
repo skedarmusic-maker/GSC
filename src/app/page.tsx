@@ -470,7 +470,7 @@ export default function Dashboard() {
         })
       });
       const resData = await res.json();
-      if (resData.competitors) setCompetitorData(prev => ({ ...prev, [keyword]: resData.competitors }));
+      if (resData.competitors) setCompetitorData(prev => ({ ...prev, [keyword]: { list: resData.competitors, ourPosition: resData.ourPosition ?? null } }));
     } catch(e) { console.error(e); } finally { setLoadingComp(prev => ({ ...prev, [keyword]: false })); }
   };
 

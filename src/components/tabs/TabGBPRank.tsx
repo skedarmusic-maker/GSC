@@ -220,13 +220,13 @@ export default function TabGBPRank({
                   <div className="mt-auto bg-[#0d1117]/50 rounded-xl p-5 border border-[#00ff9d]/20">
                     <p className="text-[10px] text-[#00ff9d] uppercase font-bold tracking-widest mb-4">Top 3 Concorrentes</p>
                     <div className="space-y-4">
-                      {competitorData[kw.keyword].map((c: any, idx: number) => (
-                        <div key={idx} className={`flex justify-between items-center text-sm ${c.isUs ? 'text-[#00ff9d] font-bold' : 'text-gray-300'}`}>
+                      {(competitorData[kw.keyword]?.list ?? competitorData[kw.keyword] ?? []).map((c: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center text-sm text-gray-300">
                           <a href={c.place_id ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title)}&query_place_id=${c.place_id}` : `https://www.google.com/search?q=${encodeURIComponent(c.title)}`}
                             target="_blank" rel="noopener noreferrer"
                             className="truncate w-48 xl:w-64 hover:text-[#00ff9d] transition-colors flex items-center gap-2 group">
-                            <span>{idx + 1}. {c.isUs ? '⭐ Você' : c.title}</span>
-                            {!c.isUs && <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">↗️</span>}
+                            <span>{idx + 1}. {c.title}</span>
+                            <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">↗️</span>
                           </a>
                           <div className="flex gap-3 text-xs bg-[#161b22] px-3 py-1.5 rounded-full border border-gray-800">
                             {c.distanceKm && c.distanceKm !== 'N/A' && (
@@ -238,6 +238,19 @@ export default function TabGBPRank({
                         </div>
                       ))}
                     </div>
+                    {/* Posição real do cliente - separado dos Top 3 */}
+                    {(() => {
+                      const ourPos = competitorData[kw.keyword]?.ourPosition;
+                      if (ourPos == null) return (
+                        <p className="mt-4 pt-3 border-t border-gray-800 text-xs text-gray-500">📌 Seu perfil não apareceu no top 20 resultados para essa palavra-chave nesse raio.</p>
+                      );
+                      if (ourPos <= 3) return (
+                        <p className="mt-4 pt-3 border-t border-gray-800 text-xs text-[#00ff9d] font-bold">🏆 Você está em #{ourPos} no Google para esta busca!</p>
+                      );
+                      return (
+                        <p className="mt-4 pt-3 border-t border-gray-800 text-xs text-yellow-400">📊 Sua posição real no Google: <strong>#{ourPos}</strong></p>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
