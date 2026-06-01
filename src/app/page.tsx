@@ -421,17 +421,22 @@ export default function Dashboard() {
       const resData = await res.json();
       if (res.ok) { 
         setNewKeyword(''); 
-        fetchRankData(mapsData.locationId); 
+        fetchRankData(mapsData.locationId);
+        // Dispara automaticamente a primeira busca de posicao
+        if (resData.keywordId) {
+          handleUpdateKeywordRank(resData.keywordId, newKeyword, mapsData);
+        }
       } else {
         alert(resData.error || 'Falha ao monitorar palavra-chave.');
       }
     } catch(e) { 
       console.error(e); 
-      alert('Erro de conexão ao salvar palavra-chave.');
+      alert('Erro de conexao ao salvar palavra-chave.');
     } finally { 
       setLoadingRank(false); 
     }
   };
+
 
   const handleDeleteKeyword = async (id: string) => {
     if (!confirm('Tem certeza que deseja parar de monitorar e excluir esta palavra-chave?')) return;
@@ -445,9 +450,47 @@ export default function Dashboard() {
       }
     } catch (e) {
       console.error(e);
-      alert('Erro de conexão ao excluir palavra-chave.');
+      alert('Erro de conexao ao excluir palavra-chave.');
     }
   };
+
+  const handleUpdateKeywordRank = async (keywordId: string, keyword: string, mapsDataOverride?: any) => {
+    const mapsData = mapsDataOverride || data?.maps || (selectedGbp ? {
+      locationId: selectedGbp.id.replace('locations/', ''),
+      accountId: selectedGbp.accountId,
+      title: selectedGbp.name
+    } : null);
+    if (!mapsData) return;
+    setLoadingRank(true);
+    try {
+      const res = await fetch('/api/rank', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywordId,
+          locationId: mapsData.locationId,
+          accountId: mapsData.accountId,
+          businessName: mapsData.title,
+          keyword,
+          zoom: rankRadius
+        })
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        if (resData.fromCache) {
+          console.log(`Cache hit para "${keyword}" — posicao ${resData.position}`);
+        }
+        fetchRankData(mapsData.locationId);
+      } else {
+        alert(resData.error || 'Erro ao atualizar posicao.');
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setLoadingRank(false);
+    }
+  };
+
 
   const fetchCompetitors = async (keyword: string) => {
     const mapsData = data?.maps || (selectedGbp ? {
@@ -1274,6 +1317,7 @@ export default function Dashboard() {
                   handleAddKeyword={handleAddKeyword}
                   fetchCompetitors={fetchCompetitors}
                   handleDeleteKeyword={handleDeleteKeyword}
+                  handleUpdateKeywordRank={handleUpdateKeywordRank}
                 />
               )}
               {activeTab === 'gbp-reviews' && (

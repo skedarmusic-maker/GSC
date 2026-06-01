@@ -16,13 +16,14 @@ interface Props {
   handleAddKeyword: () => void;
   fetchCompetitors: (keyword: string) => void;
   handleDeleteKeyword: (id: string) => void;
+  handleUpdateKeywordRank: (keywordId: string, keyword: string) => void;
 }
 
 export default function TabGBPRank({
   trackedKeywords, newKeyword, loadingRank, rankRadius,
   competitorData, loadingComp, gbpData, selectedGbp,
   setNewKeyword, setRankRadius, handleAddKeyword, fetchCompetitors,
-  handleDeleteKeyword
+  handleDeleteKeyword, handleUpdateKeywordRank
 }: Props) {
 
   const [selectedForPdf, setSelectedForPdf] = useState<string[]>([]);
@@ -385,6 +386,12 @@ export default function TabGBPRank({
                           className="rounded border-gray-800 text-[#00ff9d] focus:ring-[#00ff9d] bg-transparent" />
                         <span>Selecionar para PDF</span>
                       </label>
+                      <button onClick={() => handleUpdateKeywordRank(kw.id, kw.keyword)}
+                        disabled={loadingRank}
+                        title="Atualiza a posição agora (cache de 24h — não consome cota se já foi buscado hoje)"
+                        className="text-gray-500 hover:text-[#00ff9d] transition-colors p-1.5 hover:bg-white/5 rounded-lg text-xs disabled:opacity-40">
+                        🔄 Atualizar
+                      </button>
                       <button onClick={() => handleDeleteKeyword(kw.id)}
                         className="text-gray-500 hover:text-red-500 transition-colors p-1.5 hover:bg-white/5 rounded-lg text-xs" title="Excluir Palavra-chave">
                         🗑️ Excluir
@@ -394,8 +401,11 @@ export default function TabGBPRank({
                     <h4 className="text-xl font-black text-white tracking-tight">{kw.keyword}</h4>
                     <p className="text-[10px] text-gray-500 mt-2">{histLen} atualização{histLen !== 1 ? 'ões' : ''} registrada{histLen !== 1 ? 's' : ''}</p>
                   </div>
-                  <div className={`text-5xl font-black tracking-tighter ${colorClass}`}>{lastPos === 99 ? '20+' : `#${lastPos}`}</div>
+                  <div className={`text-5xl font-black tracking-tighter ${lastPos === null ? 'text-gray-700' : colorClass}`}>
+                    {lastPos === null ? '–' : lastPos === 99 ? '20+' : `#${lastPos}`}
+                  </div>
                 </div>
+
                 {!competitorData[kw.keyword] ? (
                   <button onClick={() => fetchCompetitors(kw.keyword)} disabled={loadingComp[kw.keyword]}
                     className="mt-auto w-full bg-[#161b22] hover:bg-[#161b22]/80 border border-gray-800 text-[#00ff9d] font-bold py-3.5 rounded-xl text-sm transition-colors">

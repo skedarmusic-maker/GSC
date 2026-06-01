@@ -150,7 +150,8 @@ export async function POST(req: Request) {
         ]);
     }
 
-    // 1. Salvar a palavra-chave no banco
+    // Salvar a palavra-chave SEM chamar SerpApi agora
+    // O usuario clica em "Atualizar Posicao" para disparar a busca sob demanda
     const { data: kw, error } = await dbSupabase
       .from('tracked_keywords')
       .insert([{ location_id: locationId, business_name: businessName, keyword }])
@@ -158,74 +159,110 @@ export async function POST(req: Request) {
       .single();
 
     if (error) throw error;
-
-    // 2. Disparar a primeira busca na SerpApi imediatamente
-    const locationName = `accounts/${accountId}/locations/${locationId}`;
-    const details = await getLocationDetails(locationName, token);
-    
-    // Pegar coordenadas para precisão total (Geolocalização Local)
-    const lat = details?.latlng?.latitude;
-    const lng = details?.latlng?.longitude;
-    const ll = lat && lng ? `${lat},${lng}` : '';
-
-    const city = details?.storefrontAddress?.locality || '';
-    const queryWithLocation = ll ? keyword : (city ? `${keyword} em ${city}` : keyword);
-
-    const currentZoom = zoom || '15z';
-    const serpUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(queryWithLocation)}${ll ? `&ll=@${ll},${currentZoom}` : ''}&hl=pt&gl=br&api_key=${process.env.SERPAPI_KEY}`;
-    console.log(`🌐 Chamando SerpApi Rank: ${serpUrl}`);
-    
-    const serpRes = await fetch(serpUrl);
-    const serpData = await serpRes.json();
-
-    let position = 99; // 99 significa que não foi encontrado no top 20
-    
-    if (serpData.local_results) {
-      const results = serpData.local_results;
-
-      // Aplicar o mesmo filtro de raio que a API de concorrentes usa
-      // para que a posição exibida seja consistente com o raio selecionado
-      let filteredResults = results;
-      if (lat && lng) {
-        let maxDistanceKm = 5.5;
-        if (currentZoom === '16z') maxDistanceKm = 3.5;
-        else if (currentZoom === '14z') maxDistanceKm = 11.0;
-
-        const filtered = results.filter((r: any) => {
-          const cLat = r.gps_coordinates?.latitude;
-          const cLng = r.gps_coordinates?.longitude;
-          if (!cLat || !cLng) return true;
-          const dLat = (cLat - lat) * Math.PI / 180;
-          const dLon = (cLng - lng) * Math.PI / 180;
-          const a = Math.sin(dLat/2) ** 2 +
-            Math.cos(lat * Math.PI / 180) * Math.cos(cLat * Math.PI / 180) * Math.sin(dLon/2) ** 2;
-          const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-          return distKm <= maxDistanceKm;
-        });
-        // Só usa o filtro se o resultado filtrado incluir nossa empresa
-        const filteredHasUs = filtered.some((r: any) => r.title.toLowerCase().includes(businessName.toLowerCase()));
-        if (filteredHasUs) filteredResults = filtered;
-      }
-
-      const idx = filteredResults.findIndex((r: any) => 
-        r.title.toLowerCase().includes(businessName.toLowerCase()) || 
-        r.place_id === details?.metadata?.placeId
-      );
-      if (idx !== -1) position = idx + 1;
-    }
-
-    // 3. Salvar o primeiro registro de posição
-    await dbSupabase
-      .from('rank_history')
-      .insert([{ keyword_id: kw.id, position }]);
-
-    return NextResponse.json({ success: true, position });
+    return NextResponse.json({ success: true, position: null, keywordId: kw.id });
 
   } catch (error: any) {
     console.error('Erro no Rank Tracking:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// PUT /api/rank — Atualiza posicao sob demanda com cache de 24h
+export async function PUT(req: Request) {
+  try {
+    const { keywordId, locationId, businessName, keyword, accountId, zoom } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    let dbSupabase = supabase;
+    if (token) {
+      dbSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        { global: { headers: { Authorization: `Bearer ${token}` } } }
+      );
+      const { data: userResponse, error: authError } = await dbSupabase.auth.getUser();
+      if (authError || !userResponse?.user) {
+        return NextResponse.json({ error: 'Sessao invalida ou expirada.' }, { status: 401 });
+      }
+      const userId = userResponse.user.id;
+      const { data: credits } = await dbSupabase
+        .from('user_credits').select('*').eq('user_id', userId).maybeSingle();
+      const totalCredits = (credits?.monthly_allowance || 0) + (credits?.purchased_credits || 0);
+      if (credits && totalCredits <= 0) {
+        return NextResponse.json({ error: 'Cota de creditos esgotada.' }, { status: 403 });
+      }
+    }
+
+    // Cache de 24h: so chama a SerpApi se nao tiver resultado recente
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentHistory } = await dbSupabase
+      .from('rank_history')
+      .select('position, created_at')
+      .eq('keyword_id', keywordId)
+      .gte('created_at', since24h)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentHistory) {
+      console.log(`Cache hit para "${keyword}" — posicao ${recentHistory.position}`);
+      return NextResponse.json({ success: true, position: recentHistory.position, fromCache: true, cachedAt: recentHistory.created_at });
+    }
+
+    // Sem cache valido — chama SerpApi
+    console.log(`Cache miss — buscando posicao real na SerpApi para "${keyword}"`);
+    const locationName = `accounts/${accountId}/locations/${locationId}`;
+    const details = await getLocationDetails(locationName, token || undefined);
+    const lat = details?.latlng?.latitude;
+    const lng = details?.latlng?.longitude;
+    const ll = lat && lng ? `${lat},${lng}` : '';
+    const city = details?.storefrontAddress?.locality || '';
+    const queryWithLocation = ll ? keyword : (city ? `${keyword} em ${city}` : keyword);
+    const currentZoom = zoom || '15z';
+    const serpUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(queryWithLocation)}${ll ? `&ll=@${ll},${currentZoom}` : ''}&hl=pt&gl=br&api_key=${process.env.SERPAPI_KEY}`;
+    const serpRes = await fetch(serpUrl);
+    const serpData = await serpRes.json();
+
+    let position = 99;
+    if (serpData.local_results) {
+      const results = serpData.local_results;
+      let filteredResults = results;
+      if (lat && lng) {
+        let maxDistanceKm = 5.5;
+        if (currentZoom === '16z') maxDistanceKm = 3.5;
+        else if (currentZoom === '14z') maxDistanceKm = 11.0;
+        const filtered = results.filter((r: any) => {
+          const cLat = r.gps_coordinates?.latitude;
+          const cLng = r.gps_coordinates?.longitude;
+          if (!cLat || !cLng) return true;
+          const dLat = (cLat - lat) * Math.PI / 180;
+          const dLon = (cLng - lng) * Math.PI / 180;
+          const a = Math.sin(dLat/2) ** 2 + Math.cos(lat * Math.PI / 180) * Math.cos(cLat * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+          const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          return distKm <= maxDistanceKm;
+        });
+        const filteredHasUs = filtered.some((r: any) => r.title.toLowerCase().includes(businessName.toLowerCase()));
+        if (filteredHasUs) filteredResults = filtered;
+      }
+      const idx = filteredResults.findIndex((r: any) =>
+        r.title.toLowerCase().includes(businessName.toLowerCase()) ||
+        r.place_id === details?.metadata?.placeId
+      );
+      if (idx !== -1) position = idx + 1;
+    }
+
+    await dbSupabase.from('rank_history').insert([{ keyword_id: keywordId, position }]);
+    return NextResponse.json({ success: true, position, fromCache: false });
+
+  } catch (error: any) {
+    console.error('Erro ao atualizar posicao:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+
+
 
 export async function DELETE(req: Request) {
   try {
