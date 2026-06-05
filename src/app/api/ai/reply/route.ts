@@ -6,6 +6,9 @@ export async function POST(req: Request) {
   try {
     const { reviewText, reviewerName, rating, businessName } = await req.json();
 
+    // Usar apenas o primeiro nome para personalização mais natural e preservar privacidade
+    const firstName = (reviewerName || '').trim().split(/\s+/)[0] || reviewerName;
+
     const hasComment = reviewText && reviewText.trim().length > 0;
     const commentLength = hasComment ? reviewText.trim().split(/\s+/).length : 0;
 
@@ -22,7 +25,7 @@ export async function POST(req: Request) {
     const prompt = `Você responde avaliações do Google Maps para a empresa "${businessName}".
 
 AVALIAÇÃO RECEBIDA:
-- Cliente: ${reviewerName}
+- Cliente: ${firstName}
 - Nota: ${rating}/5
 - Comentário: ${hasComment ? `"${reviewText}"` : '(nenhum comentário, apenas a nota)'}
 
@@ -30,7 +33,7 @@ REGRAS:
 1. Tom: profissional e caloroso. Nunca robotizado, nunca gírias.
 2. ${sizeInstruction}
 3. Proibido começar com: "Agradecemos", "Ficamos imensamente", "Sua preferência é".
-4. Use variações naturais de abertura: "Olá, ${reviewerName}!", "Obrigado, ${reviewerName}!", "Que ótimo, ${reviewerName}!", etc.
+4. Use variações naturais de abertura: "Olá, ${firstName}!", "Obrigado, ${firstName}!", "Que ótimo, ${firstName}!", etc.
 5. Se nota for 1-3: seja empático e convide para resolver. Sem defender a empresa.
 6. Se nota for 4-5 sem comentário: agradeça simplesmente. Nada mais.
 7. Escreva APENAS o texto da resposta, sem aspas, sem introdução.`;
