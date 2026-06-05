@@ -87,31 +87,59 @@ export async function listLocations(tokenSupabase?: string) {
 
     let allLocations: any[] = [];
 
-    // 2. Para cada conta, buscar os locais (empresas)
+    // 2. Para cada conta, buscar os locais (empresas) com paginação
     for (const account of accountsData.accounts) {
-      const locationsRes = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations?readMask=name,title,websiteUri,metadata,storefrontAddress`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        cache: 'no-store'
-      });
-      const locData = await locationsRes.json();
+      let nextPageToken: string | undefined = undefined;
+      do {
+        const url = new URL(`https://mybusinessbusinessinformation.googleapis.com/v1/${account.name}/locations`);
+        url.searchParams.set('readMask', 'name,title,websiteUri,metadata,storefrontAddress');
+        url.searchParams.set('pageSize', '100'); // Solicitar tamanho máximo de página
+        if (nextPageToken) {
+          url.searchParams.set('pageToken', nextPageToken);
+        }
 
-      if (locData.locations) {
-        const accountId = account.name.split('/')[1];
-        
-        // Filtra apenas locais verificados ou que o usuário tem permissão ativa
-        const verified = locData.locations.filter((l: any) =>
-          l.metadata?.hasVoiceOfMerchant || l.metadata?.canUpdate
-        );
+        const locationsRes = await fetch(url.toString(), {
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          cache: 'no-store'
+        });
 
-        const formatted = verified.map((l: any) => ({
-          ...l,
-          accountId: accountId
-        }));
-        allLocations = [...allLocations, ...formatted];
-      }
+        if (!locationsRes.ok) {
+          console.error(`Erro ao buscar locais para conta ${account.name}:`, await locationsRes.text());
+          break;
+        }
+
+        const locData = await locationsRes.json();
+
+        if (locData.locations) {
+          const accountId = account.name.split('/')[1];
+          
+          // Filtra apenas locais verificados ou que o usuário tem permissão ativa
+          const verified = locData.locations.filter((l: any) =>
+            l.metadata?.hasVoiceOfMerchant || l.metadata?.canUpdate
+          );
+
+          const formatted = verified.map((l: any) => ({
+            ...l,
+            accountId: accountId
+          }));
+          allLocations = [...allLocations, ...formatted];
+        }
+
+        nextPageToken = locData.nextPageToken;
+      } while (nextPageToken);
     }
 
-    return allLocations;
+    // 3. Desduplicar localizações por `name` (ID único do local no Google, ex: `locations/123456789`)
+    const uniqueLocationsMap = new Map<string, any>();
+    for (const loc of allLocations) {
+      if (!uniqueLocationsMap.has(loc.name)) {
+        uniqueLocationsMap.set(loc.name, loc);
+      }
+    }
+    const finalLocations = Array.from(uniqueLocationsMap.values());
+
+    console.log(`📡 GBP Discovery: Total de ${finalLocations.length} locais únicos encontrados.`);
+    return finalLocations;
   } catch (error) {
     console.error('Erro na descoberta automática de locais:', error);
     return [];

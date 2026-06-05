@@ -94,16 +94,55 @@ export async function GET(req: Request) {
 
               const unified: any[] = [];
 
+              // Buscar duplicados globais no banco para evitar inserir o mesmo local repetido
+              const locationIdsToCheck = gbpLocations.map((loc: any) => loc.name.replace('locations/', ''));
+              let existingGlobalClients: any[] = [];
+              if (locationIdsToCheck.length > 0) {
+                const { data: globalMatches } = await adminSupabase
+                  .from('clients')
+                  .select('*')
+                  .in('gbp_location_id', locationIdsToCheck);
+                if (globalMatches) {
+                  existingGlobalClients = globalMatches;
+                }
+              }
+
               // Mapear GBP
               for (const loc of gbpLocations) {
-                // Evitar duplicar locais que já existam no banco
-                const exists = dbClients?.some(c => c.gbp_location_id === loc.name.replace('locations/', ''));
-                if (exists) continue;
+                const locId = loc.name.replace('locations/', '');
+                
+                // Procurar se o local já existe globalmente no banco
+                const existing = existingGlobalClients.find(c => c.gbp_location_id === locId);
+                
+                if (existing) {
+                  // Se o cliente existe mas não possui user_id (legado), nós o vinculamos ao usuário atual
+                  if (!existing.user_id) {
+                    await adminSupabase
+                      .from('clients')
+                      .update({ user_id: user.id, gbp_account_id: loc.accountId })
+                      .eq('id', existing.id);
+                    
+                    const updatedClient = { ...existing, user_id: user.id, gbp_account_id: loc.accountId };
+                    if (dbClients) {
+                      dbClients.push(updatedClient);
+                    } else {
+                      dbClients = [updatedClient];
+                    }
+                  }
+                  continue;
+                }
+
+                // Evitar duplicar local no mesmo lote ou se o usuário já tiver
+                const alreadyUnified = unified.some(c => c.gbp_location_id === locId);
+                if (alreadyUnified) continue;
+
+                const alreadyOwned = dbClients?.some(c => c.gbp_location_id === locId);
+                if (alreadyOwned) continue;
 
                 unified.push({
                   name: loc.title,
                   gbp_account_id: loc.accountId,
-                  gbp_location_id: loc.name.replace('locations/', ''),
+                  gbp_location_id: locId,
                   website_url: loc.websiteUri,
                   gsc_url: null,
                   user_id: user.id
@@ -232,6 +271,30 @@ export async function GET(req: Request) {
         if (insertError) throw insertError;
         dbClients = inserted;
       }
+    }
+
+    // Desduplicar a lista final de clientes antes de enviar para o frontend (tratamento para duplicatas históricas)
+    const uniqueClientsMap = new Map<string, any>();
+    if (dbClients) {
+      for (const client of dbClients) {
+        const key = client.gbp_location_id 
+          ? `gbp_${client.gbp_location_id}` 
+          : client.gsc_url 
+            ? `gsc_${client.gsc_url}` 
+            : `id_${client.id}`;
+        
+        if (!uniqueClientsMap.has(key)) {
+          uniqueClientsMap.set(key, client);
+        } else {
+          const existing = uniqueClientsMap.get(key);
+          const existingScore = (existing.gsc_url ? 1 : 0) + (existing.gbp_location_id ? 1 : 0);
+          const currentScore = (client.gsc_url ? 1 : 0) + (client.gbp_location_id ? 1 : 0);
+          if (currentScore > existingScore) {
+            uniqueClientsMap.set(key, client);
+          }
+        }
+      }
+      dbClients = Array.from(uniqueClientsMap.values());
     }
 
     // 3. Formatar para o frontend (Manter compatibilidade com a estrutura anterior)
