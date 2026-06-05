@@ -353,7 +353,7 @@ export default function TabGBPEvolution({ gbpData, clientId }: Props) {
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'bold', paddingTop: '15px' }} />
                   <Line type="monotone" dataKey="calls" name="calls" stroke="#00ff9d" strokeWidth={3} activeDot={{ r: 8 }} />
                   <Line type="monotone" dataKey="directions" name="directions" stroke="#007aff" strokeWidth={3} />
-                  <Line type="monotone" dataKey="website_clicks" name="website_clicks" stroke="#a855f7" strokeWidth={3} />
+                  <Line type="monotone" dataKey="website_clicks" name="website_clicks" stroke="#06b6d4" strokeWidth={3} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

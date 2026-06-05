@@ -118,16 +118,16 @@ export default function TabGBPComparison({ gbpData, clientId }: Props) {
 
   return (
     <div className="space-y-8 animate-fade-in pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#a855f7]/10 to-transparent border border-[#a855f7]/30 rounded-2xl p-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-[#007aff]/10 to-transparent border border-[#007aff]/30 rounded-2xl p-8">
         <div>
-          <p className="text-xs text-[#a855f7] font-bold uppercase tracking-wider mb-2">Análise Histórica</p>
+          <p className="text-xs text-[#007aff] font-bold uppercase tracking-wider mb-2">Análise Histórica</p>
           <h2 className="text-3xl font-black text-white tracking-tight">Comparar Períodos</h2>
           <p className="text-sm text-gray-400 mt-2">Compare a evolução do perfil no Google Maps selecionando períodos distintos.</p>
         </div>
         <button
           onClick={handleSyncHistory}
           disabled={loading}
-          className="bg-[#161b22] text-[#a855f7] border border-[#a855f7]/30 hover:border-[#a855f7] font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(168,85,247,0.1)] hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] disabled:opacity-50"
+          className="bg-[#161b22] text-[#007aff] border border-[#007aff]/30 hover:border-[#007aff] font-bold py-3 px-6 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(0,122,255,0.1)] hover:shadow-[0_0_30px_rgba(0,122,255,0.3)] disabled:opacity-50"
         >
           {loading ? 'Processando...' : 'Sincronizar Últimos 18 Meses'}
         </button>
@@ -152,7 +152,7 @@ export default function TabGBPComparison({ gbpData, clientId }: Props) {
         <button
           onClick={handleCompare}
           disabled={loading || !periodA.start || !periodB.start}
-          className="w-full bg-[#a855f7] text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)] transition-all disabled:opacity-50"
+          className="w-full bg-[#007aff] text-white font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,122,255,0.3)] hover:shadow-[0_0_30px_rgba(0,122,255,0.5)] transition-all disabled:opacity-50"
         >
           Analisar e Comparar
         </button>
