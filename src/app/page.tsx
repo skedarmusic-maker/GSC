@@ -788,7 +788,9 @@ export default function Dashboard() {
         accountId,
         locationId,
         metrics: safeMetrics.totals,
-        chartData: safeMetrics.chartData
+        chartData: safeMetrics.chartData,
+        platformBreakdown: safeMetrics.platformBreakdown || [],
+        keywords: safeMetrics.keywords || [],
       };
       
       setGbpData(mapsData);

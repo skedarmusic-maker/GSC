@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     const perf = await getLocationPerformance(locationName, days, startDate, endDate, token);
     
     if (!perf) {
-      return NextResponse.json({ totals: { calls: 0, directions: 0, websiteClicks: 0 }, chartData: [] });
+      return NextResponse.json({ totals: { calls: 0, directions: 0, websiteClicks: 0, views: 0 }, chartData: [], platformBreakdown: [], keywords: [] });
+
     }
 
     return NextResponse.json(perf);

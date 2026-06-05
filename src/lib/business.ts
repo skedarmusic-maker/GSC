@@ -163,26 +163,22 @@ export async function getLocationPerformance(locationName: string, days?: number
       start.setDate(end.getDate() - (days || 28));
     }
 
+    const dateParams = `dailyRange.startDate.year=${start.getFullYear()}&dailyRange.startDate.month=${start.getMonth() + 1}&dailyRange.startDate.day=${start.getDate()}&dailyRange.endDate.year=${end.getFullYear()}&dailyRange.endDate.month=${end.getMonth() + 1}&dailyRange.endDate.day=${end.getDate()}`;
+
     const metrics = [
       { key: 'calls', google: 'CALL_CLICKS' },
       { key: 'directions', google: 'BUSINESS_DIRECTION_REQUESTS' },
-      { key: 'websiteClicks', google: 'WEBSITE_CLICKS' }
+      { key: 'websiteClicks', google: 'WEBSITE_CLICKS' },
+      { key: 'views', google: 'BUSINESS_PROFILE_VIEWS' },
     ];
 
-    const timeSeriesData: { [key: string]: any[] } = {};
-    const totals: { [key: string]: number } = { calls: 0, directions: 0, websiteClicks: 0 };
+    const totals: { [key: string]: number } = { calls: 0, directions: 0, websiteClicks: 0, views: 0 };
 
     const fetchMetric = async (metricObj: any) => {
-      const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:getDailyMetricsTimeSeries?dailyMetric=${metricObj.google}&dailyRange.startDate.year=${start.getFullYear()}&dailyRange.startDate.month=${start.getMonth() + 1}&dailyRange.startDate.day=${start.getDate()}&dailyRange.endDate.year=${end.getFullYear()}&dailyRange.endDate.month=${end.getMonth() + 1}&dailyRange.endDate.day=${end.getDate()}`;
-
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
-        cache: 'no-store'
-      });
-
+      const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:getDailyMetricsTimeSeries?dailyMetric=${metricObj.google}&${dateParams}`;
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok || !contentType.includes('application/json')) return [];
-
       const data = await res.json();
       if (data.timeSeries?.datedValues) {
         return data.timeSeries.datedValues.map((v: any) => ({
@@ -195,9 +191,8 @@ export async function getLocationPerformance(locationName: string, days?: number
 
     const results = await Promise.all(metrics.map(m => fetchMetric(m)));
 
-    // Consolidar dados para o gráfico (agrupar por data)
+    // Consolidar dados para o gráfico
     const chartDataMap: { [date: string]: any } = {};
-    
     results.forEach((resArray, idx) => {
       const metricKey = metrics[idx].key;
       resArray.forEach((item: any) => {
@@ -206,13 +201,69 @@ export async function getLocationPerformance(locationName: string, days?: number
         totals[metricKey] += item.value;
       });
     });
-
-    // Converter mapa para array ordenado para o Recharts
     const chartData = Object.values(chartDataMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    // === BREAKDOWN DE PLATAFORMA (Pesquisa/Maps x Mobile/Desktop) ===
+    let platformBreakdown: any[] = [];
+    try {
+      const multiUrl = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:fetchMultiDailyMetricsTimeSeries?dailyMetrics=BUSINESS_PROFILE_VIEWS&${dateParams}`;
+      const multiRes = await fetch(multiUrl, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
+      if (multiRes.ok) {
+        const multiData = await multiRes.json();
+        if (multiData.multiDailyMetricTimeSeries) {
+          const platformTotals: { [key: string]: number } = {};
+          for (const series of multiData.multiDailyMetricTimeSeries) {
+            const sub = series.dailySubEntityType;
+            if (!sub) continue;
+            const platform = sub.platform || sub.businessType || 'UNKNOWN';
+            const device = sub.deviceType || sub.device || '';
+            const label = device ? `${platform}_${device}` : platform;
+            const sum = (series.timeSeries?.datedValues || []).reduce((acc: number, v: any) => acc + parseInt(v.value || '0'), 0);
+            if (sum > 0) platformTotals[label] = (platformTotals[label] || 0) + sum;
+          }
+          platformBreakdown = Object.entries(platformTotals).map(([key, value]) => {
+            const labelMap: { [k: string]: string } = {
+              'GOOGLE_SEARCH_MOBILE': 'Pesquisa Google – Mobile',
+              'GOOGLE_SEARCH_DESKTOP': 'Pesquisa Google – Desktop',
+              'GOOGLE_MAPS_MOBILE': 'Google Maps – Mobile',
+              'GOOGLE_MAPS_DESKTOP': 'Google Maps – Desktop',
+              'GOOGLE_SEARCH_MOBILE_PHONE': 'Pesquisa Google – Mobile',
+              'GOOGLE_SEARCH_DESKTOP_BROWSER': 'Pesquisa Google – Desktop',
+              'GOOGLE_MAPS_MOBILE_PHONE': 'Google Maps – Mobile',
+              'GOOGLE_MAPS_DESKTOP_BROWSER': 'Google Maps – Desktop',
+            };
+            return { key, label: labelMap[key] || key, value: value as number };
+          }).sort((a, b) => b.value - a.value);
+        }
+      }
+    } catch (e) {
+      console.warn('Breakdown de plataforma não disponível:', e);
+    }
+
+    // === PALAVRAS-CHAVE DE PESQUISA MENSAIS ===
+    let keywords: any[] = [];
+    try {
+      const kwUrl = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}/searchkeywords/impressions/monthly?monthly_range.start_month.year=${start.getFullYear()}&monthly_range.start_month.month=${start.getMonth() + 1}&monthly_range.end_month.year=${end.getFullYear()}&monthly_range.end_month.month=${end.getMonth() + 1}`;
+      const kwRes = await fetch(kwUrl, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
+      if (kwRes.ok) {
+        const kwData = await kwRes.json();
+        if (kwData.searchKeywordsCounts) {
+          keywords = kwData.searchKeywordsCounts.map((k: any) => ({
+            keyword: k.searchKeyword,
+            value: k.insightsValue?.value ? parseInt(k.insightsValue.value) : null,
+            threshold: k.insightsValue?.threshold ? parseInt(k.insightsValue.threshold) : null,
+          })).slice(0, 10); // top 10
+        }
+      }
+    } catch (e) {
+      console.warn('Keywords de pesquisa não disponíveis:', e);
+    }
 
     return { 
       totals, 
       chartData,
+      platformBreakdown,
+      keywords,
       startDate: start.toISOString(),
       endDate: end.toISOString()
     };
@@ -221,6 +272,7 @@ export async function getLocationPerformance(locationName: string, days?: number
     return null;
   }
 }
+
 
 
 // === NOVAS FUNÇÕES: GESTÃO DO PERFIL ===
