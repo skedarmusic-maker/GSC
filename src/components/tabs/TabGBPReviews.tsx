@@ -155,7 +155,7 @@ export default function TabGBPReviews({
                   {review.createTime ? new Date(review.createTime).toLocaleDateString() : ''}
                 </div>
               </div>
-              <p className="text-gray-300 text-sm mb-8 leading-relaxed italic flex-1">"{review.comment || '(Avaliação sem comentário)'}"</p>
+              <p className="text-gray-300 text-sm mb-8 leading-relaxed italic flex-1">&quot;{review.comment || '(Avaliação sem comentário)'}&quot;</p>
               {review.reviewReply ? (
                 <div className="bg-[#161b22] border border-gray-800 rounded-xl p-5 border-l-4 border-l-[#00ff9d] mt-auto">
                   <p className="text-[10px] text-[#00ff9d] font-bold mb-2 uppercase tracking-widest">Resposta Publicada</p>

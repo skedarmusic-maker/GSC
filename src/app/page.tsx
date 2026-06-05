@@ -7,6 +7,7 @@ import TabSEOKeywords from '@/components/tabs/TabSEOKeywords';
 import TabSEOPages from '@/components/tabs/TabSEOPages';
 import TabSEOOpportunities from '@/components/tabs/TabSEOOpportunities';
 import TabGBPDashboard from '@/components/tabs/TabGBPDashboard';
+import TabGBPReport from '@/components/tabs/TabGBPReport';
 import TabGBPComparison from '@/components/tabs/TabGBPComparison';
 import TabGBPAudit from '@/components/tabs/TabGBPAudit';
 import TabGBPRank from '@/components/tabs/TabGBPRank';
@@ -1157,6 +1158,7 @@ export default function Dashboard() {
               <li><button onClick={() => { setActiveTab('gbp-posts'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-posts' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📣 Postagens</button></li>
               <li><button onClick={() => { setActiveTab('gbp-cards'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-cards' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>🎴 Cards de Avaliação</button></li>
               <li><button onClick={() => { setActiveTab('gbp-evolution'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md ${activeTab === 'gbp-evolution' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📈 Evolução da Análise</button></li>
+              <li><button onClick={() => { setActiveTab('gbp-report'); setShowMobileMenu(false); }} className={`w-full text-left px-3 py-2 rounded-md font-semibold ${activeTab === 'gbp-report' ? 'bg-[#00ff9d]/10 text-[#00ff9d]' : 'text-gray-400'}`}>📄 Relatório PDF</button></li>
             </ul>
           )}
           
@@ -1201,7 +1203,7 @@ export default function Dashboard() {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible">
-        <header className="h-[64px] border-b border-[#00ff9d]/10 bg-[#080b10] flex items-center justify-between px-8 print:hidden">
+        <header className="min-h-[64px] py-4 sm:py-0 border-b border-[#00ff9d]/10 bg-[#080b10] flex flex-col sm:flex-row sm:items-center justify-between px-6 sm:px-8 gap-3 print:hidden">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -1367,6 +1369,7 @@ export default function Dashboard() {
               )}
               {activeTab === 'gbp-cards' && <TabGBPCards gbpData={gbpData} />}
               {activeTab === 'gbp-evolution' && <TabGBPEvolution gbpData={gbpData} clientId={selectedClient?.id} />}
+              {activeTab === 'gbp-report' && <TabGBPReport gbpData={gbpData} days={days} clientId={selectedClient?.id} />}
             </div>
           )}
 

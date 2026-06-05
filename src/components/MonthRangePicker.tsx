@@ -98,7 +98,7 @@ export default function MonthRangePicker({ onRangeSelect, initialStart, initialE
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-3 left-0 md:left-auto md:right-0 w-[320px] bg-[#0d1117] border border-white/10 rounded-2xl shadow-2xl z-[100] p-5 animate-in fade-in zoom-in duration-200">
+        <div className="absolute top-full mt-3 right-[-8px] sm:right-0 w-[300px] sm:w-[320px] bg-[#0d1117] border border-white/10 rounded-2xl shadow-2xl z-[100] p-4 sm:p-5 animate-in fade-in zoom-in duration-200">
           <div className="flex items-center justify-between mb-6">
             <button onClick={() => setViewYear(viewYear - 1)} className="p-1 hover:bg-white/5 rounded-full text-gray-400">
               <ChevronLeft size={20} />

@@ -359,7 +359,7 @@ export default function TabGBPEvolution({ gbpData, clientId }: Props) {
             </div>
           ) : (
             <div className="p-20 text-center glass-card border-white/5 rounded-2xl text-gray-500">
-              Nenhum histórico de métricas encontrado no banco de dados. Sincronize os dados na aba "Comparar Períodos" primeiro!
+              Nenhum histórico de métricas encontrado no banco de dados. Sincronize os dados na aba &quot;Comparar Períodos&quot; primeiro!
             </div>
           )}
         </div>

@@ -236,7 +236,7 @@ export default function TabClientConfig({
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <span className="text-2xl">📚</span> Base de Conhecimento (Estilo NotebookLM)
             </h3>
-            <p className="text-sm text-gray-500 mt-1">Adicione fatos, serviços, história e documentos para "treinar" a inteligência deste cliente.</p>
+            <p className="text-sm text-gray-500 mt-1">Adicione fatos, serviços, história e documentos para &quot;treinar&quot; a inteligência deste cliente.</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">

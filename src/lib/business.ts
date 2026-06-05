@@ -165,14 +165,15 @@ export async function getLocationPerformance(locationName: string, days?: number
 
     const dateParams = `dailyRange.startDate.year=${start.getFullYear()}&dailyRange.startDate.month=${start.getMonth() + 1}&dailyRange.startDate.day=${start.getDate()}&dailyRange.endDate.year=${end.getFullYear()}&dailyRange.endDate.month=${end.getMonth() + 1}&dailyRange.endDate.day=${end.getDate()}`;
 
-    const metrics = [
+    const baseMetrics = [
       { key: 'calls', google: 'CALL_CLICKS' },
       { key: 'directions', google: 'BUSINESS_DIRECTION_REQUESTS' },
       { key: 'websiteClicks', google: 'WEBSITE_CLICKS' },
-      { key: 'views', google: 'BUSINESS_PROFILE_VIEWS' },
+      { key: 'messages', google: 'BUSINESS_CONVERSATIONS' },
+      { key: 'bookings', google: 'BUSINESS_BOOKINGS' },
     ];
 
-    const totals: { [key: string]: number } = { calls: 0, directions: 0, websiteClicks: 0, views: 0 };
+    const totals: { [key: string]: number } = { calls: 0, directions: 0, websiteClicks: 0, messages: 0, bookings: 0, views: 0 };
 
     const fetchMetric = async (metricObj: any) => {
       const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:getDailyMetricsTimeSeries?dailyMetric=${metricObj.google}&${dateParams}`;
@@ -189,56 +190,87 @@ export async function getLocationPerformance(locationName: string, days?: number
       return [];
     };
 
-    const results = await Promise.all(metrics.map(m => fetchMetric(m)));
+    // Buscamos as métricas base e as impressões em paralelo
+    const results = await Promise.all([
+      ...baseMetrics.map(m => fetchMetric(m)),
+      (async () => {
+        try {
+          const snakeDateParams = `daily_range.start_date.year=${start.getFullYear()}&daily_range.start_date.month=${start.getMonth() + 1}&daily_range.start_date.day=${start.getDate()}&daily_range.end_date.year=${end.getFullYear()}&daily_range.end_date.month=${end.getMonth() + 1}&daily_range.end_date.day=${end.getDate()}`;
+          const impressionsUrl = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:fetchMultiDailyMetricsTimeSeries?dailyMetrics=BUSINESS_IMPRESSIONS_DESKTOP_MAPS&dailyMetrics=BUSINESS_IMPRESSIONS_DESKTOP_SEARCH&dailyMetrics=BUSINESS_IMPRESSIONS_MOBILE_MAPS&dailyMetrics=BUSINESS_IMPRESSIONS_MOBILE_SEARCH&${snakeDateParams}`;
+          const res = await fetch(impressionsUrl, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
+          if (res.ok) {
+            return await res.json();
+          } else {
+            console.error('❌ GBP Impressions API Error:', res.status, await res.text());
+          }
+        } catch (err) {
+          console.error('Erro ao buscar impressões multi-metric:', err);
+        }
+        return {};
+      })()
+    ]);
 
-    // Consolidar dados para o gráfico
     const chartDataMap: { [date: string]: any } = {};
-    results.forEach((resArray, idx) => {
-      const metricKey = metrics[idx].key;
+
+    // Consolidar dados base no gráfico
+    const baseKeys = ['calls', 'directions', 'websiteClicks', 'messages', 'bookings'];
+    baseKeys.forEach((key, idx) => {
+      const resArray = results[idx] as any[];
       resArray.forEach((item: any) => {
-        if (!chartDataMap[item.date]) chartDataMap[item.date] = { date: item.date };
-        chartDataMap[item.date][metricKey] = item.value;
-        totals[metricKey] += item.value;
+        if (!chartDataMap[item.date]) {
+          chartDataMap[item.date] = { date: item.date, calls: 0, directions: 0, websiteClicks: 0, messages: 0, bookings: 0, views: 0 };
+        }
+        chartDataMap[item.date][key] = item.value;
+        totals[key] += item.value;
       });
     });
-    const chartData = Object.values(chartDataMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
 
-    // === BREAKDOWN DE PLATAFORMA (Pesquisa/Maps x Mobile/Desktop) ===
-    let platformBreakdown: any[] = [];
-    try {
-      const multiUrl = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:fetchMultiDailyMetricsTimeSeries?dailyMetrics=BUSINESS_PROFILE_VIEWS&${dateParams}`;
-      const multiRes = await fetch(multiUrl, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
-      if (multiRes.ok) {
-        const multiData = await multiRes.json();
-        if (multiData.multiDailyMetricTimeSeries) {
-          const platformTotals: { [key: string]: number } = {};
-          for (const series of multiData.multiDailyMetricTimeSeries) {
-            const sub = series.dailySubEntityType;
-            if (!sub) continue;
-            const platform = sub.platform || sub.businessType || 'UNKNOWN';
-            const device = sub.deviceType || sub.device || '';
-            const label = device ? `${platform}_${device}` : platform;
-            const sum = (series.timeSeries?.datedValues || []).reduce((acc: number, v: any) => acc + parseInt(v.value || '0'), 0);
-            if (sum > 0) platformTotals[label] = (platformTotals[label] || 0) + sum;
+    // Consolidar impressões (views)
+    const multiData = results[5] as any;
+    const platformTotals: { [key: string]: number } = {
+      'Pesquisa Google – Mobile': 0,
+      'Pesquisa Google – Desktop': 0,
+      'Google Maps – Mobile': 0,
+      'Google Maps – Desktop': 0,
+    };
+
+    if (multiData?.multiDailyMetricTimeSeries) {
+      for (const group of multiData.multiDailyMetricTimeSeries) {
+        const seriesList = group.dailyMetricTimeSeries || [];
+        for (const series of seriesList) {
+          const metric = series.dailyMetric;
+          const datedValues = series.timeSeries?.datedValues || [];
+
+          let label = '';
+          if (metric === 'BUSINESS_IMPRESSIONS_DESKTOP_MAPS') label = 'Google Maps – Desktop';
+          else if (metric === 'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH') label = 'Pesquisa Google – Desktop';
+          else if (metric === 'BUSINESS_IMPRESSIONS_MOBILE_MAPS') label = 'Google Maps – Mobile';
+          else if (metric === 'BUSINESS_IMPRESSIONS_MOBILE_SEARCH') label = 'Pesquisa Google – Mobile';
+
+          if (!label) continue;
+
+          for (const v of datedValues) {
+            const dateStr = `${v.date.year}-${String(v.date.month).padStart(2, '0')}-${String(v.date.day).padStart(2, '0')}`;
+            const val = parseInt(v.value || '0');
+
+            if (!chartDataMap[dateStr]) {
+              chartDataMap[dateStr] = { date: dateStr, calls: 0, directions: 0, websiteClicks: 0, messages: 0, bookings: 0, views: 0 };
+            }
+            chartDataMap[dateStr].views += val;
+            totals.views += val;
+            platformTotals[label] += val;
           }
-          platformBreakdown = Object.entries(platformTotals).map(([key, value]) => {
-            const labelMap: { [k: string]: string } = {
-              'GOOGLE_SEARCH_MOBILE': 'Pesquisa Google – Mobile',
-              'GOOGLE_SEARCH_DESKTOP': 'Pesquisa Google – Desktop',
-              'GOOGLE_MAPS_MOBILE': 'Google Maps – Mobile',
-              'GOOGLE_MAPS_DESKTOP': 'Google Maps – Desktop',
-              'GOOGLE_SEARCH_MOBILE_PHONE': 'Pesquisa Google – Mobile',
-              'GOOGLE_SEARCH_DESKTOP_BROWSER': 'Pesquisa Google – Desktop',
-              'GOOGLE_MAPS_MOBILE_PHONE': 'Google Maps – Mobile',
-              'GOOGLE_MAPS_DESKTOP_BROWSER': 'Google Maps – Desktop',
-            };
-            return { key, label: labelMap[key] || key, value: value as number };
-          }).sort((a, b) => b.value - a.value);
         }
       }
-    } catch (e) {
-      console.warn('Breakdown de plataforma não disponível:', e);
     }
+
+    const chartData = Object.values(chartDataMap).sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    // Formatar plataforma breakdown
+    const platformBreakdown = Object.entries(platformTotals)
+      .map(([label, value]) => ({ key: label, label, value }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
 
     // === PALAVRAS-CHAVE DE PESQUISA MENSAIS ===
     let keywords: any[] = [];

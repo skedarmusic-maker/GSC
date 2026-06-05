@@ -37,7 +37,9 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
   const totalInteractions =
     (gbpData?.metrics?.calls         || 0) +
     (gbpData?.metrics?.directions    || 0) +
-    (gbpData?.metrics?.websiteClicks || 0);
+    (gbpData?.metrics?.websiteClicks || 0) +
+    (gbpData?.metrics?.messages      || 0) +
+    (gbpData?.metrics?.bookings      || 0);
 
   const totalViews        = gbpData?.metrics?.views || 0;
 
@@ -54,7 +56,7 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
             <div key={p.name} className="flex items-center gap-2 text-xs font-bold py-0.5">
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
               <span className="text-white capitalize">
-                {p.name === 'calls' ? 'Chamadas' : p.name === 'directions' ? 'Rotas' : p.name === 'websiteClicks' ? 'Site' : 'Visualizações'}:
+                {p.name === 'calls' ? 'Chamadas' : p.name === 'directions' ? 'Rotas' : p.name === 'websiteClicks' ? 'Site' : p.name === 'messages' ? 'Mensagens' : p.name === 'bookings' ? 'Reservas' : 'Visualizações'}:
               </span>
               <span style={{ color: p.color }}>{p.value}</span>
             </div>
@@ -121,7 +123,7 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
           <div className="absolute top-4 right-4 text-2xl opacity-20">⚡</div>
           <p className="text-xs text-[#00ff9d] font-bold uppercase tracking-widest mb-1">Interações no Perfil</p>
           <h3 className="text-5xl font-black text-white tracking-tighter mb-1">{totalInteractions.toLocaleString('pt-BR')}</h3>
-          <p className="text-xs text-gray-500">Chamadas + Rotas + Cliques no Site</p>
+          <p className="text-xs text-gray-500">Chamadas + Rotas + Cliques no Site + Mensagens + Reservas</p>
         </div>
       </div>
 
@@ -136,7 +138,9 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
             {[
               { key: 'calls',        label: 'Chamadas',        color: '#00ff9d' },
               { key: 'directions',   label: 'Rotas',           color: '#007aff' },
-              { key: 'websiteClicks',label: 'Site',            color: '#a855f7' },
+              { key: 'websiteClicks',label: 'Site',            color: '#06b6d4' },
+              { key: 'messages',     label: 'Mensagens',       color: '#f97316' },
+              { key: 'bookings',     label: 'Reservas',        color: '#eab308' },
               { key: 'views',        label: 'Visualizações',   color: '#f59e0b' },
             ].map(m => (
               <div key={m.key} className="flex items-center gap-2">
@@ -163,6 +167,14 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
                   <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.12}/>
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                 </linearGradient>
+                <linearGradient id="gMsgs"    x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#f97316" stopOpacity={0.12}/>
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="gBooks"   x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#eab308" stopOpacity={0.12}/>
+                  <stop offset="95%" stopColor="#eab308" stopOpacity={0}/>
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
               <XAxis
@@ -180,18 +192,22 @@ export default function TabGBPDashboard({ gbpData, days }: Props) {
               <Area type="monotone" dataKey="views"        stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#gViews)"   animationDuration={1500} />
               <Area type="monotone" dataKey="calls"        stroke="#00ff9d" strokeWidth={2} fillOpacity={1} fill="url(#gCalls)"   animationDuration={2000} />
               <Area type="monotone" dataKey="directions"   stroke="#007aff" strokeWidth={2} fillOpacity={1} fill="url(#gDirs)"    animationDuration={2500} />
-              <Area type="monotone" dataKey="websiteClicks" stroke="#a855f7" strokeWidth={2} fillOpacity={0}                       animationDuration={3000} />
+              <Area type="monotone" dataKey="websiteClicks" stroke="#06b6d4" strokeWidth={2} fillOpacity={0}                       animationDuration={3000} />
+              <Area type="monotone" dataKey="messages"     stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#gMsgs)"    animationDuration={3200} />
+              <Area type="monotone" dataKey="bookings"     stroke="#eab308" strokeWidth={2} fillOpacity={1} fill="url(#gBooks)"   animationDuration={3400} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* ── CARDS MÉTRICAS ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {[
           { emoji: '📞', label: 'Chamadas',      value: gbpData?.metrics?.calls         ?? 0, color: '#00ff9d' },
           { emoji: '🗺️', label: 'Rotas',         value: gbpData?.metrics?.directions    ?? 0, color: '#007aff' },
-          { emoji: '🖱️', label: 'Visitas ao Site',value: gbpData?.metrics?.websiteClicks ?? 0, color: '#a855f7' },
+          { emoji: '🖱️', label: 'Visitas ao Site',value: gbpData?.metrics?.websiteClicks ?? 0, color: '#06b6d4' },
+          { emoji: '💬', label: 'Mensagens',     value: gbpData?.metrics?.messages      ?? 0, color: '#f97316' },
+          { emoji: '📅', label: 'Reservas',      value: gbpData?.metrics?.bookings      ?? 0, color: '#eab308' },
           { emoji: '👁️', label: 'Visualizações', value: gbpData?.metrics?.views         ?? 0, color: '#f59e0b' },
         ].map(m => (
           <div

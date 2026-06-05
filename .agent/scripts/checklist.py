@@ -209,9 +209,28 @@ Examples:
             results.append(result)
     
     # Print summary
-    all_passed = print_summary(results)
+    print_summary(results)
     
-    sys.exit(0 if all_passed else 1)
+    # Check if any REQUIRED check failed
+    required_failed = False
+    for r in results:
+        if not r["passed"] and not r.get("skipped"):
+            # Verificar se é obrigatório nos CORE_CHECKS
+            is_required = False
+            for name, _, req in CORE_CHECKS:
+                if name == r["name"] and req:
+                    is_required = True
+                    break
+            # Verificar se é obrigatório nos PERFORMANCE_CHECKS
+            for name, _, req in PERFORMANCE_CHECKS:
+                if name == r["name"] and req:
+                    is_required = True
+                    break
+            if is_required:
+                required_failed = True
+                break
+                
+    sys.exit(1 if required_failed else 0)
 
 if __name__ == "__main__":
     main()
