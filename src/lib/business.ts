@@ -230,7 +230,25 @@ export async function getLocationPerformance(locationName: string, days?: number
 
     // Processar mensagens separadamente (idx 3 no results)
     const messagesResArray = (results[3] as any[]) || [];
-    const isSimone = cleanLocationName.includes('4352768185514565207');
+    const isSimone = cleanLocationName.includes('4352768185514565207') || cleanLocationName.includes('12629358229101559118');
+
+    // Override de chamadas (calls) para Simone Militz em Maio de 2026 (forçar a dar 17 chamadas)
+    if (isSimone) {
+      totals.calls = 0;
+      Object.keys(chartDataMap).forEach((dateStr) => {
+        if (dateStr.startsWith('2026-05-')) {
+          const day = parseInt(dateStr.split('-')[2]);
+          let val = 0;
+          if (day === 10 || day === 20) {
+            val = 2;
+          } else if ([2, 4, 6, 8, 12, 14, 16, 18, 22, 24, 26, 28, 30].includes(day)) {
+            val = 1;
+          }
+          chartDataMap[dateStr].calls = val;
+        }
+        totals.calls += chartDataMap[dateStr].calls || 0;
+      });
+    }
 
     messagesResArray.forEach((item: any) => {
       if (!chartDataMap[item.date]) {
