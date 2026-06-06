@@ -792,6 +792,8 @@ export default function Dashboard() {
         chartData: safeMetrics.chartData,
         platformBreakdown: safeMetrics.platformBreakdown || [],
         keywords: safeMetrics.keywords || [],
+        startDate: safeMetrics.startDate,
+        endDate: safeMetrics.endDate,
       };
       
       setGbpData(mapsData);

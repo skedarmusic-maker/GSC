@@ -99,9 +99,24 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
   const allKws        = gbpData?.keywords ?? [];
 
   // Period label
-  const now   = new Date();
-  const start = new Date(); start.setDate(now.getDate() - days);
-  const periodLabel = `${MONTHS_PT[start.getMonth()].toUpperCase()} ${start.getFullYear()}`;
+  let periodLabel = '';
+  if (gbpData?.startDate && gbpData?.endDate) {
+    const dStart = new Date(gbpData.startDate);
+    const dEnd = new Date(gbpData.endDate);
+    const startMonthStr = MONTHS_PT[dStart.getUTCMonth()].toUpperCase();
+    const startYear = dStart.getUTCFullYear();
+    const endMonthStr = MONTHS_PT[dEnd.getUTCMonth()].toUpperCase();
+    const endYear = dEnd.getUTCFullYear();
+    if (startMonthStr === endMonthStr && startYear === endYear) {
+      periodLabel = `${startMonthStr} ${startYear}`;
+    } else {
+      periodLabel = `${startMonthStr} ${startYear} - ${endMonthStr} ${endYear}`;
+    }
+  } else {
+    const now = new Date();
+    const start = new Date(); start.setDate(now.getDate() - days);
+    periodLabel = `${MONTHS_PT[start.getMonth()].toUpperCase()} ${start.getFullYear()}`;
+  }
 
   // Scale preview to fit screen nicely
   const REPORT_W = 794;
@@ -251,13 +266,13 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
               <div style={{ backgroundColor: accentColor, height: '18px', width: '100%', flexShrink: 0 }} />
 
               {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '36px 52px 28px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '24px 52px 14px', flexShrink: 0 }}>
                 {/* Esquerda: nome + período */}
                 <div style={{ flex: 1, paddingRight: '24px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: accentColor, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '8px' }}>
                     Google Meu Negócio
                   </div>
-                  <h1 style={{ fontSize: '44px', fontWeight: '900', color: '#111', lineHeight: 1.05, margin: 0, textTransform: 'uppercase', letterSpacing: '-1px' }}>
+                  <h1 style={{ fontSize: '38px', fontWeight: '900', color: '#111', lineHeight: 1.05, margin: 0, textTransform: 'uppercase', letterSpacing: '-1px' }}>
                     {gbpData?.title || 'Nome da Empresa'}
                   </h1>
                   <p style={{ fontSize: '20px', fontWeight: '700', color: '#444', marginTop: '10px', letterSpacing: '1px' }}>
@@ -298,8 +313,8 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
               <div style={{ height: '3px', backgroundColor: accentColor, margin: '0 52px', flexShrink: 0 }} />
 
               {/* Título DESEMPENHO */}
-              <div style={{ textAlign: 'center', padding: '28px 52px 20px', flexShrink: 0 }}>
-                <h2 style={{ fontSize: '52px', fontWeight: '900', color: '#111', margin: 0, letterSpacing: '-2px' }}>
+              <div style={{ textAlign: 'center', padding: '12px 52px 12px', flexShrink: 0 }}>
+                <h2 style={{ fontSize: '38px', fontWeight: '900', color: '#111', margin: 0, letterSpacing: '-1px' }}>
                   {reportTitle}
                 </h2>
               </div>
@@ -311,10 +326,10 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
                 <div style={{ flex: 1 }}>
                   {/* Cabeçalho da tabela */}
                   <div style={{ display: 'flex', borderRadius: '10px 10px 0 0', overflow: 'hidden' }}>
-                    <div style={{ flex: 2, padding: '14px 22px', backgroundColor: accentColor, color: 'white', fontWeight: '800', fontSize: '18px', letterSpacing: '2px' }}>
+                    <div style={{ flex: 2, padding: '10px 22px', backgroundColor: accentColor, color: 'white', fontWeight: '800', fontSize: '16px', letterSpacing: '2px' }}>
                       AÇÕES
                     </div>
-                    <div style={{ flex: 1, padding: '14px 22px', backgroundColor: '#1a1a1a', color: '#f5d000', fontWeight: '800', fontSize: '18px', textAlign: 'right', letterSpacing: '2px' }}>
+                    <div style={{ flex: 1, padding: '10px 22px', backgroundColor: '#1a1a1a', color: '#f5d000', fontWeight: '800', fontSize: '16px', textAlign: 'right', letterSpacing: '2px' }}>
                       QUANT.
                     </div>
                   </div>
@@ -328,10 +343,10 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
                       borderRight: '1px solid #e0e0e0',
                       borderBottom: '1px solid #e0e0e0',
                     }}>
-                      <div style={{ flex: 2, padding: '18px 22px', fontSize: row.highlight ? '22px' : '20px', fontWeight: row.highlight ? '700' : '400', color: '#222' }}>
+                      <div style={{ flex: 2, padding: '10px 22px', fontSize: row.highlight ? '18px' : '16px', fontWeight: row.highlight ? '700' : '400', color: '#222' }}>
                         {row.label}
                       </div>
-                      <div style={{ flex: 1, padding: '18px 22px', fontSize: row.highlight ? '24px' : '22px', fontWeight: '800', color: row.highlight ? accentColor : '#111', textAlign: 'right' }}>
+                      <div style={{ flex: 1, padding: '10px 22px', fontSize: row.highlight ? '20px' : '18px', fontWeight: '800', color: row.highlight ? accentColor : '#111', textAlign: 'right' }}>
                         {row.value.toLocaleString('pt-BR')}
                       </div>
                     </div>
@@ -339,17 +354,17 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
 
                   {/* Seção de keyword */}
                   {topKw && (
-                    <div style={{ marginTop: '28px', textAlign: 'center', padding: '0 4px' }}>
-                      <p style={{ fontSize: '15px', fontWeight: '700', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.5 }}>
+                    <div style={{ marginTop: '16px', textAlign: 'center', padding: '0 4px' }}>
+                      <p style={{ fontSize: '13px', fontWeight: '700', color: '#333', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.4 }}>
                         PALAVRA CHAVE MAIS DIGITADA NAS PESQUISAS DOS USUÁRIOS, FOI{' '}
                         <span style={{ color: accentColor }}>{topKw.keyword?.toUpperCase()}</span>
                       </p>
-                      <p style={{ fontSize: '68px', fontWeight: '900', color: '#111', margin: '12px 0 0', lineHeight: 1 }}>
+                      <p style={{ fontSize: '38px', fontWeight: '900', color: '#111', margin: '6px 0 0', lineHeight: 1 }}>
                         {topKw.value != null && topKw.value > 0
                           ? topKw.value.toLocaleString('pt-BR')
                           : `< ${topKw.threshold ?? 15}`} VEZES
                       </p>
-                      <p style={{ fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '6px' }}>
+                      <p style={{ fontSize: '10px', fontWeight: '600', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>
                         ESSA FOI A QUANTIDADE DE PESSOAS QUE ENCONTRARAM O PERFIL DA EMPRESA COM ESSA PALAVRA CHAVE
                       </p>
                     </div>
@@ -361,20 +376,20 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
 
                   {/* Top Keywords */}
                   {allKws.length > 1 && (
-                    <div style={{ width: '100%', backgroundColor: '#f0f5ff', borderRadius: '14px', padding: '18px' }}>
-                      <p style={{ fontSize: '11px', fontWeight: '800', color: accentColor, textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '1px' }}>
+                    <div style={{ width: '100%', backgroundColor: '#f0f5ff', borderRadius: '12px', padding: '12px' }}>
+                      <p style={{ fontSize: '10px', fontWeight: '800', color: accentColor, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
                         Top Pesquisas
                       </p>
                       {allKws.slice(0, 6).map((k: any, i: number) => (
                         <div key={k.keyword} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          padding: '7px 0',
+                          padding: '5px 0',
                           borderBottom: i < Math.min(allKws.length, 6) - 1 ? '1px solid #dce6ff' : 'none'
                         }}>
-                          <span style={{ fontSize: '13px', color: '#333', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '11px', color: '#333', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {i + 1}. {k.keyword}
                           </span>
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: accentColor, marginLeft: '8px', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: accentColor, marginLeft: '8px', flexShrink: 0 }}>
                             {k.value != null ? k.value.toLocaleString('pt-BR') : `<${k.threshold ?? 15}`}
                           </span>
                         </div>
@@ -383,16 +398,16 @@ export default function TabGBPReport({ gbpData, days, clientId }: Props) {
                   )}
 
                   {/* Logo da Agência */}
-                  <div style={{ marginTop: 'auto', textAlign: 'center', paddingBottom: '30px' }}>
+                  <div style={{ marginTop: 'auto', textAlign: 'center', paddingBottom: '16px' }}>
                     {agencyLogo ? (
-                      <img src={agencyLogo} alt="Agência" style={{ maxWidth: '170px', maxHeight: '130px', objectFit: 'contain' }} />
+                      <img src={agencyLogo} alt="Agência" style={{ maxWidth: '150px', maxHeight: '100px', objectFit: 'contain' }} />
                     ) : (
-                      <div style={{ width: '170px', height: '90px', border: '2px dashed #ddd', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '22px' }}>🎯</span>
-                        <span style={{ fontSize: '11px', color: '#bbb' }}>Logo da Agência</span>
+                      <div style={{ width: '150px', height: '70px', border: '2px dashed #ddd', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '20px' }}>🎯</span>
+                        <span style={{ fontSize: '10px', color: '#bbb' }}>Logo da Agência</span>
                       </div>
                     )}
-                    <p style={{ fontSize: '10px', color: '#aaa', marginTop: '6px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    <p style={{ fontSize: '9px', color: '#aaa', marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                       Marketing Digital
                     </p>
                   </div>
