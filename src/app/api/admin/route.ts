@@ -218,11 +218,31 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'ID do usuário é obrigatório.' }, { status: 400 });
       }
 
+      // Buscar registro de créditos atual para saber se existe
+      const { data: existingCredits } = await adminSupabase
+        .from('user_credits')
+        .select('monthly_allowance, purchased_credits')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      let nextAllowance = 0;
+      if (subscriptionStatus === 'trial') {
+        nextAllowance = 1;
+      } else if (subscriptionStatus === 'active') {
+        nextAllowance = 150;
+      } else {
+        // Se for pending/cancelled, a cota deve ser 0
+        nextAllowance = 0;
+      }
+
       const { data, error } = await adminSupabase
         .from('user_credits')
         .upsert({
           user_id: userId,
-          subscription_status: subscriptionStatus
+          subscription_status: subscriptionStatus,
+          monthly_allowance: nextAllowance,
+          // Se for uma inserção nova, inicializa purchased_credits com 0
+          ...(existingCredits ? {} : { purchased_credits: 0 })
         })
         .select()
         .single();

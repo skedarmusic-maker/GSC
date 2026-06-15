@@ -39,11 +39,30 @@ export async function GET(req: Request) {
     );
 
     // Buscar status de assinatura e créditos
-    const { data: creditsData } = await adminSupabase
+    let { data: creditsData } = await adminSupabase
       .from('user_credits')
       .select('subscription_status, seo_allowed')
       .eq('user_id', user.id)
       .maybeSingle();
+
+    if (!creditsData) {
+      // Inserção de fallback com cota inicial de 0 créditos e status pending
+      const { data: insertedCredits } = await adminSupabase
+        .from('user_credits')
+        .insert([{
+          user_id: user.id,
+          monthly_allowance: 0,
+          purchased_credits: 0,
+          subscription_status: 'pending',
+          seo_allowed: false
+        }])
+        .select('subscription_status, seo_allowed')
+        .single();
+      
+      if (insertedCredits) {
+        creditsData = insertedCredits;
+      }
+    }
 
     // Buscar perfil/role
     const { data: roleData } = await adminSupabase

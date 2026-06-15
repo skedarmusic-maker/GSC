@@ -77,10 +77,22 @@ export async function GET(req: Request) {
       dbClients = data;
       dbError = error;
 
-        // Se o banco de dados não contiver nenhum cliente conectado (GBP/GSC) ou estiver totalmente vazio, tenta a descoberta automática.
-        const hasConnectedClients = dbClients?.some(c => c.gbp_location_id || c.gsc_url);
+      // Buscar status de assinatura do usuário
+      const { data: creditsData } = await adminSupabase
+        .from('user_credits')
+        .select('subscription_status')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-        if (forceSync || (!dbError && (!dbClients || dbClients.length === 0 || !hasConnectedClients))) {
+      const subscriptionStatus = creditsData?.subscription_status || 'pending';
+      const isTrialOrPending = subscriptionStatus === 'trial' || subscriptionStatus === 'pending';
+      const hasReachedLimit = dbClients && dbClients.length >= 1;
+
+      // Se o banco de dados não contiver nenhum cliente conectado (GBP/GSC) ou estiver totalmente vazio, tenta a descoberta automática.
+      const hasConnectedClients = dbClients?.some(c => c.gbp_location_id || c.gsc_url);
+
+      // Bloquear descoberta automática caso o usuário já tenha atingido o limite no plano Trial/Pending
+      if ((!isTrialOrPending || !hasReachedLimit) && (forceSync || (!dbError && (!dbClients || dbClients.length === 0 || !hasConnectedClients)))) {
           console.log(`🔄 Descoberta ${forceSync ? 'forçada (sincronização)' : 'automática'} de perfis para o usuário: ${user.email} (Total clientes: ${dbClients?.length || 0}, Conectados: ${hasConnectedClients ? 'Sim' : 'Não'})`);
           try {
             const accessToken = await getAccessToken(token).catch(() => null);
@@ -182,9 +194,12 @@ export async function GET(req: Request) {
 
               // Inserir no banco via adminSupabase
               if (unified.length > 0) {
+                // Se o usuário for trial/pending, limite a inserção a no máximo 1 item
+                const itemsToInsert = isTrialOrPending ? unified.slice(0, 1) : unified;
+
                 const { data: inserted, error: insertError } = await adminSupabase
                   .from('clients')
-                  .insert(unified)
+                  .insert(itemsToInsert)
                   .select();
                 
                 if (insertError) throw insertError;
@@ -453,6 +468,33 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Sessão expirada.' }, { status: 401 });
       }
 
+      // Validar limite do plano para Trial / Pending
+      const adminSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      );
+
+      const { data: creditsData } = await adminSupabase
+        .from('user_credits')
+        .select('subscription_status')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const subscriptionStatus = creditsData?.subscription_status || 'pending';
+
+      if (subscriptionStatus === 'trial' || subscriptionStatus === 'pending') {
+        const { count } = await adminSupabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId);
+
+        if (count !== null && count >= 1) {
+          return NextResponse.json({
+            error: 'Limite de 1 cliente atingido para o plano de testes. Faça o upgrade para o Premium para cadastrar mais clientes.'
+          }, { status: 403 });
+        }
+      }
+
       const { data, error } = await userSupabase
         .from('clients')
         .insert([
@@ -496,6 +538,30 @@ export async function POST(req: Request) {
           );
           const { data: userResponse } = await userSupabase.auth.getUser();
           userId = userResponse.user?.id || null;
+
+          if (userId) {
+            // Validar limite do plano para Trial / Pending
+            const { data: creditsData } = await adminSupabase
+              .from('user_credits')
+              .select('subscription_status')
+              .eq('user_id', userId)
+              .maybeSingle();
+
+            const subscriptionStatus = creditsData?.subscription_status || 'pending';
+
+            if (subscriptionStatus === 'trial' || subscriptionStatus === 'pending') {
+              const { count } = await adminSupabase
+                .from('clients')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId);
+
+              if (count !== null && count >= 1) {
+                return NextResponse.json({
+                  error: 'Limite de 1 cliente atingido para o plano de testes. Faça o upgrade para o Premium para cadastrar mais clientes.'
+                }, { status: 403 });
+              }
+            }
+          }
         } catch (e) {
           console.error('Erro ao mapear user para prospecção:', e);
         }

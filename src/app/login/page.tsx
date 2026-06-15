@@ -51,8 +51,10 @@ export default function LoginPage() {
           await supabase.from('user_credits').insert([
             {
               user_id: data.user.id,
-              monthly_allowance: 150,
+              monthly_allowance: 0,
               purchased_credits: 0,
+              subscription_status: 'pending',
+              seo_allowed: false
             }
           ]).select();
         }

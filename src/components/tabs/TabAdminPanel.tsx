@@ -30,6 +30,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
   const [logSearch, setLogSearch] = useState('');
   const [activeSubTab, setActiveSubTab] = useState<'clients' | 'users' | 'logs'>('clients');
   const [clientFilter, setClientFilter] = useState<'real' | 'prospect' | 'all'>('real');
+  const [userStatusFilter, setUserStatusFilter] = useState<string>('all');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Estados do modal de edição de créditos
@@ -142,10 +143,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
     }
   };
 
-  const handleToggleSubscription = async (userId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'active' ? 'cancelled' : 'active';
-    if (!confirm(`Deseja ${nextStatus === 'active' ? 'ATIVAR' : 'CANCELAR'} a assinatura deste usuário?`)) return;
-
+  const handleUpdateSubscriptionStatus = async (userId: string, nextStatus: string) => {
     setActionLoading(`sub-${userId}`);
     try {
       const res = await fetch('/api/admin', {
@@ -162,11 +160,20 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
       });
       const resData = await res.json();
       if (resData.success) {
+        let nextAllowance = 0;
+        if (nextStatus === 'trial') nextAllowance = 1;
+        else if (nextStatus === 'active') nextAllowance = 150;
+        else nextAllowance = 0;
+
         setData(prev => ({
           ...prev,
-          users: prev.users.map(u => u.id === userId ? { ...u, subscriptionStatus: nextStatus } : u)
+          users: prev.users.map(u => u.id === userId ? { 
+            ...u, 
+            subscriptionStatus: nextStatus,
+            monthlyAllowance: nextStatus === 'trial' ? 1 : nextStatus === 'active' ? 150 : u.monthlyAllowance
+          } : u)
         }));
-        setMessage({ text: `Assinatura ${nextStatus === 'active' ? 'ativada' : 'cancelada'} com sucesso!`, type: 'success' });
+        setMessage({ text: `Assinatura atualizada para "${nextStatus === 'active' ? 'Ativo' : nextStatus === 'trial' ? 'Teste' : nextStatus === 'cancelled' ? 'Cancelado' : 'Pendente'}" com sucesso!`, type: 'success' });
       } else {
         setMessage({ text: resData.error || 'Erro ao alterar assinatura.', type: 'error' });
       }
@@ -256,13 +263,19 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
     c.ownerEmail.toLowerCase().includes(clientSearch.toLowerCase())
   );
 
-  const filteredUsers = data.users.filter(u => 
-    u.email.toLowerCase().includes(userSearch.toLowerCase()) || 
-    u.fullName.toLowerCase().includes(userSearch.toLowerCase())
-  );
+  const filteredUsers = data.users.filter(u => {
+    const matchesSearch = u.email.toLowerCase().includes(userSearch.toLowerCase()) || 
+                          u.fullName.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesStatus = userStatusFilter === 'all' || u.subscriptionStatus === userStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  // Cards de métricas do SaaS
-  const activeSubscribers = data.users.length;
+  // Cards de métricas do SaaS - Filtrando corretamente por status de assinatura
+  const activeSubscribers = data.users.filter(u => u.subscriptionStatus === 'active').length;
+  const trialUsers = data.users.filter(u => u.subscriptionStatus === 'trial').length;
+  const pendingUsers = data.users.filter(u => u.subscriptionStatus === 'pending').length;
+  const totalUsersCount = data.users.length;
+  
   const estimatedRevenue = activeSubscribers * 89;
   const totalKeywordsMonitored = data.clients.filter(c => c.seoEnabled).length;
 
@@ -311,22 +324,29 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
             <div className="p-3.5 bg-emerald-500/10 text-[#00ff9d] rounded-xl">
               <Users className="w-6 h-6" />
             </div>
-            <div>
-              <span className="text-xs font-bold text-gray-400 block uppercase tracking-wide">Assinantes Ativos</span>
-              <span className="text-3xl font-black text-white mt-1 block">{activeSubscribers} <span className="text-xs font-semibold text-gray-500">gestores</span></span>
+            <div className="flex-1">
+              <span className="text-xs font-bold text-gray-400 block uppercase tracking-wide">Usuários da Plataforma</span>
+              <span className="text-3xl font-black text-white mt-1 block">{totalUsersCount} <span className="text-xs font-semibold text-gray-500">gestores</span></span>
+              <div className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-wider flex flex-wrap gap-x-2">
+                <span className="text-[#00ff9d]">{activeSubscribers} Premium</span>
+                <span className="text-gray-600">•</span>
+                <span className="text-blue-400">{trialUsers} Em Teste</span>
+                <span className="text-gray-600">•</span>
+                <span className="text-amber-500">{pendingUsers} Pendentes</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#161b22]/60 border border-gray-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl pointer-events-none transition-all group-hover:bg-purple-500/10"></div>
+        <div className="bg-[#161b22]/60 border border-gray-800/80 rounded-2xl p-5 relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none transition-all group-hover:bg-blue-500/10"></div>
           <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-purple-500/10 text-purple-400 rounded-xl">
+            <div className="p-3.5 bg-blue-500/10 text-blue-400 rounded-xl">
               <TrendingUp className="w-6 h-6" />
             </div>
             <div>
               <span className="text-xs font-bold text-gray-400 block uppercase tracking-wide">Faturamento Estimado</span>
-              <span className="text-3xl font-black text-white mt-1 block">R$ {estimatedRevenue.toLocaleString('pt-BR')},00 <span className="text-xs font-semibold text-purple-400">/mês</span></span>
+              <span className="text-3xl font-black text-white mt-1 block">R$ {estimatedRevenue.toLocaleString('pt-BR')},00 <span className="text-xs font-semibold text-blue-400">/mês</span></span>
             </div>
           </div>
         </div>
@@ -528,6 +548,50 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
       {/* TAB 2: USUÁRIOS, CREDÍTOS & ROLES */}
       {activeSubTab === 'users' && (
         <div className="space-y-4">
+          {/* Filtros de status do usuário */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setUserStatusFilter('all')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold border transition-all ${
+                userStatusFilter === 'all'
+                  ? 'bg-gray-700/50 border-gray-600 text-white'
+                  : 'bg-[#161b22] border-gray-800 text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              📋 Todos <span className="ml-1 opacity-70">({totalUsersCount})</span>
+            </button>
+            <button
+              onClick={() => setUserStatusFilter('active')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold border transition-all ${
+                userStatusFilter === 'active'
+                  ? 'bg-[#00ff9d]/10 border-[#00ff9d]/30 text-[#00ff9d]'
+                  : 'bg-[#161b22] border-gray-800 text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              ✅ Ativos (Premium) <span className="ml-1 opacity-70">({activeSubscribers})</span>
+            </button>
+            <button
+              onClick={() => setUserStatusFilter('trial')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold border transition-all ${
+                userStatusFilter === 'trial'
+                  ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                  : 'bg-[#161b22] border-gray-800 text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              ⚡ Em Teste Grátis <span className="ml-1 opacity-70">({trialUsers})</span>
+            </button>
+            <button
+              onClick={() => setUserStatusFilter('pending')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold border transition-all ${
+                userStatusFilter === 'pending'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                  : 'bg-[#161b22] border-gray-800 text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              🔒 Pendentes <span className="ml-1 opacity-70">({pendingUsers})</span>
+            </button>
+          </div>
+
           {/* Caixa de Busca */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
@@ -575,25 +639,27 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                             </div>
                           </td>
                           <td className="p-4">
-                            {/* Badge de status de assinatura + botão de toggle */}
-                            <button
-                              onClick={() => handleToggleSubscription(usr.id, usr.subscriptionStatus || 'pending')}
-                              disabled={actionLoading === `sub-${usr.id}`}
-                              className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all ${
-                                usr.subscriptionStatus === 'active'
-                                  ? 'bg-[#00ff9d]/10 border-[#00ff9d]/30 text-[#00ff9d] hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400'
-                                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-[#00ff9d]/10 hover:border-[#00ff9d]/30 hover:text-[#00ff9d]'
-                              }`}
-                            >
-                              {actionLoading === `sub-${usr.id}` ? (
-                                <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
-                              ) : usr.subscriptionStatus === 'active' ? (
-                                <><span>✅</span><span>Ativo</span></>
-                              ) : (
-                                <><span>🔒</span><span>{usr.subscriptionStatus === 'cancelled' ? 'Cancelado' : 'Pendente'}</span></>
-                              )}
-                            </button>
-                          </td>
+                             {/* Select de status de assinatura */}
+                             <select
+                               value={usr.subscriptionStatus || 'pending'}
+                               onChange={(e) => handleUpdateSubscriptionStatus(usr.id, e.target.value)}
+                               disabled={actionLoading === `sub-${usr.id}`}
+                               className={`bg-[#0d1117] border rounded-xl px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all outline-none cursor-pointer ${
+                                 usr.subscriptionStatus === 'active'
+                                   ? 'border-[#00ff9d]/30 text-[#00ff9d]'
+                                   : usr.subscriptionStatus === 'trial'
+                                   ? 'border-blue-500/30 text-blue-400'
+                                   : usr.subscriptionStatus === 'cancelled'
+                                   ? 'border-rose-500/30 text-rose-400'
+                                   : 'border-amber-500/30 text-amber-500'
+                               }`}
+                             >
+                               <option value="pending" className="bg-[#161b22] text-amber-500 font-bold">Pendente</option>
+                               <option value="trial" className="bg-[#161b22] text-blue-400 font-bold">Teste (Trial)</option>
+                               <option value="active" className="bg-[#161b22] text-[#00ff9d] font-bold">Ativo (Premium)</option>
+                               <option value="cancelled" className="bg-[#161b22] text-rose-400 font-bold">Cancelado</option>
+                             </select>
+                           </td>
                           <td className="p-4">
                             <button
                               onClick={() => handleToggleUserRole(usr.id, usr.role)}
@@ -650,17 +716,46 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                             <span className="text-gray-500 text-[10px] font-normal">extras</span>
                           </td>
                           <td className="p-4 text-center">
-                            <button
-                              onClick={() => {
-                                setEditingUser(usr);
-                                setModalMonthly(usr.monthlyAllowance);
-                                setModalPurchased(usr.purchasedCredits);
-                              }}
-                              className="px-3 py-2 bg-[#161b22] hover:bg-[#1f242c] border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white rounded-xl text-[10px] font-bold tracking-wide uppercase transition-all flex items-center gap-1.5 mx-auto"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                              <span>Alterar Créditos</span>
-                            </button>
+                            <div className="flex flex-col gap-1.5 justify-center items-center">
+                              {usr.subscriptionStatus === 'pending' && (
+                                <div className="flex gap-1.5">
+                                  <button
+                                    onClick={() => handleUpdateSubscriptionStatus(usr.id, 'trial')}
+                                    disabled={actionLoading !== null}
+                                    className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-[0.97]"
+                                  >
+                                    Liberar Teste
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateSubscriptionStatus(usr.id, 'active')}
+                                    disabled={actionLoading !== null}
+                                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-[0.97]"
+                                  >
+                                    Ativar Premium
+                                  </button>
+                                </div>
+                              )}
+                              {usr.subscriptionStatus === 'trial' && (
+                                <button
+                                  onClick={() => handleUpdateSubscriptionStatus(usr.id, 'active')}
+                                  disabled={actionLoading !== null}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-[0.97]"
+                                >
+                                  Ativar Premium
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setEditingUser(usr);
+                                  setModalMonthly(usr.monthlyAllowance);
+                                  setModalPurchased(usr.purchasedCredits);
+                                }}
+                                className="px-3 py-1.5 bg-[#161b22] hover:bg-[#1f242c] border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white rounded-xl text-[9px] font-bold tracking-wide uppercase transition-all flex items-center gap-1.5"
+                              >
+                                <Edit2 className="w-3 h-3 text-blue-400" />
+                                <span>Alterar Créditos</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
