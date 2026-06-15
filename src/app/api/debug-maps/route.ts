@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { listLocations } from '@/lib/business';
 
+export const dynamic = 'force-dynamic';
+
 // Rota de diagnóstico temporária - lista todos os locais reais da API Google
 export async function GET() {
   try {
