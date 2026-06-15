@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     // Buscar status de assinatura e créditos
     let { data: creditsData } = await adminSupabase
       .from('user_credits')
-      .select('subscription_status, seo_allowed')
+      .select('subscription_status, seo_allowed, next_billing_date')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
           subscription_status: 'pending',
           seo_allowed: false
         }])
-        .select('subscription_status, seo_allowed')
+        .select('subscription_status, seo_allowed, next_billing_date')
         .single();
       
       if (insertedCredits) {
@@ -71,11 +71,24 @@ export async function GET(req: Request) {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // Validar se o plano expirou
+    let subscriptionStatus = creditsData?.subscription_status || 'pending';
+    const nextBillingDate = creditsData?.next_billing_date;
+
+    if ((subscriptionStatus === 'active' || subscriptionStatus === 'trial') && nextBillingDate) {
+      const expiryDate = new Date(nextBillingDate);
+      const now = new Date();
+      if (now > expiryDate) {
+        subscriptionStatus = 'expired';
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      subscription_status: creditsData?.subscription_status || 'pending',
+      subscription_status: subscriptionStatus,
       seo_allowed: creditsData?.seo_allowed ?? false,
-      role: roleData?.role || 'user'
+      role: roleData?.role || 'user',
+      next_billing_date: nextBillingDate
     });
 
   } catch (error: any) {

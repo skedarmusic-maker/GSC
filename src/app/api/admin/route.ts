@@ -138,6 +138,7 @@ export async function GET(req: Request) {
         seoAllowed: userCredits?.seo_allowed ?? false,
         monthlyAllowance: userCredits?.monthly_allowance ?? 50,
         purchasedCredits: userCredits?.purchased_credits ?? 0,
+        nextBillingDate: userCredits?.next_billing_date || null,
         createdAt: usr.created_at
       };
     });
@@ -173,7 +174,7 @@ export async function PATCH(req: Request) {
     const { userSupabase, adminSupabase } = getSupabaseClients(req);
     await checkSuperAdmin(userSupabase, adminSupabase);
 
-    const { action, clientId, enabled, userId, role, monthlyAllowance, purchasedCredits, subscriptionStatus } = await req.json();
+    const { action, clientId, enabled, userId, role, monthlyAllowance, purchasedCredits, subscriptionStatus, nextBillingDate } = await req.json();
 
     if (action === 'toggle_seo') {
       if (!clientId) {
@@ -197,13 +198,14 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'ID do usuário é obrigatório.' }, { status: 400 });
       }
 
-      // Upsert dos créditos do usuário
+      // Upsert dos créditos do usuário e vencimento manual
       const { data, error } = await adminSupabase
         .from('user_credits')
         .upsert({
           user_id: userId,
           monthly_allowance: Number(monthlyAllowance),
-          purchased_credits: Number(purchasedCredits)
+          purchased_credits: Number(purchasedCredits),
+          next_billing_date: nextBillingDate ? new Date(nextBillingDate).toISOString() : null
         })
         .select()
         .single();

@@ -16,10 +16,13 @@ export default function SubscriptionGate({ userEmail, subscriptionStatus }: Subs
   };
 
   const isPending = subscriptionStatus === 'pending';
+  const isExpired = subscriptionStatus === 'expired';
 
   const whatsappMsg = encodeURIComponent(
     isPending
       ? `Olá! Gostaria de solicitar a liberação do meu teste grátis no FocusLocal. Meu e-mail de cadastro é: ${userEmail}`
+      : isExpired
+      ? `Olá! Meu período de acesso ao FocusLocal expirou e gostaria de solicitar a renovação. Meu e-mail de cadastro é: ${userEmail}`
       : `Olá! Acabei de realizar o pagamento via PIX para assinar o FocusLocal. Meu e-mail de cadastro é: ${userEmail}`
   );
 
@@ -36,11 +39,13 @@ export default function SubscriptionGate({ userEmail, subscriptionStatus }: Subs
         <div className="text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#161b22] border border-[#00ff9d]/20 text-xs font-bold text-[#00ff9d] mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff9d] animate-pulse inline-block" />
-            FocusLocal — {isPending ? 'Solicitação de Teste' : 'Acesso Profissional'}
+            FocusLocal — {isPending ? 'Solicitação de Teste' : isExpired ? 'Assinatura Expirada' : 'Acesso Profissional'}
           </div>
           <h1 className="text-4xl font-black tracking-tighter text-white">
             {isPending ? (
               <>Aguardando <span className="text-[#00ff9d]">Liberação do Teste</span></>
+            ) : isExpired ? (
+              <>Sua assinatura <span className="text-rose-500">expirou!</span></>
             ) : (
               <>Quase lá, <span className="text-[#00ff9d]">falta um passo!</span></>
             )}
@@ -50,6 +55,11 @@ export default function SubscriptionGate({ userEmail, subscriptionStatus }: Subs
               <>
                 Para evitar fraudes e abusos de custos de API, o teste gratuito é liberado<br />
                 manualmente. Solicite seu acesso no botão do WhatsApp abaixo.
+              </>
+            ) : isExpired ? (
+              <>
+                Seu período de acesso ao FocusLocal terminou. Para continuar utilizando<br />
+                todas as ferramentas e dashboards, realize a renovação do seu plano.
               </>
             ) : (
               <>

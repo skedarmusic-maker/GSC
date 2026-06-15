@@ -37,6 +37,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [modalMonthly, setModalMonthly] = useState<number>(50);
   const [modalPurchased, setModalPurchased] = useState<number>(0);
+  const [modalNextBillingDate, setModalNextBillingDate] = useState<string>('');
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -118,7 +119,8 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
           action: 'update_credits',
           userId: editingUser.id,
           monthlyAllowance: modalMonthly,
-          purchasedCredits: modalPurchased
+          purchasedCredits: modalPurchased,
+          nextBillingDate: modalNextBillingDate || null
         })
       });
       const resData = await res.json();
@@ -128,7 +130,8 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
           users: prev.users.map(u => u.id === editingUser.id ? { 
             ...u, 
             monthlyAllowance: modalMonthly, 
-            purchasedCredits: modalPurchased 
+            purchasedCredits: modalPurchased,
+            nextBillingDate: modalNextBillingDate ? new Date(modalNextBillingDate).toISOString() : null
           } : u)
         }));
         setMessage({ text: `Créditos de ${editingUser.email} atualizados com sucesso!`, type: 'success' });
@@ -633,6 +636,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                     <tr className="border-b border-gray-800 bg-[#161b22]/80 text-gray-400 font-bold uppercase tracking-wider">
                       <th className="p-4 pl-6">👤 Nome do Gestor</th>
                       <th className="p-4">💳 Assinatura</th>
+                      <th className="p-4">📅 Vencimento</th>
                       <th className="p-4">🛡️ Perfil de Acesso</th>
                       <th className="p-4 text-center">🌐 Módulo SEO</th>
                       <th className="p-4">📈 Cota Rank Tracker</th>
@@ -662,6 +666,8 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                                    ? 'border-[#00ff9d]/30 text-[#00ff9d]'
                                    : usr.subscriptionStatus === 'trial'
                                    ? 'border-blue-500/30 text-blue-400'
+                                   : usr.subscriptionStatus === 'expired'
+                                   ? 'border-rose-500/30 text-rose-400'
                                    : usr.subscriptionStatus === 'cancelled'
                                    ? 'border-rose-500/30 text-rose-400'
                                    : 'border-amber-500/30 text-amber-500'
@@ -671,8 +677,47 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                                <option value="trial" className="bg-[#161b22] text-blue-400 font-bold">Teste (Trial)</option>
                                <option value="active" className="bg-[#161b22] text-[#00ff9d] font-bold">Ativo (Premium)</option>
                                <option value="cancelled" className="bg-[#161b22] text-rose-400 font-bold">Cancelado</option>
+                               <option value="expired" className="bg-[#161b22] text-rose-400 font-bold">Expirado</option>
                              </select>
                            </td>
+                           <td className="p-4">
+                            {(() => {
+                              if (!usr.nextBillingDate) {
+                                return (
+                                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                                    Sem prazo
+                                  </span>
+                                );
+                              }
+                              
+                              const expiryDate = new Date(usr.nextBillingDate);
+                              const now = new Date();
+                              const timeDiff = expiryDate.getTime() - now.getTime();
+                              const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                              
+                              const dateStr = expiryDate.toLocaleDateString('pt-BR');
+                              
+                              if (daysDiff < 0) {
+                                return (
+                                  <span className="px-2 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg text-[10px] whitespace-nowrap inline-block text-center uppercase tracking-wide">
+                                    Vencido ({dateStr})
+                                  </span>
+                                );
+                              } else if (daysDiff <= 3) {
+                                return (
+                                  <span className="px-2 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold rounded-lg text-[10px] whitespace-nowrap inline-block text-center uppercase tracking-wide">
+                                    Expira em {daysDiff}d ({dateStr})
+                                  </span>
+                                );
+                              } else {
+                                return (
+                                  <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold rounded-lg text-[10px] whitespace-nowrap inline-block text-center uppercase tracking-wide">
+                                    Até {dateStr}
+                                  </span>
+                                );
+                              }
+                            })()}
+                          </td>
                           <td className="p-4">
                             <button
                               onClick={() => handleToggleUserRole(usr.id, usr.role)}
@@ -762,6 +807,8 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                                   setEditingUser(usr);
                                   setModalMonthly(usr.monthlyAllowance);
                                   setModalPurchased(usr.purchasedCredits);
+                                  const dateStr = usr.nextBillingDate ? new Date(usr.nextBillingDate).toISOString().split('T')[0] : '';
+                                  setModalNextBillingDate(dateStr);
                                 }}
                                 className="px-3 py-1.5 bg-[#161b22] hover:bg-[#1f242c] border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white rounded-xl text-[9px] font-bold tracking-wide uppercase transition-all flex items-center gap-1.5"
                               >
@@ -1030,6 +1077,18 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-500">Créditos sob demanda comprados em pacotes pontuais. Não expiram.</p>
+              </div>
+
+              {/* Vencimento Manual */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 block tracking-wide uppercase">Vencimento da Assinatura (Manual)</label>
+                <input 
+                  type="date"
+                  value={modalNextBillingDate}
+                  onChange={(e) => setModalNextBillingDate(e.target.value)}
+                  className="w-full bg-[#0d1117] border border-gray-800 text-sm font-bold text-white rounded-lg py-2 px-3 outline-none focus:border-[#00ff9d]/30"
+                />
+                <p className="text-[10px] text-gray-500">Deixe em branco para acesso permanente sem expiração.</p>
               </div>
             </div>
 
