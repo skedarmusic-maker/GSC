@@ -35,7 +35,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
 
   // Estados do modal de edição de créditos
   const [editingUser, setEditingUser] = useState<any | null>(null);
-  const [modalMonthly, setModalMonthly] = useState<number>(150);
+  const [modalMonthly, setModalMonthly] = useState<number>(50);
   const [modalPurchased, setModalPurchased] = useState<number>(0);
 
   const fetchAdminData = async () => {
@@ -162,7 +162,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
       if (resData.success) {
         let nextAllowance = 0;
         if (nextStatus === 'trial') nextAllowance = 1;
-        else if (nextStatus === 'active') nextAllowance = 150;
+        else if (nextStatus === 'active') nextAllowance = 50;
         else nextAllowance = 0;
 
         setData(prev => ({
@@ -170,7 +170,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
           users: prev.users.map(u => u.id === userId ? { 
             ...u, 
             subscriptionStatus: nextStatus,
-            monthlyAllowance: nextStatus === 'trial' ? 1 : nextStatus === 'active' ? 150 : u.monthlyAllowance
+            monthlyAllowance: nextStatus === 'trial' ? 1 : nextStatus === 'active' ? 50 : u.monthlyAllowance
           } : u)
         }));
         setMessage({ text: `Assinatura atualizada para "${nextStatus === 'active' ? 'Ativo' : nextStatus === 'trial' ? 'Teste' : nextStatus === 'cancelled' ? 'Cancelado' : 'Pendente'}" com sucesso!`, type: 'success' });
@@ -274,6 +274,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
   const activeSubscribers = data.users.filter(u => u.subscriptionStatus === 'active').length;
   const trialUsers = data.users.filter(u => u.subscriptionStatus === 'trial').length;
   const pendingUsers = data.users.filter(u => u.subscriptionStatus === 'pending').length;
+  const cancelledUsers = data.users.filter(u => u.subscriptionStatus === 'cancelled').length;
   const totalUsersCount = data.users.length;
   
   const estimatedRevenue = activeSubscribers * 89;
@@ -333,6 +334,8 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
                 <span className="text-blue-400">{trialUsers} Em Teste</span>
                 <span className="text-gray-600">•</span>
                 <span className="text-amber-500">{pendingUsers} Pendentes</span>
+                <span className="text-gray-600">•</span>
+                <span className="text-rose-500">{cancelledUsers} Cancelados</span>
               </div>
             </div>
           </div>
@@ -589,6 +592,16 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
               }`}
             >
               🔒 Pendentes <span className="ml-1 opacity-70">({pendingUsers})</span>
+            </button>
+            <button
+              onClick={() => setUserStatusFilter('cancelled')}
+              className={`px-4 py-2 rounded-xl text-[11px] font-bold border transition-all ${
+                userStatusFilter === 'cancelled'
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                  : 'bg-[#161b22] border-gray-800 text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              ❌ Cancelados <span className="ml-1 opacity-70">({cancelledUsers})</span>
             </button>
           </div>
 

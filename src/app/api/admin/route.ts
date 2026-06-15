@@ -136,7 +136,7 @@ export async function GET(req: Request) {
         role: userRole,
         subscriptionStatus: userCredits?.subscription_status || 'pending',
         seoAllowed: userCredits?.seo_allowed ?? false,
-        monthlyAllowance: userCredits?.monthly_allowance ?? 150,
+        monthlyAllowance: userCredits?.monthly_allowance ?? 50,
         purchasedCredits: userCredits?.purchased_credits ?? 0,
         createdAt: usr.created_at
       };
@@ -229,7 +229,7 @@ export async function PATCH(req: Request) {
       if (subscriptionStatus === 'trial') {
         nextAllowance = 1;
       } else if (subscriptionStatus === 'active') {
-        nextAllowance = 150;
+        nextAllowance = 50;
       } else {
         // Se for pending/cancelled, a cota deve ser 0
         nextAllowance = 0;
