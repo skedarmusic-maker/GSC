@@ -459,75 +459,82 @@ export async function POST(req: Request) {
 
     const targetLat = rawPlace.location?.lat || rawPlace.latitude || rawPlace.gps_coordinates?.latitude || null;
     const targetLng = rawPlace.location?.lng || rawPlace.longitude || rawPlace.gps_coordinates?.longitude || null;
+    const MAX_DISTANCE_KM = 50; // Só exibe concorrentes até 50km de distância
 
-    let competitors = rawResults.slice(1, 6).map((c: any) => {
+    const mapCompetitor = (c: any) => {
       const cLat = c.location?.lat || c.latitude || c.gps_coordinates?.latitude || null;
       const cLng = c.location?.lng || c.longitude || c.gps_coordinates?.longitude || null;
+      let distKmRaw: number | null = null;
       let distanceKm = 'N/A';
       if (targetLat && targetLng && cLat && cLng) {
-        distanceKm = getDistanceKm(targetLat, targetLng, cLat, cLng).toFixed(1) + ' km';
+        distKmRaw = getDistanceKm(targetLat, targetLng, cLat, cLng);
+        distanceKm = distKmRaw.toFixed(1) + ' km';
       }
-
       const placeId = c.place_id || c.placeId || '';
       const link = c.link || c.url || (placeId ? `https://www.google.com/maps/place/?q=place_id:${placeId}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title || c.name || '')}`);
-
       return {
         name: c.title || c.name || '',
         rating: Number(c.totalScore || c.rating) || 0,
         reviews: Number(c.reviewsCount || c.reviews) || 0,
         place_id: placeId,
         link: link,
-        distanceKm: distanceKm
+        distanceKm: distanceKm,
+        _distKmRaw: distKmRaw // campo interno para filtro — não vai para o cliente
       };
-    });
+    };
 
-    // Se a busca individual retornou apenas 1 resultado (sem concorrentes), fazemos uma busca rápida de concorrência local
+    const isLocal = (comp: any) => {
+      // Se não há coordenadas (ex: Apify sem gps), mantém pois não dá pra saber
+      if (comp._distKmRaw === null) return true;
+      return comp._distKmRaw <= MAX_DISTANCE_KM;
+    };
+
+    const stripInternal = (comp: any) => {
+      const { _distKmRaw, ...clean } = comp;
+      return clean;
+    };
+
+    let competitors = rawResults
+      .slice(1, 11) // pega mais resultados para compensar o filtro de distância
+      .map(mapCompetitor)
+      .filter(isLocal)
+      .slice(0, 5)
+      .map(stripInternal);
+
+    console.log(`📍 ${competitors.length} concorrentes locais (≤${MAX_DISTANCE_KM}km) encontrados nos rawResults`);
+
+    // Se ainda não tiver concorrentes locais, faz busca centrada nas coordenadas GPS do local
     if (competitors.length === 0 && n.type) {
-      console.log('🔎 Buscando concorrentes locais complementares para o ranking...');
+      console.log('🔎 Buscando concorrentes locais complementares centrados no GPS do local...');
       try {
         let locationQuery = '';
         if (n.address) {
           const parts = n.address.split('-');
           if (parts.length > 1) {
-            // Pega o bairro/cidade que costuma vir após o primeiro hífen
             locationQuery = parts[1].split(',')[0].trim();
           } else {
             locationQuery = n.address.split(',')[1]?.trim() || '';
           }
         }
-        
+
         const searchQuery = `${n.type} em ${locationQuery || 'Santos SP'}`;
-        console.log(`🚀 Busca de concorrência complementar: "${searchQuery}"`);
-        
-        const compUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(searchQuery)}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
+        // Se temos coordenadas, centramos a busca no GPS do local (15z ≈ raio de ~5km)
+        const llParam = targetLat && targetLng ? `&ll=@${targetLat},${targetLng},15z` : '';
+        console.log(`🚀 Busca complementar: "${searchQuery}" ${llParam ? 'centrada no GPS do local' : ''}`);
+
+        const compUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(searchQuery)}${llParam}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
         const compRes = await fetch(compUrl);
         const compData = await compRes.json();
-        
+
         if (compData.local_results?.length > 0) {
           competitors = compData.local_results
             .filter((c: any) => (c.title || c.name || '').toLowerCase() !== n.title.toLowerCase())
+            .slice(0, 10)
+            .map(mapCompetitor)
+            .filter(isLocal)
             .slice(0, 5)
-            .map((c: any) => {
-              const cLat = c.location?.lat || c.latitude || c.gps_coordinates?.latitude || null;
-              const cLng = c.location?.lng || c.longitude || c.gps_coordinates?.longitude || null;
-              let distanceKm = 'N/A';
-              if (targetLat && targetLng && cLat && cLng) {
-                distanceKm = getDistanceKm(targetLat, targetLng, cLat, cLng).toFixed(1) + ' km';
-              }
-
-              const placeId = c.place_id || c.placeId || '';
-              const link = c.link || c.url || (placeId ? `https://www.google.com/maps/place/?q=place_id:${placeId}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title || c.name || '')}`);
-
-              return {
-                name: c.title || c.name || '',
-                rating: Number(c.totalScore || c.rating) || 0,
-                reviews: Number(c.reviewsCount || c.reviews) || 0,
-                place_id: placeId,
-                link: link,
-                distanceKm: distanceKm
-              };
-            });
-          console.log(`✅ ${competitors.length} concorrentes complementares encontrados!`);
+            .map(stripInternal);
+          console.log(`✅ ${competitors.length} concorrentes complementares locais encontrados!`);
         }
       } catch (err) {
         console.error('❌ Falha ao buscar concorrentes complementares:', err);
