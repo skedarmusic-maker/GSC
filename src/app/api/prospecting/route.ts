@@ -15,6 +15,18 @@ const PSEUDO_SITE_DOMAINS = [
   'carrd.co', 'strikingly.com', 'yola.com', 'webnode.com',
 ];
 
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Raio da Terra em km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 // Verifica se o website realmente responde (HEAD rápido, 5s timeout)
 async function verifyWebsiteExists(url: string): Promise<boolean> {
   try {
@@ -445,11 +457,29 @@ export async function POST(req: Request) {
     if (!n.thumbnail) opportunities.push('Adicionar fotos profissionais ao perfil');
     if (score < 60) opportunities.push('Otimização completa do perfil GBP');
 
-    let competitors = rawResults.slice(1, 6).map((c: any) => ({
-      name: c.title || c.name || '',
-      rating: Number(c.totalScore || c.rating) || 0,
-      reviews: Number(c.reviewsCount || c.reviews) || 0,
-    }));
+    const targetLat = rawPlace.location?.lat || rawPlace.latitude || rawPlace.gps_coordinates?.latitude || null;
+    const targetLng = rawPlace.location?.lng || rawPlace.longitude || rawPlace.gps_coordinates?.longitude || null;
+
+    let competitors = rawResults.slice(1, 6).map((c: any) => {
+      const cLat = c.location?.lat || c.latitude || c.gps_coordinates?.latitude || null;
+      const cLng = c.location?.lng || c.longitude || c.gps_coordinates?.longitude || null;
+      let distanceKm = 'N/A';
+      if (targetLat && targetLng && cLat && cLng) {
+        distanceKm = getDistanceKm(targetLat, targetLng, cLat, cLng).toFixed(1) + ' km';
+      }
+
+      const placeId = c.place_id || c.placeId || '';
+      const link = c.link || c.url || (placeId ? `https://www.google.com/maps/place/?q=place_id:${placeId}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title || c.name || '')}`);
+
+      return {
+        name: c.title || c.name || '',
+        rating: Number(c.totalScore || c.rating) || 0,
+        reviews: Number(c.reviewsCount || c.reviews) || 0,
+        place_id: placeId,
+        link: link,
+        distanceKm: distanceKm
+      };
+    });
 
     // Se a busca individual retornou apenas 1 resultado (sem concorrentes), fazemos uma busca rápida de concorrência local
     if (competitors.length === 0 && n.type) {
@@ -477,11 +507,26 @@ export async function POST(req: Request) {
           competitors = compData.local_results
             .filter((c: any) => (c.title || c.name || '').toLowerCase() !== n.title.toLowerCase())
             .slice(0, 5)
-            .map((c: any) => ({
-              name: c.title || c.name || '',
-              rating: Number(c.totalScore || c.rating) || 0,
-              reviews: Number(c.reviewsCount || c.reviews) || 0,
-            }));
+            .map((c: any) => {
+              const cLat = c.location?.lat || c.latitude || c.gps_coordinates?.latitude || null;
+              const cLng = c.location?.lng || c.longitude || c.gps_coordinates?.longitude || null;
+              let distanceKm = 'N/A';
+              if (targetLat && targetLng && cLat && cLng) {
+                distanceKm = getDistanceKm(targetLat, targetLng, cLat, cLng).toFixed(1) + ' km';
+              }
+
+              const placeId = c.place_id || c.placeId || '';
+              const link = c.link || c.url || (placeId ? `https://www.google.com/maps/place/?q=place_id:${placeId}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title || c.name || '')}`);
+
+              return {
+                name: c.title || c.name || '',
+                rating: Number(c.totalScore || c.rating) || 0,
+                reviews: Number(c.reviewsCount || c.reviews) || 0,
+                place_id: placeId,
+                link: link,
+                distanceKm: distanceKm
+              };
+            });
           console.log(`✅ ${competitors.length} concorrentes complementares encontrados!`);
         }
       } catch (err) {
@@ -590,9 +635,11 @@ Importante: Substitua qualquer menção ao nome da empresa no texto por "${n.tit
       competitors,
       opportunities,
       aiRecommendation,
-      // Dados geográficos extras
-      latitude: rawPlace.location?.lat || null,
-      longitude: rawPlace.location?.lng || null,
+      // Dados geográficos extras e links da própria empresa analisada
+      latitude: targetLat,
+      longitude: targetLng,
+      place_id: rawPlace.place_id || rawPlace.placeId || '',
+      link: rawPlace.link || rawPlace.url || (rawPlace.place_id ? `https://www.google.com/maps/place/?q=place_id:${rawPlace.place_id}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(n.title + ' ' + (n.address || ''))}`),
     });
 
   } catch (error: any) {

@@ -1445,24 +1445,62 @@ export default function TabProspecting({ session }: { session?: any }) {
                   
                   <div className="space-y-5">
                     {[
-                      { name: report.name, reviews: Number(report.reviews) || 0, isClient: true },
-                      ...(report.competitors || []).map((c: any) => ({ name: c.name, reviews: Number(c.reviews) || 0, isClient: false }))
+                      { 
+                        name: report.name, 
+                        reviews: Number(report.reviews) || 0, 
+                        isClient: true,
+                        link: report.link || (report.place_id ? `https://www.google.com/maps/place/?q=place_id:${report.place_id}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(report.name + ' ' + (report.address || ''))}`),
+                        distanceKm: null
+                      },
+                      ...(report.competitors || []).map((c: any) => ({ 
+                        name: c.name, 
+                        reviews: Number(c.reviews) || 0, 
+                        isClient: false,
+                        link: c.link || (c.place_id ? `https://www.google.com/maps/place/?q=place_id:${c.place_id}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.name)}`),
+                        distanceKm: c.distanceKm || null
+                      }))
                     ].sort((a, b) => b.reviews - a.reviews).map((profile, index, arr) => {
                       const maxListReviews = arr[0]?.reviews || 1;
                       const barWidth = Math.max((profile.reviews / maxListReviews) * 100, 1.5);
                       
                       return (
                         <div key={index} className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${profile.isClient ? 'bg-[#00ff9d] text-black shadow-[0_0_10px_rgba(0,255,157,0.3)]' : 'bg-gray-800 text-gray-400'}`}>
                                 {index + 1}º
                               </div>
-                              <p className={`font-bold text-sm truncate max-w-[200px] md:max-w-[400px] ${profile.isClient ? 'text-[#00ff9d]' : 'text-gray-300'}`}>
-                                {profile.name} {profile.isClient && <span className="text-[10px] uppercase tracking-wider ml-1 opacity-80">(Você)</span>}
-                              </p>
+                              <div className="flex flex-col gap-1 min-w-0">
+                                {profile.link ? (
+                                  <a
+                                    href={profile.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`font-bold text-sm hover:underline break-words ${profile.isClient ? 'text-[#00ff9d]' : 'text-gray-300 hover:text-white'}`}
+                                  >
+                                    {profile.name}
+                                  </a>
+                                ) : (
+                                  <span className={`font-bold text-sm break-words ${profile.isClient ? 'text-[#00ff9d]' : 'text-gray-300'}`}>
+                                    {profile.name}
+                                  </span>
+                                )}
+                                
+                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                  {profile.isClient && (
+                                    <span className="text-[9px] uppercase tracking-wider bg-[#00ff9d]/10 text-[#00ff9d] px-1.5 py-0.5 rounded font-black border border-[#00ff9d]/20">
+                                      Você
+                                    </span>
+                                  )}
+                                  {!profile.isClient && profile.distanceKm && profile.distanceKm !== 'N/A' && (
+                                    <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1 bg-gray-800/40 px-2 py-0.5 rounded-full border border-gray-800">
+                                      📍 {profile.distanceKm}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               <p className={`font-black text-sm leading-none ${profile.isClient ? 'text-[#00ff9d]' : 'text-white'}`}>{profile.reviews}</p>
                               <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">Avaliações</p>
                             </div>
