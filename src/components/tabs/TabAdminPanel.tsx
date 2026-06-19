@@ -165,7 +165,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
       if (resData.success) {
         let nextAllowance = 0;
         if (nextStatus === 'trial') nextAllowance = 1;
-        else if (nextStatus === 'active') nextAllowance = 50;
+        else if (nextStatus === 'active') nextAllowance = 20;
         else nextAllowance = 0;
 
         setData(prev => ({
@@ -173,7 +173,7 @@ export default function TabAdminPanel({ session }: TabAdminPanelProps) {
           users: prev.users.map(u => u.id === userId ? { 
             ...u, 
             subscriptionStatus: nextStatus,
-            monthlyAllowance: nextStatus === 'trial' ? 1 : nextStatus === 'active' ? 50 : u.monthlyAllowance
+            monthlyAllowance: nextStatus === 'trial' ? 1 : nextStatus === 'active' ? 20 : u.monthlyAllowance
           } : u)
         }));
         setMessage({ text: `Assinatura atualizada para "${nextStatus === 'active' ? 'Ativo' : nextStatus === 'trial' ? 'Teste' : nextStatus === 'cancelled' ? 'Cancelado' : 'Pendente'}" com sucesso!`, type: 'success' });
