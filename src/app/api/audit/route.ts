@@ -91,8 +91,13 @@ export async function POST(req: Request) {
 
     // Salvar auditoria no histórico do Supabase
     try {
+      const adminSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      );
+
       // 1. Achar o cliente correspondente a essa localização
-      const { data: client } = await supabase
+      const { data: client } = await adminSupabase
         .from('clients')
         .select('id')
         .eq('gbp_location_id', locationId)
@@ -101,7 +106,7 @@ export async function POST(req: Request) {
       if (client?.id) {
         const currentDate = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
         
-        await supabase
+        await adminSupabase
           .from('gbp_audit_history')
           .upsert({
             client_id: client.id,
