@@ -30,13 +30,14 @@ AVALIAÇÃO RECEBIDA:
 - Comentário: ${hasComment ? `"${reviewText}"` : '(nenhum comentário, apenas a nota)'}
 
 REGRAS:
-1. Tom: profissional e caloroso. Nunca robotizado, nunca gírias.
-2. ${sizeInstruction}
-3. Proibido começar com: "Agradecemos", "Ficamos imensamente", "Sua preferência é".
-4. Use variações naturais de abertura: "Olá, ${firstName}!", "Obrigado, ${firstName}!", "Que ótimo, ${firstName}!", etc.
-5. Se nota for 1-3: seja empático e convide para resolver. Sem defender a empresa.
-6. Se nota for 4-5 sem comentário: agradeça simplesmente. Nada mais.
-7. Escreva APENAS o texto da resposta, sem aspas, sem introdução.`;
+1. IDIOMA DA RESPOSTA: Você deve gerar a resposta obrigatoriamente no MESMO IDIOMA do comentário do cliente. Se a avaliação não possuir comentário (apenas estrelas), tente deduzir pelo nome do cliente ou use Inglês caso pareça ser de fora do Brasil.
+2. Tom: profissional e caloroso. Nunca robotizado, nunca gírias. Adapte ao contexto cultural do idioma correspondente.
+3. ${sizeInstruction}
+4. Para respostas em Português, é proibido começar com: "Agradecemos", "Ficamos imensamente", "Sua preferência é". Use variações naturais de abertura como: "Olá, ${firstName}!", "Obrigado, ${firstName}!", "Que ótimo, ${firstName}!".
+5. Para respostas em Inglês ou outros idiomas, use aberturas naturais correspondentes (ex: "Hi, ${firstName}!", "Thanks, ${firstName}!", "Hello, ${firstName}!").
+6. Se nota for 1-3: seja empático e convide para resolver. Sem defender a empresa.
+7. Se nota for 4-5 sem comentário: agradeça de forma simples e direta.
+8. Escreva APENAS o texto da resposta final, sem aspas, sem introdução.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
