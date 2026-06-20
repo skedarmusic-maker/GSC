@@ -146,8 +146,25 @@ export default function TabGBPReviews({
                   <img src={review.reviewer?.profilePhotoUrl} alt="" className="w-12 h-12 rounded-full bg-[#161b22] border border-gray-800" />
                   <div>
                     <p className="font-bold text-white text-lg">{review.reviewer?.displayName}</p>
-                    <div className="text-[#00ff9d] text-sm tracking-widest mt-1">
-                      {'★'.repeat(review.starRating || 0)}<span className="text-gray-700">{'☆'.repeat(5 - (review.starRating || 0))}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="text-[#00ff9d] text-sm tracking-widest flex">
+                        {(() => {
+                          const map: any = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+                          const stars = typeof review.starRating === 'number' ? review.starRating : (map[review.starRating] || 0);
+                          return (
+                            <>
+                              {'★'.repeat(stars)}
+                              <span className="text-gray-700">{'☆'.repeat(5 - stars)}</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-500 bg-[#161b22] px-1.5 py-0.5 rounded border border-gray-800">
+                        {(() => {
+                          const map: any = { ONE: '1.0', TWO: '2.0', THREE: '3.0', FOUR: '4.0', FIVE: '5.0' };
+                          return typeof review.starRating === 'number' ? review.starRating.toFixed(1) : (map[review.starRating] || '0.0');
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>
