@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import {
   Search, Globe, Phone, Clock, Camera, Star, Tag, TrendingUp,
   AlertTriangle, CheckCircle, XCircle, ChevronRight, Download,
@@ -213,7 +214,13 @@ export default function TabProspecting({ session }: { session?: any }) {
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
-      const res = await fetch('/api/prospecting/save');
+      const sessionData = await supabase.auth.getSession();
+      const userToken = sessionData.data.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (userToken) {
+        headers['Authorization'] = `Bearer ${userToken}`;
+      }
+      const res = await fetch('/api/prospecting/save', { headers });
       const data = await res.json();
       const analyses = data.analyses || [];
       setHistory(analyses);
@@ -540,9 +547,17 @@ export default function TabProspecting({ session }: { session?: any }) {
     if (!report) return;
     setSaving(true);
     try {
+      const sessionData = await supabase.auth.getSession();
+      const userToken = sessionData.data.session?.access_token;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (userToken) {
+        headers['Authorization'] = `Bearer ${userToken}`;
+      }
       const res = await fetch('/api/prospecting/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(report),
       });
       const data = await res.json();
@@ -557,12 +572,24 @@ export default function TabProspecting({ session }: { session?: any }) {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch('/api/prospecting/save', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    loadHistory();
+    try {
+      const sessionData = await supabase.auth.getSession();
+      const userToken = sessionData.data.session?.access_token;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (userToken) {
+        headers['Authorization'] = `Bearer ${userToken}`;
+      }
+      await fetch('/api/prospecting/save', {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ id }),
+      });
+      loadHistory();
+    } catch (e) {
+      console.error('Erro ao excluir análise:', e);
+    }
   };
 
   const handleLoadSaved = (analysis: any) => {
