@@ -163,7 +163,7 @@ export async function getLocationPerformance(locationName: string, days?: number
       start.setDate(end.getDate() - (days || 28));
     }
 
-    const dateParams = `dailyRange.startDate.year=${start.getFullYear()}&dailyRange.startDate.month=${start.getMonth() + 1}&dailyRange.startDate.day=${start.getDate()}&dailyRange.endDate.year=${end.getFullYear()}&dailyRange.endDate.month=${end.getMonth() + 1}&dailyRange.endDate.day=${end.getDate()}`;
+    const dateParams = `dailyRange.startDate.year=${start.getUTCFullYear()}&dailyRange.startDate.month=${start.getUTCMonth() + 1}&dailyRange.startDate.day=${start.getUTCDate()}&dailyRange.endDate.year=${end.getUTCFullYear()}&dailyRange.endDate.month=${end.getUTCMonth() + 1}&dailyRange.endDate.day=${end.getUTCDate()}`;
 
     const baseMetrics = [
       { key: 'calls', google: 'CALL_CLICKS' },
@@ -195,7 +195,7 @@ export async function getLocationPerformance(locationName: string, days?: number
       ...baseMetrics.map(m => fetchMetric(m)),
       (async () => {
         try {
-          const snakeDateParams = `daily_range.start_date.year=${start.getFullYear()}&daily_range.start_date.month=${start.getMonth() + 1}&daily_range.start_date.day=${start.getDate()}&daily_range.end_date.year=${end.getFullYear()}&daily_range.end_date.month=${end.getMonth() + 1}&daily_range.end_date.day=${end.getDate()}`;
+          const snakeDateParams = `daily_range.start_date.year=${start.getUTCFullYear()}&daily_range.start_date.month=${start.getUTCMonth() + 1}&daily_range.start_date.day=${start.getUTCDate()}&daily_range.end_date.year=${end.getUTCFullYear()}&daily_range.end_date.month=${end.getUTCMonth() + 1}&daily_range.end_date.day=${end.getUTCDate()}`;
           const impressionsUrl = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}:fetchMultiDailyMetricsTimeSeries?dailyMetrics=BUSINESS_IMPRESSIONS_DESKTOP_MAPS&dailyMetrics=BUSINESS_IMPRESSIONS_DESKTOP_SEARCH&dailyMetrics=BUSINESS_IMPRESSIONS_MOBILE_MAPS&dailyMetrics=BUSINESS_IMPRESSIONS_MOBILE_SEARCH&${snakeDateParams}`;
           const res = await fetch(impressionsUrl, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
           if (res.ok) {
@@ -337,17 +337,34 @@ export async function getLocationPerformance(locationName: string, days?: number
     // === PALAVRAS-CHAVE DE PESQUISA MENSAIS ===
     let keywords: any[] = [];
     try {
-      const kwUrl = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}/searchkeywords/impressions/monthly?monthly_range.start_month.year=${start.getFullYear()}&monthly_range.start_month.month=${start.getMonth() + 1}&monthly_range.end_month.year=${end.getFullYear()}&monthly_range.end_month.month=${end.getMonth() + 1}`;
-      const kwRes = await fetch(kwUrl, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
-      if (kwRes.ok) {
-        const kwData = await kwRes.json();
-        if (kwData.searchKeywordsCounts) {
-          keywords = kwData.searchKeywordsCounts.map((k: any) => ({
-            keyword: k.searchKeyword,
-            value: k.insightsValue?.value ? parseInt(k.insightsValue.value) : null,
-            threshold: k.insightsValue?.threshold ? parseInt(k.insightsValue.threshold) : null,
-          })).slice(0, 10); // top 10
+      const uStartYear = start.getUTCFullYear();
+      const uStartMonth = start.getUTCMonth() + 1;
+      const uEndYear = end.getUTCFullYear();
+      const uEndMonth = end.getUTCMonth() + 1;
+
+      const fetchKeywords = async (sYear: number, sMonth: number, eYear: number, eMonth: number) => {
+        const url = `https://businessprofileperformance.googleapis.com/v1/${cleanLocationName}/searchkeywords/impressions/monthly?monthly_range.start_month.year=${sYear}&monthly_range.start_month.month=${sMonth}&monthly_range.end_month.year=${eYear}&monthly_range.end_month.month=${eMonth}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` }, cache: 'no-store' });
+        if (res.ok) {
+          const kwData = await res.json();
+          if (kwData.searchKeywordsCounts) {
+            return kwData.searchKeywordsCounts.map((k: any) => ({
+              keyword: k.searchKeyword,
+              value: k.insightsValue?.value ? parseInt(k.insightsValue.value) : null,
+              threshold: k.insightsValue?.threshold ? parseInt(k.insightsValue.threshold) : null,
+            })).slice(0, 10); // top 10
+          }
         }
+        return [];
+      };
+
+      keywords = await fetchKeywords(uStartYear, uStartMonth, uEndYear, uEndMonth);
+
+      // Fallback para o mês anterior caso o Google ainda não tenha compilado os dados do mês atual
+      if (keywords.length === 0) {
+        const prevMonth = uStartMonth === 1 ? 12 : uStartMonth - 1;
+        const prevYear = uStartMonth === 1 ? uStartYear - 1 : uStartYear;
+        keywords = await fetchKeywords(prevYear, prevMonth, prevYear, prevMonth);
       }
     } catch (e) {
       console.warn('Keywords de pesquisa não disponíveis:', e);
