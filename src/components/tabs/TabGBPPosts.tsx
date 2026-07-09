@@ -42,6 +42,9 @@ export default function TabGBPPosts({
     if (title.includes('pagani') || title.includes('moto')) return ['Revisão Geral', 'Customização', 'Acessórios Moto', 'Dicas de Pilotagem'];
     if (title.includes('simone') || title.includes('podologia')) return ['Tratamento de Calos', 'Unha Encravada', 'Saúde dos Pés', 'Prevenção'];
     if (title.includes('soft english') || title.includes('inglês')) return ['Dicas de Pronúncia', 'Inglês para Negócios', 'Aulas de Conversação', 'Expressões Úteis'];
+    if (title.includes('atelie') || title.includes('ateliê') || title.includes('costura') || title.includes('vestido') || title.includes('artnete')) {
+      return ['Costura Sob Medida', 'Aluguel de Vestidos', 'Ajustes e Reformas', 'Dicas de Moda / Festas'];
+    }
     
     // Fallback/Default
     return ['Nossos Serviços', 'Novidades', 'Promoções Imperdíveis', 'Dicas Rápidas'];

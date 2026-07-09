@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const { topic, businessName } = await req.json();
+    const { topic, businessName, businessContext } = await req.json();
 
     if (!topic || !businessName) {
       return NextResponse.json({ error: 'Tópico e nome da empresa são obrigatórios.' }, { status: 400 });
@@ -13,11 +13,19 @@ export async function POST(req: Request) {
     const prompt = `Você atua como um Social Media Estrategista Especializado em Perfil de Empresas no Google (Google Business Profile).
 Sua missão é criar uma atualização/postagem de alta conversão para a empresa "${businessName}".
 
+${businessContext ? `CONTEXTO DO NEGÓCIO (Utilize estes detalhes sobre o nicho, serviços e público-alvo para guiar o tom e assunto do post):
+"${businessContext}"` : `Nome do negócio: ${businessName}`}
+
 ASSUNTO DO POST / TÓPICO / IDEIA:
 "${topic}"
 
-REGRAS:
-1. Tom: Profissional, atrativo e focado em engajamento local. Se comunique diretamente com o cliente.
+REGRAS CRÍTICAS DE NICHO E CONTEÚDO:
+1. Se o nicho/ramo de atuação da empresa for conhecido (pelo contexto fornecido ou pelo próprio nome da empresa, ex: contendo 'Ateliê', 'Costura', 'Vestido' ou 'artnete'), escreva um post totalmente focado nesse nicho (ex: vestidos, moda, costura, consertos, ajustes de roupas).
+2. Se o nicho NÃO for explicitamente informado no contexto e não puder ser deduzido com certeza a partir do nome "${businessName}", crie uma postagem neutra aplicável a qualquer comércio ou serviço local (focada em atendimento excelente, novidades da semana, convite para conhecer o espaço ou agendar um horário).
+3. 🚨 PROIBIÇÃO ABSOLUTA: Nunca assuma ou invente que a empresa é da área de TI, tecnologia, desenvolvimento de software, suporte de internet, estabilidade de rede ou telecomunicações, a menos que isso esteja escrito de forma clara no contexto. Evite termos como "tecnologia", "estabilidade", "conexão", "suporte de TI" ou "conectado".
+
+REGRAS DE FORMATAÇÃO:
+1. Tom: Profissional, acolhedor, atraente e focado em engajamento local. Comunique-se diretamente com os clientes da região.
 2. Tamanho: Ideal entre 40 a 70 palavras (cerca de 2 a 3 parágrafos curtos). Seja direto.
 3. Formatação: Quebre em parágrafos para facilitar a leitura.
 4. Emojis: Use de 2 a 3 emojis no máximo, de forma estratégica, para dar vida ao post.

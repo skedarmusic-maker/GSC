@@ -939,6 +939,7 @@ export default function Dashboard() {
         body: JSON.stringify({
           topic,
           businessName: gbpData.title,
+          businessContext: selectedClient?.businessContext
         })
       });
       const result = await res.json();
