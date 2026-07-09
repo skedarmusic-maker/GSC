@@ -109,11 +109,35 @@ export default function Dashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [manualDesignCode, setManualDesignCode] = useState('');
 
+  const syncPendingReviews = async (currentSites: any[]) => {
+    const hasGbp = currentSites.some((s: any) => !!s.gbpData && s.type !== 'PROSPECT');
+    if (!hasGbp) return;
+    try {
+      const res = await fetch('/api/reviews/sync-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) return;
+      const updatedCounts = await res.json();
+      if (Array.isArray(updatedCounts)) {
+        setSites(prev => prev.map(site => {
+          const updated = updatedCounts.find((u: any) => u.id === site.id);
+          return updated ? { ...site, pendingReviewsCount: updated.pendingReviewsCount } : site;
+        }));
+      }
+    } catch (e) {
+      console.error('Erro na sincronização de pendências:', e);
+    }
+  };
+
   const fetchSites = async () => {
     try {
       const res = await fetch('/api/sites', { cache: 'no-store' });
       const d = await res.json();
-      if (Array.isArray(d)) setSites(d);
+      if (Array.isArray(d)) {
+        setSites(d);
+        syncPendingReviews(d);
+      }
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
@@ -1129,7 +1153,14 @@ export default function Dashboard() {
               }}
               className="w-full bg-[#0d1117] border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-2.5">
               <option value="">Selecionar Maps...</option>
-              {gbpProfiles.map((p:any) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+              {gbpProfiles.map((p:any) => {
+                const badge = p.pendingReviewsCount > 0 ? ` (🔴 ${p.pendingReviewsCount})` : '';
+                return (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{badge}
+                  </option>
+                );
+              })}
             </select>
           )}
         </div>

@@ -329,7 +329,8 @@ export async function GET(req: Request) {
       designContext: client.design_context || {}, // Mantemos o objeto para compatibilidade
       projectFolder: client.project_folder,
       stitchPrompt: client.stitch_prompt,
-      seoEnabled: client.seo_enabled ?? false
+      seoEnabled: client.seo_enabled ?? false,
+      pendingReviewsCount: client.pending_reviews_count ?? 0
     }));
 
     return NextResponse.json(formattedList || []);
