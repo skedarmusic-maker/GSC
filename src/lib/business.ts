@@ -435,9 +435,15 @@ export async function replyToReview(reviewName: string, replyText: string, token
   }
 }
 
-export async function createLocalPost(accountId: string, locationId: string, postData: { text: string, imageUrl?: string, buttonType?: string, buttonUrl?: string }, tokenSupabase?: string) {
+export async function createLocalPost(
+  accountId: string, 
+  locationId: string, 
+  postData: { text: string, imageUrl?: string, buttonType?: string, buttonUrl?: string }, 
+  tokenSupabase?: string,
+  customAccessToken?: string
+) {
   try {
-    const accessToken = await getAccessToken(tokenSupabase);
+    const accessToken = customAccessToken || await getAccessToken(tokenSupabase);
     const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/localPosts`;
 
     const body: any = {
