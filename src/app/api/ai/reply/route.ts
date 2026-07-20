@@ -22,9 +22,8 @@ export async function POST(req: Request) {
       timeGreeting = 'Boa noite';
     }
 
-    // Sorteio matemático da saudação em TypeScript para garantir 100% de diversidade a cada requisição
-    let selectedGreeting = '';
     const numericRating = Number(rating) || 5;
+    let selectedGreeting = '';
 
     if (numericRating <= 3) {
       const negativeGreetings = [
@@ -32,7 +31,8 @@ export async function POST(req: Request) {
         `Olá, ${firstName}, tudo bem?`,
         `Prezado(a) ${firstName},`,
         `${timeGreeting}, ${firstName}.`,
-        `Lamentamos por essa experiência, ${firstName}.`
+        `Lamentamos por essa experiência, ${firstName}.`,
+        `Pedimos desculpas pelo transtorno, ${firstName}.`
       ];
       selectedGreeting = negativeGreetings[Math.floor(Math.random() * negativeGreetings.length)];
     } else {
@@ -46,42 +46,49 @@ export async function POST(req: Request) {
         `${timeGreeting}, ${firstName}, tudo bem?`,
         `Prezado(a) ${firstName},`,
         `Muito obrigado pelo carinho, ${firstName}!`,
-        `Ficamos muito felizes com a sua avaliação, ${firstName}!`,
+        `Ficamos radiantes com a sua avaliação, ${firstName}!`,
         `Que satisfação ler seu comentário, ${firstName}!`,
         `Valeu demais pelo feedback, ${firstName}!`,
         `Agradecemos imensamente suas palavras, ${firstName}!`,
         `Que notícia excelente, ${firstName}!`,
-        `Muito obrigado pela confiança, ${firstName}!`
+        `Muito obrigado pela confiança, ${firstName}!`,
+        `É uma alegria enorme ter seu feedback, ${firstName}!`,
+        `Sensacional a sua avaliação, ${firstName}!`,
+        `A equipe toda agradece o carinho, ${firstName}!`,
+        `Que privilégio atender você, ${firstName}!`,
+        `Muito bom saber da sua satisfação, ${firstName}!`,
+        `Agradecemos de coração, ${firstName}!`,
+        `Que energia boa ler seu recado, ${firstName}!`
       ];
       selectedGreeting = positiveGreetings[Math.floor(Math.random() * positiveGreetings.length)];
     }
 
-    // Define o tamanho esperado da resposta
+    // Define o tamanho esperado para o CORPO da resposta
     let sizeInstruction = '';
     if (!hasComment) {
-      sizeInstruction = 'Tamanho: 1 frase curta após a saudação, apenas complementando o agradecimento.';
+      sizeInstruction = 'Tamanho do corpo: Apenas 1 frase curta complementando a saudação com carinho e colocando a empresa à disposição.';
     } else if (commentLength <= 10) {
-      sizeInstruction = 'Tamanho: 1 a 2 frases curtas após a saudação.';
+      sizeInstruction = 'Tamanho do corpo: 1 a 2 frases curtas complementando o feedback do cliente.';
     } else {
-      sizeInstruction = 'Tamanho: 2 frases completas após a saudação, comentando o feedback do cliente.';
+      sizeInstruction = 'Tamanho do corpo: 2 frases completas comentando especificamente os pontos citados pelo cliente.';
     }
 
-    const prompt = `Você é o gestor de atendimento da empresa "${businessName}". Sua missão é escrever o complemento de uma resposta humanizada para a avaliação de um cliente no Google Maps.
+    const prompt = `Você é o gestor de atendimento da empresa "${businessName}". Sua missão é escrever APENAS O CORPO COMPLEMENTAR de uma resposta a uma avaliação no Google Maps.
 
 DADOS DA AVALIAÇÃO:
 - Cliente: ${firstName}
 - Nota: ${numericRating}/5 estrelas
 - Comentário do Cliente: ${hasComment ? `"${reviewText}"` : '(nenhum comentário, apenas avaliou com estrelas)'}
 
-SAUDAÇÃO DE ABERTURA SELECIONADA (OBRIGATÓRIO):
-"${selectedGreeting}"
-
-REGRAS RÍGIDAS DE GERAÇÃO:
-1. A resposta FINAL DEVE COMEÇAR EXATAMENTE com a saudação "${selectedGreeting}".
-2. Após essa saudação predefinida, desenvolva a mensagem de acordo com a nota e o comentário.
-3. NÃO repita a saudação nem o nome do cliente novamente no meio ou no fim do texto.
-4. ${sizeInstruction}
-5. Escreva APENAS o texto completo da resposta final (saudação + complemento), pronto para publicar. Sem aspas ou explicações.`;
+REGRAS DE CONTEÚDO (CRÍTICO - LEIA COM ATENÇÃO):
+1. 🚨 NÃO INCLUA NENHUMA SAUDAÇÃO OU NOME DO CLIENTE! A saudação inicial (como "Oi", "Olá", "Bom dia", "Prezado", "Muito obrigado") JÁ FOI INSERIDA SEPARADAMENTE PELO SISTEMA.
+2. 🚨 PROIBIÇÃO DE CLICHÊS INICIAIS: É ESTRITAMENTE PROIBIDO começar o seu texto com as expressões "Ficamos felizes", "Ficamos muito felizes", "Agradecemos", "É um prazer", "Olá" ou "Oi". Comece DIRETO na frase de ação ou comentário sobre a experiência.
+3. Se a nota for 4-5 estrelas:
+   - Se houver comentário: destaque o compromisso da equipe com o ponto elogiado pelo cliente.
+   - Se não houver comentário: mencione que a casa/empresa está sempre de portas abertas para recebê-lo de novo.
+4. Se a nota for 1-3 estrelas: mostre empatia, afirme que a prioridade é a excelência no atendimento e convide o cliente para conversar em canal privado para resolver.
+5. ${sizeInstruction}
+6. Escreva APENAS o texto do corpo, sem aspas, sem saudações.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -115,20 +122,24 @@ REGRAS RÍGIDAS DE GERAÇÃO:
       return NextResponse.json({ error: data.error.message }, { status: 500 });
     }
 
-    let aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    let aiBody = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
-    if (!aiReply) {
+    if (!aiBody) {
       return NextResponse.json({ error: 'A IA não retornou uma resposta válida.' }, { status: 500 });
     }
 
-    // Garantir que a saudação sorteada seja o início exato do texto
-    if (!aiReply.startsWith(selectedGreeting)) {
-      // Remove qualquer saudação duplicada no início gerada pela IA
-      aiReply = aiReply.replace(/^(Olá|Oi|Bom dia|Boa tarde|Boa noite|Prezado\(a\)|Prezado|Muito obrigado|Ficamos|Que satisfação|Valeu|Agradecemos)[^.!\n]*[.!\n]?\s*/i, '');
-      aiReply = `${selectedGreeting} ${aiReply}`;
+    // Limpeza de qualquer clichê ou saudação acidental que a IA possa ter colocado no início do corpo
+    aiBody = aiBody.replace(/^(Ficamos (muito )?felizes|Agradecemos( muito| imensamente)?|É um prazer|Olá|Oi|Bom dia|Boa tarde|Boa noite|Prezado\(a\)?)[^.!\n,]*[,.!\n]?\s*/i, '');
+
+    // Garantir primeira letra maiúscula após a limpeza
+    if (aiBody.length > 0) {
+      aiBody = aiBody.charAt(0).toUpperCase() + aiBody.slice(1);
     }
 
-    return NextResponse.json({ reply: aiReply.trim() });
+    // Unir a saudação sorteada em TypeScript com o corpo da IA
+    const finalReply = `${selectedGreeting} ${aiBody}`;
+
+    return NextResponse.json({ reply: finalReply.trim() });
   } catch (error) {
     console.error('Erro na IA:', error);
     return NextResponse.json({ error: 'Falha ao processar IA' }, { status: 500 });
