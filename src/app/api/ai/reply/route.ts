@@ -6,13 +6,13 @@ export async function POST(req: Request) {
   try {
     const { reviewText, reviewerName, rating, businessName } = await req.json();
 
-    // Usar apenas o primeiro nome para personalização mais natural
+    // Extração do primeiro nome limpo
     const firstName = (reviewerName || '').trim().split(/\s+/)[0] || reviewerName || 'Cliente';
 
     const hasComment = reviewText && reviewText.trim().length > 0;
     const commentLength = hasComment ? reviewText.trim().split(/\s+/).length : 0;
 
-    // Calcular período do dia no fuso de Brasília (UTC-3) para saudações temporais
+    // Calcular período do dia no fuso de Brasília (UTC-3)
     const nowBRT = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     const hour = nowBRT.getHours();
     let timeGreeting = 'Bom dia';
@@ -22,38 +22,66 @@ export async function POST(req: Request) {
       timeGreeting = 'Boa noite';
     }
 
-    // Define o tamanho esperado da resposta com base no contexto
-    let sizeInstruction = '';
-    if (!hasComment) {
-      sizeInstruction = 'TAMANHO: Máximo 1 a 2 frases curtas. Um agradecimento simples, caloroso e direto.';
-    } else if (commentLength <= 10) {
-      sizeInstruction = 'TAMANHO: 2 frases. Resposta concisa e objetiva.';
+    // Sorteio matemático da saudação em TypeScript para garantir 100% de diversidade a cada requisição
+    let selectedGreeting = '';
+    const numericRating = Number(rating) || 5;
+
+    if (numericRating <= 3) {
+      const negativeGreetings = [
+        `Olá, ${firstName}.`,
+        `Olá, ${firstName}, tudo bem?`,
+        `Prezado(a) ${firstName},`,
+        `${timeGreeting}, ${firstName}.`,
+        `Lamentamos por essa experiência, ${firstName}.`
+      ];
+      selectedGreeting = negativeGreetings[Math.floor(Math.random() * negativeGreetings.length)];
     } else {
-      sizeInstruction = 'TAMANHO: 2 a 3 frases. Resposta completa, citando pontualmente o feedback do cliente.';
+      const positiveGreetings = [
+        `Oi, ${firstName}!`,
+        `Oi, ${firstName}, tudo bem?`,
+        `Olá, ${firstName}!`,
+        `Olá, ${firstName}, tudo bem?`,
+        `Tudo bem, ${firstName}?`,
+        `${timeGreeting}, ${firstName}!`,
+        `${timeGreeting}, ${firstName}, tudo bem?`,
+        `Prezado(a) ${firstName},`,
+        `Muito obrigado pelo carinho, ${firstName}!`,
+        `Ficamos muito felizes com a sua avaliação, ${firstName}!`,
+        `Que satisfação ler seu comentário, ${firstName}!`,
+        `Valeu demais pelo feedback, ${firstName}!`,
+        `Agradecemos imensamente suas palavras, ${firstName}!`,
+        `Que notícia excelente, ${firstName}!`,
+        `Muito obrigado pela confiança, ${firstName}!`
+      ];
+      selectedGreeting = positiveGreetings[Math.floor(Math.random() * positiveGreetings.length)];
     }
 
-    const prompt = `Você é o gestor de atendimento da empresa "${businessName}". Sua missão é criar uma resposta 100% humanizada, calorosa e DIVERSIFICADA para a avaliação de um cliente no Google Maps.
+    // Define o tamanho esperado da resposta
+    let sizeInstruction = '';
+    if (!hasComment) {
+      sizeInstruction = 'Tamanho: 1 frase curta após a saudação, apenas complementando o agradecimento.';
+    } else if (commentLength <= 10) {
+      sizeInstruction = 'Tamanho: 1 a 2 frases curtas após a saudação.';
+    } else {
+      sizeInstruction = 'Tamanho: 2 frases completas após a saudação, comentando o feedback do cliente.';
+    }
+
+    const prompt = `Você é o gestor de atendimento da empresa "${businessName}". Sua missão é escrever o complemento de uma resposta humanizada para a avaliação de um cliente no Google Maps.
 
 DADOS DA AVALIAÇÃO:
-- Cliente: ${firstName} (Nome completo: ${reviewerName || 'Cliente'})
-- Nota: ${rating}/5 estrelas
+- Cliente: ${firstName}
+- Nota: ${numericRating}/5 estrelas
 - Comentário do Cliente: ${hasComment ? `"${reviewText}"` : '(nenhum comentário, apenas avaliou com estrelas)'}
-- Período do Dia Atual: ${timeGreeting}
 
-REGRAS CRÍTICAS DE HUMANIZAÇÃO E DIVERSIDADE (MANDATÓRIO):
-1. 🚨 PROIBIÇÃO DE PADRÕES REPETITIVOS: É ESTRITAMENTE PROIBIDO responder sempre com a mesma saudação! Varie o estilo de abertura a cada resposta.
-   - NUNCA use saudações duplicadas ou estranhas como "Olá.. Olá" ou "Olá Olá".
-   - Alterne de forma natural entre estes estilos de abertura em Português:
-     * Estilo Informal/Amigável: "Oi, ${firstName}!", "Olá, ${firstName}, tudo bem?", "Tudo bem, ${firstName}?"
-     * Estilo Temporal: "${timeGreeting}, ${firstName}!" ou "${timeGreeting}, tudo bem?"
-     * Estilo Cordial/Respeitoso: "Prezado(a) ${firstName},", "Prezado cliente,"
-     * Estilo Direto de Agradecimento: "Muito obrigado pelo carinho, ${firstName}!", "Ficamos super felizes com sua avaliação, ${firstName}!", "Que satisfação ler seu comentário, ${firstName}!", "Valeu demais pelo feedback, ${firstName}!"
-2. IDIOMA DA RESPOSTA: Responda no MESMO IDIOMA do comentário do cliente. Se a avaliação não possuir comentário (apenas estrelas), responda em Português (ou Inglês se o nome do cliente for claramente internacional).
-3. ADAPTAÇÃO AO CONTEÚDO E NOTA:
-   - Respostas de 4-5 estrelas: Mostre alegria sincera, agradeça pela preferência e reforce a satisfação em atendê-lo.
-   - Respostas de 1-3 estrelas: Seja empático, humilde, sem tom defensivo, e convide o cliente para conversar em canal privado (ex: WhatsApp ou telefone) para solucionar o problema.
+SAUDAÇÃO DE ABERTURA SELECIONADA (OBRIGATÓRIO):
+"${selectedGreeting}"
+
+REGRAS RÍGIDAS DE GERAÇÃO:
+1. A resposta FINAL DEVE COMEÇAR EXATAMENTE com a saudação "${selectedGreeting}".
+2. Após essa saudação predefinida, desenvolva a mensagem de acordo com a nota e o comentário.
+3. NÃO repita a saudação nem o nome do cliente novamente no meio ou no fim do texto.
 4. ${sizeInstruction}
-5. Escreva APENAS o texto final da resposta, sem aspas, sem saudações genéricas repetidas, sem introdução de IA.`;
+5. Escreva APENAS o texto completo da resposta final (saudação + complemento), pronto para publicar. Sem aspas ou explicações.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -63,7 +91,7 @@ REGRAS CRÍTICAS DE HUMANIZAÇÃO E DIVERSIDADE (MANDATÓRIO):
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.9,
+            temperature: 0.95,
             maxOutputTokens: 2000,
           },
           safetySettings: [
@@ -87,16 +115,17 @@ REGRAS CRÍTICAS DE HUMANIZAÇÃO E DIVERSIDADE (MANDATÓRIO):
       return NextResponse.json({ error: data.error.message }, { status: 500 });
     }
 
-    let aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    let aiReply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
     if (!aiReply) {
       return NextResponse.json({ error: 'A IA não retornou uma resposta válida.' }, { status: 500 });
     }
 
-    // Limpeza de possíveis artefatos de duplicação de saudação no início
-    aiReply = aiReply.trim().replace(/^(Olá[\.\,\s]*)+/i, 'Olá, ');
-    if (aiReply.startsWith('Olá, Olá')) {
-      aiReply = aiReply.replace(/^Olá,\s*Olá,?\s*/i, 'Olá, ');
+    // Garantir que a saudação sorteada seja o início exato do texto
+    if (!aiReply.startsWith(selectedGreeting)) {
+      // Remove qualquer saudação duplicada no início gerada pela IA
+      aiReply = aiReply.replace(/^(Olá|Oi|Bom dia|Boa tarde|Boa noite|Prezado\(a\)|Prezado|Muito obrigado|Ficamos|Que satisfação|Valeu|Agradecemos)[^.!\n]*[.!\n]?\s*/i, '');
+      aiReply = `${selectedGreeting} ${aiReply}`;
     }
 
     return NextResponse.json({ reply: aiReply.trim() });
