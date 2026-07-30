@@ -5,6 +5,27 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+async function getAccessTokenByRefreshToken(refreshToken: string) {
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_ADS_CLIENT_ID!.trim(),
+        client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!.trim(),
+        refresh_token: refreshToken.trim(),
+        grant_type: 'refresh_token',
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.access_token || null;
+  } catch (err) {
+    console.error('Erro ao renovar token OAuth no sync-pending:', err);
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization');
@@ -44,16 +65,27 @@ export async function POST(req: Request) {
       .eq('user_id', user.id)
       .not('gbp_location_id', 'is', null);
 
-    if (clientsError) {
-      console.error('Erro ao buscar clientes para sincronização:', clientsError);
-      return NextResponse.json({ error: 'Erro ao consultar clientes.' }, { status: 500 });
-    }
-
-    if (!clients || clients.length === 0) {
+    if (clientsError || !clients || clients.length === 0) {
       return NextResponse.json([]);
     }
 
-    // 4. Executar consultas de avaliações em paralelo com limite de concorrência implícito por Promise.all
+    // 4. Buscar a integração e obter o access token do Google diretamente via Admin Supabase (sem bloqueio de RLS)
+    const { data: integration } = await adminSupabase
+      .from('google_integrations')
+      .select('refresh_token')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!integration || !integration.refresh_token) {
+      return NextResponse.json({ error: 'Integração do Google não encontrada para este usuário' }, { status: 400 });
+    }
+
+    const accessToken = await getAccessTokenByRefreshToken(integration.refresh_token);
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Falha ao renovar token OAuth do Google' }, { status: 401 });
+    }
+
+    // 5. Executar consultas de avaliações em paralelo com o accessToken direto e pageSize=50
     const syncResults = await Promise.all(
       clients.map(async (client) => {
         try {
@@ -61,7 +93,7 @@ export async function POST(req: Request) {
             return { id: client.id, pendingReviewsCount: 0 };
           }
 
-          const reviews = await getReviews(client.gbp_account_id, client.gbp_location_id, token);
+          const reviews = await getReviews(client.gbp_account_id, client.gbp_location_id, undefined, accessToken);
           
           if (Array.isArray(reviews)) {
             const pendingCount = reviews.filter((r: any) => !r.reviewReply).length;
@@ -74,7 +106,7 @@ export async function POST(req: Request) {
 
             return { id: client.id, pendingReviewsCount: pendingCount };
           } else {
-            console.warn(`Aviso: Formato inválido de reviews retornado para ${client.name}.`);
+            console.warn(`Aviso: Retorno de reviews inválido para ${client.name}.`);
           }
         } catch (e) {
           console.error(`Erro ao sincronizar avaliações do cliente ${client.name}:`, e);
@@ -83,12 +115,10 @@ export async function POST(req: Request) {
       })
     );
 
-    // Filtrar resultados nulos
     const updatedCounts = syncResults.filter(Boolean);
-
     return NextResponse.json(updatedCounts);
   } catch (error) {
     console.error('Erro na API /api/reviews/sync-pending:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor durante a sincronização.' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno durante a sincronização.' }, { status: 500 });
   }
 }

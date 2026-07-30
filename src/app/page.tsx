@@ -318,12 +318,96 @@ export default function Dashboard() {
   };
 
   const fetchScheduledPosts = async (locationId: string) => {
+    try {
+      // Processa silenciosamente postagens pendentes vencidas ao carregar
+      await fetch('/api/cron/publish', { method: 'POST' });
+    } catch (e) {
+      console.error('Erro ao acionar verificação de agendamentos:', e);
+    }
     const { data: posts } = await supabase
       .from('scheduled_posts')
       .select('*')
       .eq('location_id', locationId)
       .eq('status', 'pending');
     setScheduledPosts(posts || []);
+  };
+
+  const handlePost = async () => {
+    if (!postText || !gbpData) return;
+    try {
+      if (scheduledDate) {
+        const scheduledTime = new Date(scheduledDate);
+        const minTime = Date.now() - 5 * 60 * 1000; // 5 min tolerance
+        
+        if (scheduledTime.getTime() < minTime) {
+          alert('🚫 Data Inválida: Não é possível agendar uma postagem em data retroativa.');
+          return;
+        }
+      }
+
+      if (editingPostId) {
+        const { error: updateErr } = await supabase.from('scheduled_posts').update({
+          scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : new Date().toISOString(),
+          content: postText,
+          image_url: imageUrl,
+          button_type: buttonType,
+          button_url: buttonUrl,
+          user_id: session?.user?.id,
+          status: 'pending'
+        }).eq('id', editingPostId);
+
+        if (updateErr) {
+          alert('❌ Erro ao atualizar agendamento: ' + updateErr.message);
+          return;
+        }
+        alert('✅ Agendamento atualizado com sucesso!');
+        setEditingPostId(null);
+        fetchScheduledPosts(gbpData.locationId);
+      } else if (scheduledDate) {
+        const { error: insertErr } = await supabase.from('scheduled_posts').insert([{
+          scheduled_for: new Date(scheduledDate).toISOString(),
+          content: postText,
+          image_url: imageUrl,
+          button_type: buttonType,
+          button_url: buttonUrl,
+          location_id: gbpData.locationId,
+          account_id: gbpData.accountId,
+          user_id: session?.user?.id,
+          status: 'pending'
+        }]);
+
+        if (insertErr) {
+          alert('❌ Erro ao salvar agendamento: ' + insertErr.message);
+          return;
+        }
+        alert('📅 Postagem agendada com sucesso!');
+        fetchScheduledPosts(gbpData.locationId);
+      } else {
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`
+          },
+          body: JSON.stringify({
+            accountId: gbpData.accountId,
+            locationId: gbpData.locationId,
+            postText, imageUrl, buttonType, buttonUrl
+          })
+        });
+        const result = await res.json();
+        if (!res.ok || result.error) {
+          alert(`❌ Erro ao publicar no Google: ${result.error || 'Falha na resposta do servidor'}`);
+          return;
+        }
+        alert('🚀 Postagem publicada com sucesso no Google!');
+      }
+      setPostText(''); setImageUrl(''); setScheduledDate(''); setButtonType('NONE'); setButtonUrl('');
+      setEditingPostId(null);
+    } catch(e: any) { 
+      console.error(e);
+      alert('❌ Erro inesperado ao processar postagem: ' + (e?.message || e));
+    }
   };
 
   const fetchAudit = async (accountId: string, locationId: string) => {
@@ -956,65 +1040,7 @@ export default function Dashboard() {
     }
   };
 
-  const handlePost = async () => {
-    if (!postText || !gbpData) return;
-    try {
-      if (scheduledDate) {
-        const scheduledTime = new Date(scheduledDate);
-        const now = new Date();
-        const minTime = Date.now() - 5 * 60 * 1000; // 5 min tolerance
-        
-        if (scheduledTime.getMonth() !== now.getMonth() || scheduledTime.getFullYear() !== now.getFullYear()) {
-          alert('🚫 Limite Excedido: Você só pode agendar postagens para o mês vigente atual.');
-          return;
-        }
-        if (scheduledTime.getTime() < minTime) {
-          alert('🚫 Data Inválida: Não é possível agendar uma postagem em data retroativa.');
-          return;
-        }
-      }
 
-      if (editingPostId) {
-        await supabase.from('scheduled_posts').update({
-          scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : new Date().toISOString(),
-          content: postText,
-          image_url: imageUrl,
-          button_type: buttonType,
-          button_url: buttonUrl,
-          status: 'pending'
-        }).eq('id', editingPostId);
-        alert('Agendamento atualizado!');
-        setEditingPostId(null);
-        fetchScheduledPosts(gbpData.locationId);
-      } else if (scheduledDate) {
-        await supabase.from('scheduled_posts').insert([{
-          scheduled_for: new Date(scheduledDate).toISOString(),
-          content: postText,
-          image_url: imageUrl,
-          button_type: buttonType,
-          button_url: buttonUrl,
-          location_id: gbpData.locationId,
-          account_id: gbpData.accountId,
-          status: 'pending'
-        }]);
-        alert('Agendado!');
-        fetchScheduledPosts(gbpData.locationId);
-      } else {
-        await fetch('/api/posts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accountId: gbpData.accountId,
-            locationId: gbpData.locationId,
-            postText, imageUrl, buttonType, buttonUrl
-          })
-        });
-        alert('Publicado!');
-      }
-      setPostText(''); setImageUrl(''); setScheduledDate(''); setButtonType('NONE'); setButtonUrl('');
-      setEditingPostId(null);
-    } catch(e) { console.error(e); }
-  };
 
   const handleEditScheduledPost = (post: any) => {
     setPostText(post.content || '');

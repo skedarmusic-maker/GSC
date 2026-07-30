@@ -198,13 +198,30 @@ export async function POST(req: Request) {
 
     console.log('🔍 Buscando:', businessName, locationContext ? 'com foco geográfico' : '');
 
-    // ── PASSO 2: Obter dados (Outscraper -> Apify -> SerpApi) ─────────────────
+    // ── PASSO 2: Obter dados (SerpApi com Coordenadas -> Outscraper -> Apify -> SerpApi Geral) ──
     let rawPlace: any = null;
     let rawResults: any[] = [];
     const outscraperKey = process.env.OUTSCRAPER_API_KEY;
     const apifyToken = process.env.APIFY_TOKEN;
 
-    if (outscraperKey) {
+    // Se o usuário colou um link do Maps com coordenadas, a SerpApi com 'll' garante precisão cirúrgica no pino correto
+    if (locationContext && apiKey) {
+      console.log('🎯 Link de Maps com coordenadas detectado! Executando busca de precisão cirúrgica no pino...');
+      try {
+        const mapsUrl = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(businessName)}${locationContext}&api_key=${apiKey}&hl=pt&gl=br&type=search`;
+        const mapsRes = await fetch(mapsUrl);
+        const mapsData = await mapsRes.json();
+        if (mapsData.local_results?.length > 0) {
+          rawPlace = mapsData.local_results[0];
+          rawResults = mapsData.local_results;
+          console.log('✅ Local exato do pino obtido via SerpApi:', rawPlace.title, '(', rawPlace.address, ')');
+        }
+      } catch (err) {
+        console.error('❌ Falha na busca por coordenadas via SerpApi:', err);
+      }
+    }
+
+    if (!rawPlace && outscraperKey) {
       console.log('🚀 Usando Outscraper para busca profunda...');
       try {
         const url = `https://api.app.outscraper.com/maps/search-places?query=${encodeURIComponent(businessName)}&limit=6&language=pt&region=br`;

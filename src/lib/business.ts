@@ -388,16 +388,19 @@ export async function getLocationPerformance(locationName: string, days?: number
 
 // === NOVAS FUNÇÕES: GESTÃO DO PERFIL ===
 
-export async function getReviews(accountId: string, locationId: string, tokenSupabase?: string) {
+export async function getReviews(accountId: string, locationId: string, tokenSupabase?: string, customAccessToken?: string) {
   try {
-    const accessToken = await getAccessToken(tokenSupabase);
-    const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
+    const accessToken = customAccessToken || await getAccessToken(tokenSupabase);
+    if (!accessToken) {
+      console.error('getReviews: Nenhum accessToken disponível.');
+      return { error: 'Falha de autenticação no Google' };
+    }
+    const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews?pageSize=50`;
 
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
     if (!res.ok) {
       const errorText = await res.text();
       console.error('Erro ao buscar reviews:', errorText);
-      // Tenta extrair a mensagem de erro do JSON se possível
       try {
         const errorObj = JSON.parse(errorText);
         return { error: errorObj.error.message };
