@@ -458,11 +458,14 @@ export async function createLocalPost(
       topicType: 'STANDARD'
     };
 
-    // Adicionar Imagem se existir (bloquear URLs temporárias blob:)
+    // Adicionar Imagem se existir (bloquear URLs temporárias blob: e arquivos WebP incompatíveis com o Google)
     if (postData.imageUrl && postData.imageUrl.trim()) {
       const trimmedUrl = postData.imageUrl.trim();
       if (trimmedUrl.startsWith('blob:')) {
         return { success: false, error: 'A imagem deve ser uma URL pública (http/https). URLs locais blob: não são aceitas pelo Google.' };
+      }
+      if (trimmedUrl.toLowerCase().includes('.webp')) {
+        return { success: false, error: 'O Google Business aceita apenas imagens nos formatos JPG ou PNG. Arquivos WebP não são suportados para postagens no Google.' };
       }
       body.media = [
         {
