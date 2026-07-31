@@ -82,15 +82,15 @@ export async function POST(req: Request) {
     }
 
     // 3. Criar postagem no Google
-    const success = await createLocalPost(accountId, locationId, {
+    const result = await createLocalPost(accountId, locationId, {
       text: postText,
       imageUrl,
       buttonType,
       buttonUrl
     }, undefined, accessToken);
     
-    if (!success) {
-      return NextResponse.json({ error: 'Falha ao criar postagem na API do Google Business.' }, { status: 500 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || 'Falha ao criar postagem na API do Google Business.' }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });

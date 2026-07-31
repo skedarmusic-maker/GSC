@@ -86,21 +86,21 @@ async function processPendingPosts() {
         }
       }
 
-      const success = await createLocalPost(post.account_id, post.location_id, {
+      const resPost = await createLocalPost(post.account_id, post.location_id, {
         text: post.content,
         imageUrl: post.image_url,
         buttonType: post.button_type,
         buttonUrl: post.button_url
       }, undefined, clientAccessToken || undefined);
       
-      if (success) {
+      if (resPost.success) {
         await adminSupabase
           .from('scheduled_posts')
           .update({ status: 'published' })
           .eq('id', post.id);
         results.push({ id: post.id, status: 'success' });
       } else {
-        throw new Error('Erro na API do Google Business ao publicar post agendado');
+        throw new Error(resPost.error || 'Erro na API do Google Business ao publicar post agendado');
       }
     } catch (err: any) {
       await adminSupabase

@@ -444,10 +444,13 @@ export async function createLocalPost(
   postData: { text: string, imageUrl?: string, buttonType?: string, buttonUrl?: string }, 
   tokenSupabase?: string,
   customAccessToken?: string
-) {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const accessToken = customAccessToken || await getAccessToken(tokenSupabase);
-    const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/localPosts`;
+    const cleanAccountId = (accountId || '').replace(/^accounts\//, '');
+    const cleanLocationId = (locationId || '').replace(/^accounts\/[^/]+\/locations\//, '').replace(/^locations\//, '');
+
+    const url = `https://mybusiness.googleapis.com/v4/accounts/${cleanAccountId}/locations/${cleanLocationId}/localPosts`;
 
     const body: any = {
       languageCode: 'pt-BR',
@@ -455,12 +458,16 @@ export async function createLocalPost(
       topicType: 'STANDARD'
     };
 
-    // Adicionar Imagem se existir
-    if (postData.imageUrl) {
+    // Adicionar Imagem se existir (bloquear URLs temporárias blob:)
+    if (postData.imageUrl && postData.imageUrl.trim()) {
+      const trimmedUrl = postData.imageUrl.trim();
+      if (trimmedUrl.startsWith('blob:')) {
+        return { success: false, error: 'A imagem deve ser uma URL pública (http/https). URLs locais blob: não são aceitas pelo Google.' };
+      }
       body.media = [
         {
           mediaFormat: 'PHOTO',
-          sourceUrl: postData.imageUrl
+          sourceUrl: trimmedUrl
         }
       ];
     }
@@ -486,14 +493,15 @@ export async function createLocalPost(
 
     if (!res.ok) {
       console.error('Erro na API do Google:', resData);
-      return false;
+      const googleErrMsg = resData.error?.message || resData.error_description || JSON.stringify(resData);
+      return { success: false, error: `Google API (${res.status}): ${googleErrMsg}` };
     }
 
     console.log('Resposta do Google:', resData);
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
+    return { success: true };
+  } catch (error: any) {
+    console.error('Erro em createLocalPost:', error);
+    return { success: false, error: error?.message || 'Erro de conexão com o Google My Business' };
   }
 }
 
