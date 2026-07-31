@@ -480,7 +480,7 @@ export async function createLocalPost(
       };
     }
 
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -489,11 +489,28 @@ export async function createLocalPost(
       body: JSON.stringify(body)
     });
 
+    // Se o Google retornar erro 500/503 (instabilidade temporária/rate limit do Google), tentar novamente após 1.5 segundos
+    if (!res.ok && (res.status === 500 || res.status === 503)) {
+      console.warn(`⚠️ Google retornou HTTP ${res.status}. Tentando novamente em 1.5s...`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    }
+
     const resData = await res.json();
 
     if (!res.ok) {
       console.error('Erro na API do Google:', resData);
       const googleErrMsg = resData.error?.message || resData.error_description || JSON.stringify(resData);
+      if (res.status === 500 || res.status === 503) {
+        return { success: false, error: 'O Google apresentou uma instabilidade temporária em seus servidores (Erro 500). Aguarde alguns segundos e tente publicar novamente.' };
+      }
       return { success: false, error: `Google API (${res.status}): ${googleErrMsg}` };
     }
 
